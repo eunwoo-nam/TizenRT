@@ -41,7 +41,7 @@ mechanical rules of the C coding style guide:
 | [M01] | tab-only indentation, tab width 4 |
 | [M02] | `case`/`default` at the same indent level as `switch` |
 | [M03] | keyword spacing (`if (`, `sizeof(`) |
-| [M04] | operator spacing, no space after casts, right-bound `*` declarators |
+| [M04] | operator spacing, no space after casts and unary operators (`~`, `!`, `&`, `*`, `-`, prefix/postfix `++`/`--`), right-bound `*` declarators |
 | [M05] | separator spacing (`,`, `;`, parentheses, brackets) |
 | [M06] | function opening brace starts the next line |
 | [M07] | control opening brace at end of line, closing brace on its own line, `} else` / `} while` attached |
@@ -50,6 +50,26 @@ mechanical rules of the C coding style guide:
 | [R05] | no trailing whitespace |
 | [R06] | newline at end of file |
 | [R09] | `#` of preprocessor directives at the first column |
+
+### Layout policy
+
+- The author's line breaks are kept. Lines are only split or joined
+  where a brace rule requires it ([M06], [M07], [M08]).
+- Continuation lines (wrapped arguments, conditions, initializers) keep
+  their alignment relative to the first line of the statement; only the
+  tab indentation of that first line is corrected ([M01]).
+- Trailing comments stay on their line together with their alignment,
+  and column alignment of declarations, assignments and table entries
+  (two or more blanks) is kept.
+- When the role of a token cannot be decided without type information,
+  the original spacing is kept, e.g. `a * b` versus `type *name`, or
+  `(x) - 1` versus `(type)-1`.
+- `extern "C" {` blocks are not indented.
+- Regions between `/* *INDENT-OFF* */` and `/* *INDENT-ON* */` (or
+  `// clang-format off` / `// clang-format on`) and regions guarded by
+  `__ASSEMBLY__`/`__ASSEMBLER__` are left verbatim.
+- C++ sources (`class`, `namespace`, `template`, access specifiers) are
+  skipped; use `cxxformatter.sh` for them.
 
 ### Safety guarantees
 
@@ -60,8 +80,9 @@ Before a file is rewritten, the formatter verifies that:
 2. formatting is idempotent (running it twice produces no further change).
 
 If either check fails the file is left untouched and an error is
-reported. Regions guarded by `__ASSEMBLY__`/`__ASSEMBLER__` keep their
-original line structure, since assembly must not be reformatted as C.
+reported.
+
+Regression tests for the formatter: `python3 tools/cformatter_test.py`.
 
 ### Limitations (rules not automated)
 
@@ -72,6 +93,12 @@ wrapping of macros [R08], macro hygiene [R09]/[R10], tag/variable split
 [R11], one declaration per line [R12], naming [M12]/[R13]-[R16].
 Please fix those manually.
 
-Statement sequences are always joined onto single lines (there is no
-line-length limit in the C rules), and initializer lists keep the
-author's original line breaks.
+## C++ formatter
+
+`cxxformatter.sh` runs `clang-format` with the repository
+[.clang-format](../.clang-format), which follows the C++ section of the
+coding style guide:
+
+```bash
+./tools/cxxformatter.sh framework/src/media
+```
