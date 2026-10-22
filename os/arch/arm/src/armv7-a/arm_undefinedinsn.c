@@ -1,22 +1,7 @@
 /****************************************************************************
- *
- * Copyright 2023 Samsung Electronics All Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
- * either express or implied. See the License for the specific
- * language governing permissions and limitations under the License.
- *
- ****************************************************************************/
-/****************************************************************************
  * arch/arm/src/armv7-a/arm_undefinedinsn.c
+ *
+ * SPDX-License-Identifier: Apache-2.0
  *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -46,35 +31,13 @@
 #include <debug.h>
 
 #include <tinyara/arch.h>
+#include <sched/sched.h>
 
-#ifdef CONFIG_SYSTEM_REBOOT_REASON
-#include <tinyara/reboot_reason.h>
-#include <arch/reboot_reason.h>
-#endif
-
-#include "up_internal.h"
-
-/****************************************************************************
- * Public Data
- ****************************************************************************/
-extern uint32_t system_exception_location;
+#include "arm_internal.h"
 
 /****************************************************************************
  * Public Functions
  ****************************************************************************/
-
-/****************************************************************************
- * Name: print_undefinedinsn_detail
- ****************************************************************************/
-
-static inline void print_undefinedinsn_detail(uint32_t *regs)
-{
-	/* Abort log must always start at a new line.*/
-	lldbg_noarg("\n");
-	_alert("#########################################################################\n");
-	_alert("PANIC!!! Undefined instruction at 0x%x\n", regs[REG_PC]);
-	_alert("#########################################################################\n\n\n");
-}
 
 /****************************************************************************
  * Name: arm_undefinedinsn
@@ -82,23 +45,18 @@ static inline void print_undefinedinsn_detail(uint32_t *regs)
 
 uint32_t *arm_undefinedinsn(uint32_t *regs)
 {
-	/* Save the saved processor context in CURRENT_REGS where it can be
-	 * accessed for register dumps and possibly context switching.
-	 */
-	uint32_t *saved_state = (uint32_t *)CURRENT_REGS;
-	CURRENT_REGS = regs;
-	system_exception_location = regs[REG_R15];
-#ifdef CONFIG_SYSTEM_REBOOT_REASON
-	up_reboot_reason_write_by_addr(regs[REG_R15], REBOOT_SYSTEM_PREFETCHABORT);
-#endif
+	struct tcb_s *tcb = this_task();
 
-	/* Crash -- possibly showing diagnostic debug information. */
-	if (!IS_SECURE_STATE()) {
-		print_undefinedinsn_detail(regs);
+	tcb->xcp.regs = regs;
+	up_set_interrupt_context(true);
+
+	if (regs[REG_PC] >= (uint32_t)_stext && regs[REG_PC] < (uint32_t)_etext) {
+		_alert("Undefined instruction at 0x%" PRIx32 ": 0x%" PRIx32 "\n",
+		       regs[REG_PC], *(uint32_t *)regs[REG_PC]);
+	} else {
+		_alert("Undefined instruction at 0x%" PRIx32 "\n", regs[REG_PC]);
 	}
 
-	PANIC();
-	regs = (uint32_t *)CURRENT_REGS;
-	CURRENT_REGS = saved_state;
+	PANIC_WITH_REGS("panic", regs);
 	return regs; /* To keep the compiler happy */
 }
