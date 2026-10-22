@@ -1,22 +1,7 @@
 /****************************************************************************
+ * libs/libm/libm/lib_trunc.c
  *
- * Copyright 2016 Samsung Electronics All Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
- * either express or implied. See the License for the specific
- * language governing permissions and limitations under the License.
- *
- ****************************************************************************/
-/****************************************************************************
- * libc/math/lib_trunc.c
+ * SPDX-License-Identifier: MIT
  *
  * This implementation is derived from the musl library under the MIT License
  *
@@ -43,18 +28,19 @@
  *
  ****************************************************************************/
 
-/************************************************************************
+/****************************************************************************
  * Included Files
- ************************************************************************/
+ ****************************************************************************/
 
+#include <tinyara/config.h>
 #include <tinyara/compiler.h>
 
 #include <stdint.h>
 #include <math.h>
 
-/************************************************************************
+/****************************************************************************
  * Public Functions
- ************************************************************************/
+ ****************************************************************************/
 
 #ifdef CONFIG_HAVE_DOUBLE
 double trunc(double x)
@@ -62,7 +48,11 @@ double trunc(double x)
 	union {
 		double f;
 		uint64_t i;
-	} u = { x };
+	} u =
+	{
+	  x
+	};
+
 	int e = (int)(u.i >> 52 & 0x7ff) - 0x3ff + 12;
 	uint64_t m;
 	volatile float __x;
@@ -83,7 +73,7 @@ double trunc(double x)
 	/* Force Evaluation */
 
 	__x = (x + 0x1p120f);
-	(void)__x;
+	UNUSED(__x);
 
 	u.i &= ~m;
 	return u.f;

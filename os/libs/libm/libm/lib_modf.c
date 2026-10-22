@@ -1,30 +1,12 @@
 /****************************************************************************
+ * libs/libm/libm/lib_modf.c
  *
- * Copyright 2016-2017 Samsung Electronics All Rights Reserved.
+ * SPDX-License-Identifier: ISC
+ * SPDX-FileCopyrightText: Copyright (C) 2012 Gregory Nutt.
+ * SPDX-FileContributor: Ported by: Darcy Gong
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
- * either express or implied. See the License for the specific
- * language governing permissions and limitations under the License.
- *
- ****************************************************************************/
-/************************************************************************
- * libc/math/lib_modf.c
- *
- * This file is a part of NuttX:
- *
- *   Copyright (C) 2012 Gregory Nutt. All rights reserved.
- *   Ported by: Darcy Gong
- *
- * It derives from the Rhombs OS math library by Nick Johnson which has
- * a compatibile, MIT-style license:
+ * It derives from the Rhombus OS math library by Nick Johnson which has
+ * a compatible, MIT-style license:
  *
  * Copyright (C) 2009-2011 Nick Johnson <nickbjohnson4224 at gmail.com>
  *
@@ -40,30 +22,33 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
- ************************************************************************/
+ ****************************************************************************/
 
-/************************************************************************
+/****************************************************************************
  * Included Files
- ************************************************************************/
+ ****************************************************************************/
+
+#include <tinyara/config.h>
+#include <tinyara/compiler.h>
 
 #include <stdint.h>
 #include <math.h>
 
-/************************************************************************
+/****************************************************************************
  * Public Functions
- ************************************************************************/
+ ****************************************************************************/
 
 #ifdef CONFIG_HAVE_DOUBLE
-double modf(double x, double *iptr)
+double modf(double x, FAR double *iptr)
 {
 	if (fabs(x) >= 4503599627370496.0) {
 		*iptr = x;
 		return 0.0;
 	} else if (fabs(x) < 1.0) {
-		*iptr = (x * 0.0);
+		*iptr = 0.0;
 		return x;
 	} else {
-		*iptr = (double)(int64_t)x;
+		*iptr = (double)(int64_t) x;
 		return (x - *iptr);
 	}
 }

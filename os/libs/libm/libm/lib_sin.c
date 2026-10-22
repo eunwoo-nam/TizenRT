@@ -1,30 +1,12 @@
 /****************************************************************************
+ * libs/libm/libm/lib_sin.c
  *
- * Copyright 2016 Samsung Electronics All Rights Reserved.
+ * SPDX-License-Identifier: ISC
+ * SPDX-FileCopyrightText: Copyright (C) 2012 Gregory Nutt.
+ * SPDX-FileContributor: Ported by: Darcy Gong
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
- * either express or implied. See the License for the specific
- * language governing permissions and limitations under the License.
- *
- ****************************************************************************/
-/************************************************************************
- * libc/math/lib_sin.c
- *
- * This file is a part of NuttX:
- *
- *   Copyright (C) 2012 Gregory Nutt. All rights reserved.
- *   Ported by: Darcy Gong
- *
- * It derives from the Rhombs OS math library by Nick Johnson which has
- * a compatibile, MIT-style license:
+ * It derives from the Rhombus OS math library by Nick Johnson which has
+ * a compatible, MIT-style license:
  *
  * Copyright (C) 2009-2011 Nick Johnson <nickbjohnson4224 at gmail.com>
  *
@@ -40,12 +22,13 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
- ************************************************************************/
+ ****************************************************************************/
 
-/************************************************************************
+/****************************************************************************
  * Included Files
- ************************************************************************/
+ ****************************************************************************/
 
+#include <tinyara/config.h>
 #include <tinyara/compiler.h>
 
 #include <sys/types.h>
@@ -53,38 +36,33 @@
 
 #ifdef CONFIG_HAVE_DOUBLE
 
-/************************************************************************
+/****************************************************************************
  * Private Data
- ************************************************************************/
+ ****************************************************************************/
 
-static double _dbl_inv_fact[] = {
-	1.0 / 1.0,					/* 1 / 1! */
-	1.0 / 6.0,					/* 1 / 3! */
-	1.0 / 120.0,				/* 1 / 5! */
-	1.0 / 5040.0,				/* 1 / 7! */
-	1.0 / 362880.0,				/* 1 / 9! */
-	1.0 / 39916800.0,			/* 1 / 11! */
-	1.0 / 6227020800.0,			/* 1 / 13! */
-	1.0 / 1307674368000.0,		/* 1 / 15! */
-	1.0 / 355687428096000.0,	/* 1 / 17! */
-	1.0 / 121645100408832000.0,	/* 1 / 19! */
+static double _dbl_inv_fact[] =
+{
+  1.0 / 1.0,                    /* 1 / 1! */
+  1.0 / 6.0,                    /* 1 / 3! */
+  1.0 / 120.0,                  /* 1 / 5! */
+  1.0 / 5040.0,                 /* 1 / 7! */
+  1.0 / 362880.0,               /* 1 / 9! */
+  1.0 / 39916800.0,             /* 1 / 11! */
+  1.0 / 6227020800.0,           /* 1 / 13! */
+  1.0 / 1307674368000.0,        /* 1 / 15! */
+  1.0 / 355687428096000.0,      /* 1 / 17! */
+  1.0 / 121645100408832000.0,   /* 1 / 19! */
 };
 
-/************************************************************************
+/****************************************************************************
  * Public Functions
- ************************************************************************/
+ ****************************************************************************/
 
 double sin(double x)
 {
 	double x_squared;
 	double sin_x;
 	size_t i;
-
-	/* When x is INFINITY, -INFINITY and NAN  */
-	if (isnan(x) || x == INFINITY || x == -INFINITY) {
-
-		return NAN;
-	}
 
 	/* Move x to [-pi, pi) */
 

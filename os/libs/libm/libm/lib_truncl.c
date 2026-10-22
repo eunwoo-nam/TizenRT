@@ -1,22 +1,7 @@
 /****************************************************************************
+ * libs/libm/libm/lib_truncl.c
  *
- * Copyright 2016 Samsung Electronics All Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
- * either express or implied. See the License for the specific
- * language governing permissions and limitations under the License.
- *
- ****************************************************************************/
-/****************************************************************************
- * libc/math/lib_truncl.c
+ * SPDX-License-Identifier: MIT
  *
  * This implementation is derived from the musl library under the MIT License
  *
@@ -43,19 +28,20 @@
  *
  ****************************************************************************/
 
-/************************************************************************
+/****************************************************************************
  * Included Files
- ************************************************************************/
+ ****************************************************************************/
 
+#include <tinyara/config.h>
 #include <tinyara/compiler.h>
 
 #include <stdint.h>
 #include <float.h>
 #include <math.h>
 
-/************************************************************************
+/****************************************************************************
  * Public Functions
- ************************************************************************/
+ ****************************************************************************/
 
 #ifdef CONFIG_HAVE_LONG_DOUBLE
 static const long double toint = 1 / LDBL_EPSILON;
@@ -72,7 +58,11 @@ union ldshape {
 
 long double truncl(long double x)
 {
-	union ldshape u = { x };
+	union ldshape u =
+	  {
+	    x
+	  };
+
 	int e = u.i.se & 0x7fff;
 	int s = u.i.se >> 15;
 	long double y;
@@ -86,7 +76,7 @@ long double truncl(long double x)
 		/* Force Eval */
 
 		__x = (x + 0x1p120f);
-		(void)__x;
+		UNUSED(__x);
 		return x * 0;
 	}
 
