@@ -1,22 +1,7 @@
 /****************************************************************************
- *
- * Copyright 2023 Samsung Electronics All Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
- * either express or implied. See the License for the specific
- * language governing permissions and limitations under the License.
- *
- ****************************************************************************/
-/****************************************************************************
  * libs/libc/pthread/pthread_attr_getaffinity.c
+ *
+ * SPDX-License-Identifier: Apache-2.0
  *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -50,7 +35,7 @@
  ****************************************************************************/
 
 /****************************************************************************
- * Name:  pthread_attr_getaffinity
+ * Name:  pthread_attr_getaffinity_np
  *
  * Description:
  *
@@ -68,12 +53,12 @@
 int pthread_attr_getaffinity_np(FAR const pthread_attr_t *attr,
                                 size_t cpusetsize, cpu_set_t *cpuset)
 {
-  svdbg("attr=%p cpusetsize=%d cpuset=%p\n",
-         attr, (int)cpusetsize, cpuset);
+	linfo("attr=%p cpusetsize=%d cpuset=%p\n",
+	       attr, (int)cpusetsize, cpuset);
 
-  DEBUGASSERT(attr != NULL && cpusetsize == sizeof(cpu_set_t) &&
-                                            cpuset != NULL);
+	DEBUGASSERT(attr != NULL && cpusetsize == sizeof(cpu_set_t) &&
+	                                          cpuset != NULL);
 
-  *cpuset = attr->affinity;
-  return OK;
+	*cpuset = attr->affinity;
+	return OK;
 }
