@@ -318,6 +318,7 @@ def find_labels(toks, pmatch):
     """Return (case_head, case_colon, label_head) index sets."""
     n = len(toks)
     case_head, case_colon, label_head = set(), set(), set()
+    label_colon = set()
     for idx, t in enumerate(toks):
         if t.kind != 'IDENT':
             continue
@@ -343,8 +344,9 @@ def find_labels(toks, pmatch):
             k = prev_sig(toks, idx)
             pv = toks[k] if k >= 0 else None
             if pv is None or is_op(pv, ';', '{', '}') or \
-                    (is_op(pv, ':') and k in case_colon):
+                    (is_op(pv, ':') and (k in case_colon or k in label_colon)):
                 label_head.add(idx)
+                label_colon.add(j)
     return case_head, case_colon, label_head
 
 
@@ -397,8 +399,9 @@ def _classify_brace(toks, idx, pmatch, case_colon, label_colon, stack):
         return 'extern'
     if prev.kind == 'OP':
         if prev.text == ':':
-            return 'block' if j in case_colon or j in label_colon \
-                else 'init'
+            if j in case_colon:
+                return 'caseblock'
+            return 'block' if j in label_colon else 'init'
         if prev.text in (';', '}', '{'):
             return 'block'
         if prev.text == ')':
@@ -885,7 +888,7 @@ class _State(object):
     goes back to the outer indent, the statements inside use the inner
     one."""
     __slots__ = ('paren', 'open', 'body', 'stmt_old', 'stmt_new',
-                 'stack')
+                 'stack', 'after_case', 'last_close')
 
     def __init__(self):
         self.paren = 0          # '(' nesting
@@ -894,6 +897,9 @@ class _State(object):
         self.stmt_old = ''      # original indent of the statement line
         self.stmt_new = ''      # new indent of the statement line
         self.stack = []
+        self.after_case = None  # (indent, source indent) of a closed
+                                # 'case X: { ... }' block
+        self.last_close = None  # outer indent of the last closed block
 
     def copy(self):
         s = _State()
@@ -962,7 +968,7 @@ def layout(toks, a):
                                        im.text.startswith('//')))):
             nl = True
         elif is_op(t, '{') and cls in ('ctrl', 'switch', 'type'):
-            if nl:
+            if nl and not (im.kind == 'COMMENT' and im.nl_before > 0):
                 nl, gap = False, ' '    # [M07]/[M08] brace ends the header
         elif is_op(t, '{') and cls == 'func':
             nl = True                                   # [M06]
@@ -981,7 +987,7 @@ def layout(toks, a):
                 a.brace_class(pi) != 'init':
             attach = is_op(t, ';', ',', ')') or is_ident(t, 'else') or \
                 (is_ident(t, 'while') and pi in a.do_close) or \
-                (t.kind == 'IDENT' and a.brace_class(pi) == 'type')
+                a.brace_class(pi) == 'type'
             if not attach:
                 nl = True
         elif i in a.case_head and not nl:
@@ -995,6 +1001,9 @@ def layout(toks, a):
         closing = None
         if is_op(t, '}') and st.stack:
             closing = st.stack.pop()
+            st.after_case = (closing[1], t.lead) \
+                if closing[0] == 'caseblock' else None
+            st.last_close = closing[1] if closing[0] != 'init' else None
 
         # ---- emit -----------------------------------------------------
         text = t.text
@@ -1027,6 +1036,9 @@ def layout(toks, a):
         if starts:
             st.stmt_old = t.lead
             st.stmt_new = line_new
+        if not is_op(t, '}'):
+            st.after_case = None
+            st.last_close = None
         st.body = False
         if is_op(t, '('):
             st.paren += 1
@@ -1103,6 +1115,8 @@ def _indent(toks, i, t, st, a, cls, closing):
     in_switch = block is not None and block[0] == 'switch'
     if i in a.case_head and in_switch:
         return block[1]                              # [M02]
+    if cls == 'caseblock' and in_switch:
+        return block[1]                  # 'case X:' / '{' at case level
     if is_op(t, '{') and cls != 'init':
         # a body brace that cannot be attached ('else' / '#endif' / '{')
         # lines up with its header
@@ -1123,6 +1137,17 @@ def _indent(toks, i, t, st, a, cls, closing):
             return st.stmt_new
         return st.stmt_new + '\t' * (extra // TAB_WIDTH) + \
             ' ' * (extra % TAB_WIDTH)
+    if st.last_close is not None:
+        j = i
+        while j < len(toks) and toks[j].kind in ('COMMENT', 'PREPROC'):
+            j += 1
+        if j < len(toks) and is_ident(toks[j], 'else', 'while'):
+            return st.last_close         # 'else' below '}' and a comment
+    if st.after_case is not None and \
+            _cols(t.lead) == _cols(st.after_case[1]):
+        # 'break;' after a case block keeps the author's level: with the
+        # closing brace or one level deeper
+        return st.after_case[0]
     if t.kind == 'COMMENT' and in_switch:
         j = next_sig(toks, i)
         while j < len(toks) and toks[j].kind == 'COMMENT':

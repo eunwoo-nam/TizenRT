@@ -182,6 +182,58 @@ class FormatterTest(unittest.TestCase):
                '}\n')
         self.check(src, src)
 
+    def test_consecutive_labels(self):
+        src = body(['x = 1;']).replace(
+            '}\n', 'success:\n\n'
+            '\t/* Error exits */\n\n'
+            'errout:\n'
+            '\treturn;\n}\n')
+        self.check(src, src)
+
+    def test_brace_after_comment_line_is_not_joined(self):
+        src = body(['if (x)', '\t/* comment */', '{', '\ty = 1;', '}'])
+        expected = body(['if (x)', '\t/* comment */', '{', '\ty = 1;', '}'])
+        self.check(src, expected)
+
+    def test_struct_declarator_after_body(self):
+        src = 'struct a {\n\tstruct b {\n\t\tint x;\n\t} *next;\n};\n'
+        self.check(src, src)
+
+    def test_case_block_styles(self):
+        # both TizenRT styles of 'case' blocks are kept
+        src = body([
+            'switch (cmd) {',
+            'case A:',
+            '{',
+            '\tx = 1;',
+            '}',
+            'break;',
+            'case B: {',
+            '\tx = 2;',
+            '}',
+            '\tbreak;',
+            '}',
+        ])
+        self.check(src, src)
+
+    def test_dangling_else_after_comment(self):
+        src = body([
+            'if (a) {',
+            '\tx = 1;',
+            '} else',
+            '#endif',
+            '\tif (b) {',
+            '\t\ty = 1;',
+            '\t}',
+            '',
+            '\t/* comment */',
+            '',
+            '\telse {',
+            '\t\ty = 2;',
+            '\t}',
+        ]).replace('\t#endif', '#endif').replace('\t\n', '\n')
+        self.check(src, src)
+
     def test_extern_c_is_not_indented(self):
         src = ('#ifdef __cplusplus\n'
                'extern "C" {\n'
