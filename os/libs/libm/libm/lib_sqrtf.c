@@ -1,30 +1,12 @@
 /****************************************************************************
+ * libs/libm/libm/lib_sqrtf.c
  *
- * Copyright 2016-2017 Samsung Electronics All Rights Reserved.
+ * SPDX-License-Identifier: ISC
+ * SPDX-FileCopyrightText: Copyright (C) 2012 Gregory Nutt.
+ * SPDX-FileContributor: Ported by: Darcy Gong
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
- * either express or implied. See the License for the specific
- * language governing permissions and limitations under the License.
- *
- ****************************************************************************/
-/************************************************************************
- * libc/math/lib_sqrtf.c
- *
- * This file is a part of NuttX:
- *
- *   Copyright (C) 2012 Gregory Nutt. All rights reserved.
- *   Ported by: Darcy Gong
- *
- * It derives from the Rhombs OS math library by Nick Johnson which has
- * a compatibile, MIT-style license:
+ * It derives from the Rhombus OS math library by Nick Johnson which has
+ * a compatible, MIT-style license:
  *
  * Copyright (C) 2009-2011 Nick Johnson <nickbjohnson4224 at gmail.com>
  *
@@ -40,69 +22,60 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
- ************************************************************************/
+ ****************************************************************************/
 
-/************************************************************************
+/****************************************************************************
  * Included Files
- ************************************************************************/
+ ****************************************************************************/
+
+#include <tinyara/config.h>
+#include <tinyara/compiler.h>
 
 #include <math.h>
 #include <errno.h>
 
-#include "lib_internal.h"
+#include "libm.h"
 
-/************************************************************************
+/****************************************************************************
  * Public Functions
- ************************************************************************/
+ ****************************************************************************/
 
+#ifndef CONFIG_LIBM_ARCH_SQRTF
 float sqrtf(float x)
 {
 	float y;
-	float y1;
 
 	/* Filter out invalid/trivial inputs */
 
-	if (x < 0.0) {
+	if (x < 0.0F) {
 		set_errno(EDOM);
-		return NAN;
+		return NAN_F;
 	}
 
-	if (isnan(x)) {
-		return NAN;
+	if (isnanf(x)) {
+		return NAN_F;
 	}
 
-	if (isinf(x)) {
-		return INFINITY;
+	if (isinff(x)) {
+		return INFINITY_F;
 	}
 
-	if (x == 0.0) {
-		return 0.0;
+	if (x == 0.0F) {
+		return 0.0F;
 	}
 
 	/* Guess square root (using bit manipulation) */
 
 	y = lib_sqrtapprox(x);
 
-	/* Perform four iterations of approximation. This number (4) is
+	/* Perform three iterations of approximation. This number (3) is
 	 * definitely optimal
 	 */
 
-	y = 0.5 * (y + x / y);
-	y = 0.5 * (y + x / y);
-	y = 0.5 * (y + x / y);
-	y = 0.5 * (y + x / y);
-
-	/* If guess was terribe (out of range of float). Repeat approximation
-	 * until convergence.
-	 */
-
-	if (y * y < x - 1.0 || y * y > x + 1.0) {
-		y1 = -1.0;
-		while (y != y1) {
-			y1 = y;
-			y = 0.5 * (y + x / y);
-		}
-	}
+	y = 0.5F * (y + x / y);
+	y = 0.5F * (y + x / y);
+	y = 0.5F * (y + x / y);
 
 	return y;
 }
+#endif

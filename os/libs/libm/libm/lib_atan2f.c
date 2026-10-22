@@ -1,30 +1,12 @@
 /****************************************************************************
+ * libs/libm/libm/lib_atan2f.c
  *
- * Copyright 2016 Samsung Electronics All Rights Reserved.
+ * SPDX-License-Identifier: ISC
+ * SPDX-FileCopyrightText: Copyright (C) 2012 Gregory Nutt.
+ * SPDX-FileContributor: Ported by: Darcy Gong
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
- * either express or implied. See the License for the specific
- * language governing permissions and limitations under the License.
- *
- ****************************************************************************/
-/************************************************************************
- * libc/math/lib_atan2f.c
- *
- * This file is a part of NuttX:
- *
- *   Copyright (C) 2012 Gregory Nutt. All rights reserved.
- *   Ported by: Darcy Gong
- *
- * It derives from the Rhombs OS math library by Nick Johnson which has
- * a compatibile, MIT-style license:
+ * It derives from the Rhombus OS math library by Nick Johnson which has
+ * a compatible, MIT-style license:
  *
  * Copyright (C) 2009-2011 Nick Johnson <nickbjohnson4224 at gmail.com>
  *
@@ -40,51 +22,33 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
- ************************************************************************/
+ ****************************************************************************/
 
-/************************************************************************
+/****************************************************************************
  * Included Files
- ************************************************************************/
+ ****************************************************************************/
 
 #include <math.h>
 
-/************************************************************************
+/****************************************************************************
  * Public Functions
- ************************************************************************/
+ ****************************************************************************/
 
 float atan2f(float y, float x)
 {
-	if (y == INFINITY && x == INFINITY) {
-		return 0.785398163397448;
-	}
-
-	if (y == INFINITY && x == -INFINITY) {
-		return 2.356194490192345;
-	}
-
-	if (y == -INFINITY && x == INFINITY) {
-		return -0.785398163397448;
-	}
-
-	if (y == -INFINITY && x == -INFINITY) {
-		return -2.356194490192345;
-	}
-
 	if (x > 0) {
 		return atanf(y / x);
 	} else if (y >= 0 && x < 0) {
-		return atanf(y / x) + M_PI;
+		return atanf(y / x) + M_PI_F;
 	} else if (y < 0) {
 		if (x == 0) {
-			return -M_PI_2;
-		} else {				/* Can only be x < 0 */
-
-			return atanf(y / x) - M_PI;
+			return -M_PI_2_F;
+		} else /* Can only be x < 0 */ {
+			return atanf(y / x) - M_PI_F;
 		}
 	} else if (y > 0 && x == 0) {
-		return M_PI_2;
-	} else {					/* if (y == 0 && x == 0) Undefined but returns normally 0 */
-
+		return M_PI_2_F;
+	} else /* if (y == 0 && x == 0) Undefined but returns normally 0 */ {
 		return 0;
 	}
 }

@@ -1,30 +1,12 @@
 /****************************************************************************
+ * libs/libm/libm/lib_frexpf.c
  *
- * Copyright 2016 Samsung Electronics All Rights Reserved.
+ * SPDX-License-Identifier: ISC
+ * SPDX-FileCopyrightText: Copyright (C) 2012 Gregory Nutt.
+ * SPDX-FileContributor: Ported by: Darcy Gong
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
- * either express or implied. See the License for the specific
- * language governing permissions and limitations under the License.
- *
- ****************************************************************************/
-/************************************************************************
- * libc/math/lib_frexpf.c
- *
- * This file is a part of NuttX:
- *
- *   Copyright (C) 2012 Gregory Nutt. All rights reserved.
- *   Ported by: Darcy Gong
- *
- * It derives from the Rhombs OS math library by Nick Johnson which has
- * a compatibile, MIT-style license:
+ * It derives from the Rhombus OS math library by Nick Johnson which has
+ * a compatible, MIT-style license:
  *
  * Copyright (C) 2009-2011 Nick Johnson <nickbjohnson4224 at gmail.com>
  *
@@ -40,35 +22,35 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
- ************************************************************************/
+ ****************************************************************************/
 
-/************************************************************************
+/****************************************************************************
  * Included Files
- ************************************************************************/
+ ****************************************************************************/
+
+#include <tinyara/compiler.h>
 
 #include <math.h>
 
-/************************************************************************
+/****************************************************************************
  * Public Functions
- ************************************************************************/
+ ****************************************************************************/
 
-float frexpf(float x, int *exponent)
+float frexpf(float x, FAR int *exponent)
 {
-	if (x == INFINITY) {
-		*exponent = 0;
-		return INFINITY;
+	float res;
+
+	*exponent = (int)ceilf(log2f(fabsf(x)));
+	res = x / ldexpf(1.0F, *exponent);
+	if (res >= 1.0) {
+		res -= 0.5;
+		*exponent += 1;
 	}
 
-	if (x == -INFINITY) {
-		*exponent = 0;
-		return -INFINITY;
+	if (res <= -1.0) {
+		res += 0.5;
+		*exponent += 1;
 	}
 
-	if (x == 0) {
-		*exponent = 0;
-		return 0;
-	}
-
-	*exponent = (int)ceilf(log2f(x));
-	return x / ldexpf(1.0, *exponent);
+	return res;
 }

@@ -1,26 +1,8 @@
 /****************************************************************************
+ * libs/libm/libm/__cos.c
  *
- * Copyright 2018 Samsung Electronics All Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
- * either express or implied. See the License for the specific
- * language governing permissions and limitations under the License.
- *
- ****************************************************************************/
-/****************************************************************************
- * libc/math/__cos.c
- *
- * Ported to NuttX from FreeBSD by Alan Carvalho de Assis:
- *
- *   Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+ * SPDX-License-Identifier: BSD-3-Clause
+ * SPDX-FileCopyrightText: Copyright (C) 1993 by Sun Microsystems, Inc.
  *
  *   Developed at SunSoft, a Sun Microsystems, Inc. business.
  *   Permission to use, copy, modify, and distribute this
@@ -111,12 +93,12 @@
  * Private Data
  ****************************************************************************/
 
-static const double g_c1 = 4.16666666666666019037e-02;	/* 0x3fa55555, 0x5555554c */
-static const double g_c2 = -1.38888888888741095749e-03;	/* 0xbf56C16c, 0x16c15177 */
-static const double g_c3 = 2.48015872894767294178e-05;	/* 0x3efa01a0, 0x19cb1590 */
-static const double g_c4 = -2.75573143513906633035e-07;	/* 0xbe927e4e, 0x809c52ad */
-static const double g_c5 = 2.08757232129817482790e-09;	/* 0x3e21ee9E, 0xbdb4b1c4 */
-static const double g_c6 = -1.13596475577881948265e-11;	/* 0xbda8fae9, 0xbe8838d4 */
+static const double g_c1 = 4.16666666666666019037e - 02; /* 0x3fa55555, 0x5555554c */
+static const double g_c2 = -1.38888888888741095749e - 03; /* 0xbf56C16c, 0x16c15177 */
+static const double g_c3 = 2.48015872894767294178e - 05; /* 0x3efa01a0, 0x19cb1590 */
+static const double g_c4 = -2.75573143513906633035e - 07; /* 0xbe927e4e, 0x809c52ad */
+static const double g_c5 = 2.08757232129817482790e - 09; /* 0x3e21ee9E, 0xbdb4b1c4 */
+static const double g_c6 = -1.13596475577881948265e - 11; /* 0xbda8fae9, 0xbe8838d4 */
 
 /****************************************************************************
  * Public Functions
@@ -131,7 +113,9 @@ double __cos(double x, double y)
 
 	z = x * x;
 	w = z * z;
-	r = z * (g_c1 + z * (g_c2 + z * g_c3)) + w * w * (g_c4 + z * (g_c5 + z * g_c6));
+	r =
+	  z * (g_c1 + z * (g_c2 + z * g_c3)) +
+	       w * w * (g_c4 + z * (g_c5 + z * g_c6));
 	hz = 0.5 * z;
 	w = 1.0 - hz;
 
