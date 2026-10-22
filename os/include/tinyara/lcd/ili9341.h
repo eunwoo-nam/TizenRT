@@ -1,73 +1,43 @@
 /****************************************************************************
+ * include/nuttx/lcd/ili9341.h
  *
- * Copyright 2018 Samsung Electronics All Rights Reserved.
+ * SPDX-License-Identifier: Apache-2.0
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.  The
+ * ASF licenses this file to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance with the
+ * License.  You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
- * either express or implied. See the License for the specific
- * language governing permissions and limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the
+ * License for the specific language governing permissions and limitations
+ * under the License.
  *
  ****************************************************************************/
-/**************************************************************************************
- * include/tinyara/lcd/ili9341.h
- *
- *   Copyright (C) 2014 Gregory Nutt. All rights reserved.
- *   Authors: Gregory Nutt <gnutt@nuttx.org>
- *            Marco Krahl <ocram.lhark@gmail.com>
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in
- *    the documentation and/or other materials provided with the
- *    distribution.
- * 3. Neither the name NuttX nor the names of its contributors may be
- *    used to endorse or promote products derived from this software
- *    without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
- * COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
- * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
- * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
- * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
- * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
- * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
- *
- **************************************************************************************/
 
-#ifndef __INCLUDE_TINYARA_LCD_ILI9341_H
-#define __INCLUDE_TINYARA_LCD_ILI9341_H
+#ifndef __INCLUDE_NUTTX_LCD_ILI9341_H
+#define __INCLUDE_NUTTX_LCD_ILI9341_H
 
-/**************************************************************************************
+/****************************************************************************
  * Included Files
- **************************************************************************************/
+ ****************************************************************************/
 
 #include <tinyara/config.h>
 
-/**************************************************************************************
+/****************************************************************************
  * Pre-processor Definitions
- **************************************************************************************/
+ ****************************************************************************/
+
 /* ILI9341 ID code */
 
 #define ILI9341_DEVICE_CODE                    0x9341
 
-/* ILI9341 LCD Register Addresses *****************************************************/
+/* ILI9341 LCD Register Addresses *******************************************/
 
 /* Level 1 commands */
 
@@ -158,8 +128,10 @@
 #define ILI9341_INTERFACE_CONTROL              0xf6 /* Interface control */
 #define ILI9341_PUMP_RATIO_CONTROL             0xf7 /* Pump ration control */
 
-/* ILI9341 LCD Register Bit Definitions ***********************************************/
+/* ILI9341 LCD Register Bit Definitions *************************************/
+
 /* Pixel format set */
+
 #define ILI9341_PIXEL_FORMAT_SET_DPI_SHIFT     (4)
 #define ILI9341_PIXEL_FORMAT_SET_DPI_MASK      (7 << ILI9341_PIXEL_FORMAT_SET_DPI_SHIFT)
 #define ILI9341_PIXEL_FORMAT_SET_DPI(n)        ((n) << ILI9341_PIXEL_FORMAT_SET_DPI_SHIFT)
@@ -180,7 +152,7 @@
 
 #define ILI9341_DISP_FUNC_CTL_ISC_SHIFT        (0)
 #define ILI9341_DISP_FUNC_CTL_ISC_MASK         (15 << ILI9341_DISP_FUNC_CTL_ISC_SHIFT)
-#define ILI9341_DISP_FUNC_CTL_ISC(n)         ((n) << ILI9341_DISP_FUNC_CTL_ISC_SHIFT)
+#  define ILI9341_DISP_FUNC_CTL_ISC(n)         ((n) << ILI9341_DISP_FUNC_CTL_ISC_SHIFT)
 #define ILI9341_DISP_FUNC_CTL_SM               (1 << 4)
 #define ILI9341_DISP_FUNC_CTL_SS               (1 << 5)
 #define ILI9341_DISP_FUNC_CTL_GS               (1 << 6)
@@ -219,14 +191,15 @@
 #define ILI9341_INTERFACE_CONTROL_RCM(n)       ((n) << ILI9341_INTERFACE_CONTROL_RCM_SHIFT)
 #define ILI9341_INTERFACE_CONTROL_BPASS        (1 << 7)
 
-/**************************************************************************************
+/****************************************************************************
  * Public Types
- **************************************************************************************/
+ ****************************************************************************/
 
 struct ili9341_lcd_s {
 	/* Interface to control the ILI9341 lcd driver
 	 *
-	 *  - select      Select the device (as neccessary) before performing any operations.
+	 *  - select      Select the device (as necessary) before performing any
+	 *                operations.
 	 *  - deselect    Deselect the device (as necessary).
 	 *  - sendcmd     Send specific command to the LCD driver.
 	 *  - sendparam   Send specific parameter to the LCD driver.
@@ -247,62 +220,64 @@ struct ili9341_lcd_s {
 	int (*sendparam)(FAR struct ili9341_lcd_s *lcd, const uint8_t param);
 	int (*recvparam)(FAR struct ili9341_lcd_s *lcd, uint8_t *param);
 	int (*recvgram)(FAR struct ili9341_lcd_s *lcd,
-					uint16_t *wd, uint32_t nwords);
+	                uint16_t *wd, uint32_t nwords);
 	int (*sendgram)(FAR struct ili9341_lcd_s *lcd,
-					const uint16_t *wd, uint32_t nwords);
+	                const uint16_t *wd, uint32_t nwords);
 	int (*backlight)(FAR struct ili9341_lcd_s *lcd, int level);
 
 	/* mcu interface specific data following */
 };
 
-/**************************************************************************************
+/****************************************************************************
  * Public Data
- **************************************************************************************/
+ ****************************************************************************/
 
 #ifdef __cplusplus
 #define EXTERN extern "C"
-extern "C" {
+extern "C"
+{
 #else
 #define EXTERN extern
 #endif
 
-/**************************************************************************************
+/****************************************************************************
  * Public Function Prototypes
- **************************************************************************************/
+ ****************************************************************************/
 
-/**************************************************************************************
+/****************************************************************************
  * Name:  ili9341_initialize
  *
  * Description:
- *   Initialize the LCD video driver internal sturcture. Also initialize the
+ *   Initialize the LCD video driver internal structure. Also initialize the
  *   lcd hardware if not done. The control of the LCD driver is depend on the
  *   selected MCU interface and part of the platform specific subdriver (see
  *   config/stm32f429i-disco/src/stm32_ili93414ws.c)
  *
  * Input Parameters:
  *
- *   lcd - A reference to the platform specific driver instance to control the
- *     ili9341 display driver.
+ *   lcd - A reference to the platform specific driver instance to control
+ *     the ili9341 display driver.
  *   devno - A value in the range of 0 through CONFIG_ILI9341_NINTERFACES-1.
  *     This allows support for multiple LCD devices.
  *
  * Returned Value:
  *
- *   On success, this function returns a reference to the LCD driver object for
- *   the specified LCD driver. NULL is returned on any failure.
+ *   On success, this function returns a reference to the LCD driver object
+ *   for the specified LCD driver. NULL is returned on any failure.
  *
- **************************************************************************************/
+ ****************************************************************************/
 
-FAR struct lcd_dev_s *ili9341_initialize(FAR struct ili9341_lcd_s *lcd, int devno);
+FAR struct lcd_dev_s *ili9341_initialize(FAR struct ili9341_lcd_s *lcd,
+                                         int devno);
 
-/**************************************************************************************
+/****************************************************************************
  * Name:  ili9341_clear
  *
  * Description:
- *   This is a non-standard LCD interface.  Because of the various rotations, clearing
- *   the display in the normal way by writing a sequences of runs that covers the
- *   entire display can be very slow.  Here the display is cleared by simply setting
- *   all GRAM memory to the specified color.
+ *   This is a non-standard LCD interface.  Because of the various rotations,
+ *   clearing the display in the normal way by writing a sequences of runs
+ *   that covers the entire display can be very slow.  Here the display is
+ *   cleared by simply setting all GRAM memory to the specified color.
  *
  * Input Parameters:
  *   dev   - A reference to the lcd driver structure
@@ -313,7 +288,7 @@ FAR struct lcd_dev_s *ili9341_initialize(FAR struct ili9341_lcd_s *lcd, int devn
  *  On success - OK
  *  On error   - -EINVAL
  *
- **************************************************************************************/
+ ****************************************************************************/
 
 int ili9341_clear(FAR struct lcd_dev_s *dev, uint16_t color);
 #undef EXTERN
@@ -321,5 +296,4 @@ int ili9341_clear(FAR struct lcd_dev_s *dev, uint16_t color);
 }
 #endif
 
-#endif							/* __INCLUDE_TINYARA_LCD_ILI9341_H */
-
+#endif /* __INCLUDE_NUTTX_LCD_ILI9341_H */

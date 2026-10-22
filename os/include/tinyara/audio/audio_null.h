@@ -1,58 +1,27 @@
 /****************************************************************************
+ * include/nuttx/audio/audio_null.h
  *
- * Copyright 2017 Samsung Electronics All Rights Reserved.
+ * SPDX-License-Identifier: Apache-2.0
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.  The
+ * ASF licenses this file to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance with the
+ * License.  You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
- * either express or implied. See the License for the specific
- * language governing permissions and limitations under the License.
- *
- ****************************************************************************/
-/****************************************************************************
- * include/tinyara/audio/audio_null.h
- * A do-nothinig audio device driver to simplify testing of audio decoders.
- *
- *   Copyright (C) 2014 Gregory Nutt. All rights reserved.
- *   Author:  Gregory Nutt <gnutt@nuttx.org>
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in
- *    the documentation and/or other materials provided with the
- *    distribution.
- * 3. Neither the name NuttX nor the names of its contributors may be
- *    used to endorse or promote products derived from this software
- *    without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
- * COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
- * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
- * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
- * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
- * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
- * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the
+ * License for the specific language governing permissions and limitations
+ * under the License.
  *
  ****************************************************************************/
 
-#ifndef __INCLUDE_TINYARA_AUDIO_AUDIO_NULL_H
-#define __INCLUDE_TINYARA_AUDIO_AUDIO_NULL_H
+#ifndef __INCLUDE_NUTTX_AUDIO_AUDIO_NULL_H
+#define __INCLUDE_NUTTX_AUDIO_AUDIO_NULL_H
 
 /****************************************************************************
  * Included Files
@@ -68,6 +37,7 @@
 /****************************************************************************
  * Pre-processor Definitions
  ****************************************************************************/
+
 /* Configuration ************************************************************
  *
  * CONFIG_AUDIO_NULL - Enabled NULL audio device support
@@ -82,25 +52,25 @@
 /* Pre-requisites */
 
 #ifndef CONFIG_AUDIO
-#error CONFIG_AUDIO is required for audio subsystem support
+#  error CONFIG_AUDIO is required for audio subsystem support
 #endif
 
 /* Default configuration values */
 
 #ifndef CONFIG_AUDIO_NULL_MSG_PRIO
-#define CONFIG_AUDIO_NULL_MSG_PRIO          1
+#  define CONFIG_AUDIO_NULL_MSG_PRIO          1
 #endif
 
 #ifndef CONFIG_AUDIO_NULL_BUFFER_SIZE
-#define CONFIG_AUDIO_NULL_BUFFER_SIZE       8192
+#  define CONFIG_AUDIO_NULL_BUFFER_SIZE       8192
 #endif
 
 #ifndef CONFIG_AUDIO_NULL_NUM_BUFFERS
-#define CONFIG_AUDIO_NULL_NUM_BUFFERS       4
+#  define CONFIG_AUDIO_NULL_NUM_BUFFERS       4
 #endif
 
 #ifndef CONFIG_AUDIO_NULL_WORKER_STACKSIZE
-#define CONFIG_AUDIO_NULL_WORKER_STACKSIZE  768
+#  define CONFIG_AUDIO_NULL_WORKER_STACKSIZE  768
 #endif
 
 /****************************************************************************
@@ -113,7 +83,8 @@
 
 #ifdef __cplusplus
 #define EXTERN extern "C"
-extern "C" {
+extern "C"
+{
 #else
 #define EXTERN extern
 #endif
@@ -129,9 +100,8 @@ extern "C" {
  *   Initialize the null audio device.
  *
  * Input Parameters:
- *   i2c     - An I2C driver instance
- *   i2s     - An I2S driver instance
- *   lower   - Persistent board configuration data
+ *   playback - True: initialize for playback only
+ *              False: initialize for recording only
  *
  * Returned Value:
  *   A new lower half audio interface for the NULL audio device is returned
@@ -139,14 +109,14 @@ extern "C" {
  *
  ****************************************************************************/
 
-struct audio_lowerhalf_s;		/* Forward reference. Defined in nuttx/audio/audio.h */
+struct audio_lowerhalf_s; /* Forward reference. Defined in nuttx/audio/audio.h */
 
-FAR struct audio_lowerhalf_s *audio_null_initialize(void);
+FAR struct audio_lowerhalf_s *audio_null_initialize(bool playback);
 
 #undef EXTERN
 #ifdef __cplusplus
 }
 #endif
 
-#endif							/* CONFIG_AUDIO_NULL */
-#endif							/* __INCLUDE_TINYARA_AUDIO_AUDIO_NULL_H */
+#endif /* CONFIG_AUDIO_NULL */
+#endif /* __INCLUDE_NUTTX_AUDIO_AUDIO_NULL_H */

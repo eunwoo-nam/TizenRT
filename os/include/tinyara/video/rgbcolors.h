@@ -1,77 +1,60 @@
 /****************************************************************************
+ * include/nuttx/video/rgbcolors.h
  *
- * Copyright 2016 Samsung Electronics All Rights Reserved.
+ * SPDX-License-Identifier: Apache-2.0
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.  The
+ * ASF licenses this file to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance with the
+ * License.  You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
- * either express or implied. See the License for the specific
- * language governing permissions and limitations under the License.
- *
- ****************************************************************************/
-/****************************************************************************
- * include/tinyara/video/rgbcolors.h
- * User-friendly RGB color definitions
- *
- *   Copyright (C) 2010-2011, 2013 Gregory Nutt. All rights reserved.
- *   Author: Gregory Nutt <gnutt@nuttx.org>
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in
- *    the documentation and/or other materials provided with the
- *    distribution.
- * 3. Neither the name NuttX nor the names of its contributors may be
- *    used to endorse or promote products derived from this software
- *    without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
- * COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
- * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
- * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
- * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
- * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
- * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the
+ * License for the specific language governing permissions and limitations
+ * under the License.
  *
  ****************************************************************************/
 
-#ifndef __INCLUDE_TINYARA_VIDEO_RGBCOLOR_H
-#define __INCLUDE_TINYARA_VIDEO_RGBCOLOR_H
+#ifndef __INCLUDE_NUTTX_VIDEO_RGBCOLOR_H
+#define __INCLUDE_NUTTX_VIDEO_RGBCOLOR_H
 
 /****************************************************************************
  * Included Files
  ****************************************************************************/
 
 /****************************************************************************
- * Pre-Processor Definitions
+ * Pre-processor Definitions
  ****************************************************************************/
+
 /* Color Creation and Conversion Macros *************************************/
+
+/* This macro creates RGB24 from 8:8:8:8 RGB */
+
+#define ARGBTO32(a,r,g,b) \
+  ((uint32_t)((a) & 0xff) << 24 | (uint32_t)((r) & 0xff) << 16 | (uint32_t)((g) & 0xff) << 8  | (uint32_t)((b) & 0xff))
+
+/* And these macros perform the inverse transformation */
+
+#define RGB32ALPHA(argb) (((argb) >> 24) & 0xff)
+#define RGB32RED(argb)   (((argb) >> 16) & 0xff)
+#define RGB32GREEN(argb) (((argb) >> 8)  & 0xff)
+#define RGB32BLUE(argb)  ( (argb)        & 0xff)
+
 /* This macro creates RGB24 from 8:8:8 RGB */
 
-#define RGBTO24(r, g, b) \
-	((uint32_t)((r) & 0xff) << 16 | (uint32_t)((g) & 0xff) << 8 | (uint32_t)((b) & 0xff))
+#define RGBTO24(r,g,b) \
+  ((uint32_t)((r) & 0xff) << 16 | (uint32_t)((g) & 0xff) << 8 | (uint32_t)((b) & 0xff))
 
 /* And these macros perform the inverse transformation */
 
 #define RGB24RED(rgb)   (((rgb) >> 16) & 0xff)
 #define RGB24GREEN(rgb) (((rgb) >> 8)  & 0xff)
-#define RGB24BLUE(rgb)  ((rgb)         & 0xff)
+#define RGB24BLUE(rgb)  ( (rgb)        & 0xff)
 
 /* This macro creates RGB16 (5:6:5) from 8:8:8 RGB:
  *
@@ -80,8 +63,8 @@
  *   B[7:3] -> RGB[4:0]
  */
 
-#define RGBTO16(r, g, b) \
-	((((uint16_t)(r) << 8) & 0xf800) | (((uint16_t)(g) << 3) & 0x07e0) | (((uint16_t)(b) >> 3) & 0x001f))
+#define RGBTO16(r,g,b) \
+  ((((uint16_t)(r) << 8) & 0xf800) | (((uint16_t)(g) << 3) & 0x07e0) | (((uint16_t)(b) >> 3) & 0x001f))
 
 /* And these macros perform the inverse transformation */
 
@@ -91,12 +74,12 @@
 
 /* This macro creates RGB8 (3:3:2) from 8:8:8 RGB */
 
-#define RGBTO8(r, g, b) \
-	((((uint8_t)(r) << 5) & 0xe0) | (((uint8_t)(g) << 2) & 0x1c) | ((uint8_t)(b) & 0x03))
+#define RGBTO8(r,g,b) \
+  ((((uint8_t)(r) << 5) & 0xe0) | (((uint8_t)(g) << 2) & 0x1c) | ((uint8_t)(b) & 0x03))
 
 /* And these macros perform the inverse transformation */
 
-#define RGB8RED(rgb)    ((rgb)        & 0xe0)
+#define RGB8RED(rgb)    ( (rgb)       & 0xe0)
 #define RGB8GREEN(rgb)  (((rgb) << 3) & 0xe0)
 #define RGB8BLUE(rgb)   (((rgb) << 6) & 0xc0)
 
@@ -106,7 +89,7 @@
  */
 
 #define RGB24TO16(rgb24) \
-	(((rgb24 >> 8) & 0xf800) | ((rgb24 >> 5) & 0x07e0) | ((rgb24 >> 3) & 0x001f))
+  (((rgb24 >> 8) & 0xf800) | ((rgb24 >> 5) & 0x07e0) | ((rgb24 >> 3) & 0x001f))
 
 /* This macro converts RGB16 (5:6:5) to RGB24 (8:8:8):
  *
@@ -114,9 +97,10 @@
  */
 
 #define RGB16TO24(rgb16) \
-	(((rgb16 & 0xf800) << 8) | ((rgb16 & 0x07e0) << 5)  | ((rgb16 & 0x001f) << 3))
+  (((rgb16 & 0xf800) << 8) | ((rgb16 & 0x07e0) << 5)  | ((rgb16 & 0x001f) << 3))
 
 /* Standard Color Definitions ***********************************************/
+
 /* RGB24-888: 00000000 RRRRRRRR GGGGGGGG BBBBBBBB */
 
 #define RGB24_BLACK          0x00000000
@@ -243,7 +227,9 @@
 #define RGB12_SNOW           0x0fff
 #define RGB12_YELLOW         0x0ff0
 
-/* RGB8-332: RRRGGGBB (really not enough color resolution for the following) */
+/* RGB8-332: RRRGGGBB
+ * (really not enough color resolution for the following)
+ */
 
 #define RGB8_BLACK           0x00
 #define RGB8_WHITE           0xff
@@ -293,18 +279,18 @@
 /* This is a generic representation of an RGB color */
 
 struct rgbcolor_s {
-	uint8_t r;					/* Red value */
-	uint8_t b;					/* Blue value */
-	uint8_t g;					/* Green value */
+	uint8_t r;  /* Red value */
+	uint8_t b;  /* Blue value */
+	uint8_t g;  /* Green value */
 };
 
 /* This is a generic representation of an RGB color with ALPHA */
 
 struct argbcolor_s {
-	uint8_t a;					/* Alpha value (transparency) */
-	uint8_t r;					/* Red value */
-	uint8_t b;					/* Blue value */
-	uint8_t g;					/* Green value */
+	uint8_t a;  /* Alpha value (transparency) */
+	uint8_t r;  /* Red value */
+	uint8_t b;  /* Blue value */
+	uint8_t g;  /* Green value */
 };
 
 /****************************************************************************
@@ -313,7 +299,8 @@ struct argbcolor_s {
 
 #ifdef __cplusplus
 #define EXTERN extern "C"
-extern "C" {
+extern "C"
+{
 #else
 #define EXTERN extern
 #endif
@@ -327,5 +314,5 @@ extern "C" {
 }
 #endif
 
-#endif							/* __ASSEMBLY__ */
-#endif							/* __INCLUDE_TINYARA_VIDEO_RGBCOLOR_H */
+#endif /* __ASSEMBLY__ */
+#endif /* __INCLUDE_NUTTX_VIDEO_RGBCOLOR_H */
