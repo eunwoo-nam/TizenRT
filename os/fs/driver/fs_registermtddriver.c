@@ -1,22 +1,5 @@
 /****************************************************************************
- *
- * Copyright 2025 Samsung Electronics All Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
- * either express or implied. See the License for the specific
- * language governing permissions and limitations under the License.
- *
- ****************************************************************************/
-/****************************************************************************
- * fs/driver/mtd/fs_registermtddriver.c
+ * fs/driver/fs_registermtddriver.c
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -40,15 +23,17 @@
 /****************************************************************************
  * Included Files
  ****************************************************************************/
+
 #include <tinyara/config.h>
 
 #include <sys/types.h>
 #include <errno.h>
 
 #include <tinyara/fs/fs.h>
-#include <tinyara/fs/mtd.h>
+#include <tinyara/mtd/mtd.h>
 
 #include "inode/inode.h"
+#include "vfs/vfs.h"
 
 #if defined(CONFIG_MTD) && !defined(CONFIG_DISABLE_MOUNTPOINT)
 
@@ -65,7 +50,7 @@
  * Input Parameters:
  *   path - The path to the inode to create
  *   mtd  - The MTD driver structure
- *   mode - inode privileges (not used)
+ *   mode - inode privileges
  *   priv - Private, user data that will be associated with the inode.
  *
  * Returned Value:
@@ -79,7 +64,8 @@
  *
  ****************************************************************************/
 
-int register_mtddriver(FAR const char *path, FAR struct mtd_dev_s *mtd, mode_t mode, FAR void *priv)
+int register_mtddriver(FAR const char *path, FAR struct mtd_dev_s *mtd,
+                       mode_t mode, FAR void *priv)
 {
 	FAR struct inode *node;
 	int ret;
@@ -90,8 +76,8 @@ int register_mtddriver(FAR const char *path, FAR struct mtd_dev_s *mtd, mode_t m
 	 * valid data.
 	 */
 
-	inode_semtake();
-	ret = inode_reserve(path, &node);
+	inode_lock();
+	ret = inode_reserve(path, mode, &node);
 	if (ret >= 0) {
 		/* We have it, now populate it with block driver specific information.
 		 * NOTE that the initial reference count on the new inode is zero.
@@ -99,16 +85,17 @@ int register_mtddriver(FAR const char *path, FAR struct mtd_dev_s *mtd, mode_t m
 
 		INODE_SET_MTD(node);
 
-		node->u.i_mtd = mtd;
-#ifdef CONFIG_FILE_MODE
-		node->i_mode = mode;
-#endif
+		node->u.i_mtd   = mtd;
 		node->i_private = priv;
-		ret = OK;
+		inode_unlock();
+#ifdef CONFIG_FS_NOTIFY
+		notify_create(path);
+#endif
+		return OK;
 	}
 
-	inode_semgive();
+	inode_unlock();
 	return ret;
 }
 
-#endif							/* CONFIG_MTD && !CONFIG_DISABLE_MOUNTPOINT */
+#endif /* CONFIG_MTD && !CONFIG_DISABLE_MOUNTPOINT */
