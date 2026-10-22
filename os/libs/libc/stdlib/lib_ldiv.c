@@ -1,30 +1,11 @@
 /****************************************************************************
+ * libs/libc/stdlib/lib_ldiv.c
  *
- * Copyright 2016 Samsung Electronics All Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
- * either express or implied. See the License for the specific
- * language governing permissions and limitations under the License.
- *
- ****************************************************************************/
-/****************************************************************************
- * libc/stdlib/lib_ldiv.c
- *
- *   Copyright (C) 2015 Gregory Nutt. All rights reserved.
- *   Author: Gregory Nutt <gnutt@nuttx.org>
- *
- * A direct leverage of the div() inplement by:
- *
- *   Copyright (C) 2015 Stavros Polymenis. All rights reserved.
- *   Author: Stavros Polymenis <sp@orbitalfox.com>
+ * SPDX-License-Identifier: BSD-3-Clause
+ * SPDX-FileCopyrightText: 2015 Gregory Nutt. All rights reserved.
+ * SPDX-FileCopyrightText: 2015 Stavros Polymenis. All rights reserved.
+ * SPDX-FileContributor: Gregory Nutt <gnutt@nuttx.org>
+ * SPDX-FileContributor: Stavros Polymenis <sp@orbitalfox.com>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -64,8 +45,6 @@
 
 #include <stdlib.h>
 
-#ifdef CONFIG_CAN_PASS_STRUCTS
-
 /****************************************************************************
  * Public Functions
  ****************************************************************************/
@@ -86,7 +65,7 @@
  *   denom - Denominator of the division
  *
  * Returned Value:
- *   The result of the devision represent as values of type ldiv_t
+ *   The result of the division represented as values of type ldiv_t
  *
  ****************************************************************************/
 
@@ -95,8 +74,6 @@ ldiv_t ldiv(long numer, long denom)
 	ldiv_t f;
 
 	f.quot = numer / denom;
-	f.rem = numer % denom;
+	f.rem  = numer % denom;
 	return f;
 }
-
-#endif							/* CONFIG_CAN_PASS_STRUCTS */

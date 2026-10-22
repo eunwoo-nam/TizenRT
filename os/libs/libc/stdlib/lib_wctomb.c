@@ -1,25 +1,7 @@
 /****************************************************************************
+ * libs/libc/stdlib/lib_wctomb.c
  *
- * Copyright 2018 Samsung Electronics All Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
- * either express or implied. See the License for the specific
- * language governing permissions and limitations under the License.
- *
- ****************************************************************************/
-/****************************************************************************
- * lib/libc/stdlib/lib_wctomb.c
- *
- * This code is derived from software contributed to Berkeley by
- * Chris Torek.
+ * SPDX-License-Identifier: BSD-3-Clause-UC
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -51,14 +33,8 @@
  * Included Files
  ****************************************************************************/
 
-#include <tinyara/config.h>
-
-#include <string.h>
 #include <stdlib.h>
 #include <wchar.h>
-#include <errno.h>
-
-#ifdef CONFIG_LIBC_WCHAR
 
 /****************************************************************************
  * Public Functions
@@ -74,18 +50,5 @@
 
 int wctomb(FAR char *s, wchar_t wc)
 {
-	if (s == NULL) {
-		return 0;
-	}
-
-	/* Verify that wchar is a valid single-byte character.  */
-
-	if ((size_t)wc >= 0x100) {
-		set_errno(EILSEQ);
-		return -1;
-	}
-
-	*s = (char)wc;
-	return 1;
+	return wcrtomb(s, wc, NULL);
 }
-#endif

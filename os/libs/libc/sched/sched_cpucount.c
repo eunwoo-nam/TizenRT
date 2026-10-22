@@ -1,6 +1,8 @@
 /****************************************************************************
  * libs/libc/sched/sched_cpucount.c
  *
+ * SPDX-License-Identifier: Apache-2.0
+ *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -26,6 +28,7 @@
 
 #include <sched.h>
 
+#ifdef CONFIG_SMP
 
 /****************************************************************************
  * Public Functions
@@ -48,16 +51,16 @@
 
 int sched_cpucount(FAR const cpu_set_t *set)
 {
-  int count;
-  int cpu;
+	int count;
+	int cpu;
 
-  for (cpu = 0, count = 0; cpu < CONFIG_SMP_NCPUS; cpu++)
-    {
-      if ((*set & (1 << cpu)) != 0)
-        {
-          count++;
-        }
-    }
+	for (cpu = 0, count = 0; cpu < CONFIG_SMP_NCPUS; cpu++) {
+		if ((*set & (1 << cpu)) != 0) {
+			count++;
+		}
+	}
 
-  return count;
+	return count;
 }
+
+#endif /* CONFIG_SMP */

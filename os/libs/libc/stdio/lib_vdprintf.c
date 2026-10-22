@@ -1,26 +1,10 @@
 /****************************************************************************
+ * libs/libc/stdio/lib_vdprintf.c
  *
- * Copyright 2016 Samsung Electronics All Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
- * either express or implied. See the License for the specific
- * language governing permissions and limitations under the License.
- *
- ****************************************************************************/
-/****************************************************************************
- * libc/stdio/lib_vdprintf.c
- *
- *   Copyright (C) 2012 Andrew Tridgell. All rights reserved.
- *   Authors: Author: Andrew Tridgell <andrew@tridgell.net>
- *            Gregory Nutt <gnutt@nuttx.org>
+ * SPDX-License-Identifier: BSD-3-Clause
+ * SPDX-FileCopyrightText: 2012 Andrew Tridgell. All rights reserved.
+ * SPDX-FileContributor: Andrew Tridgell <andrew@tridgell.net>
+ * SPDX-FileContributor: Gregory Nutt <gnutt@nuttx.org>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -55,30 +39,23 @@
  * Included Files
  ****************************************************************************/
 
-#include <tinyara/config.h>
-
-#include <stdio.h>
-#include <sys/stat.h>
-
-#include "lib_internal.h"
+#include <tinyara/streams.h>
 
 /****************************************************************************
  * Public Functions
  ****************************************************************************/
 
-int vdprintf(int fd, FAR const char *fmt, va_list ap)
+int vdprintf(int fd, FAR const IPTR char *fmt, va_list ap)
 {
-	struct lib_rawoutstream_s rawoutstream;
 	int ret;
-	struct stat st;
-
-	ret = fstat(fd, &st);
-	if (ret < 0) {
-		return ret;
-	}
+	struct lib_rawoutstream_s rawoutstream;
+	struct lib_bufferedoutstream_s outstream;
 
 	/* Wrap the fd in a stream object and let lib_vsprintf do the work. */
 
 	lib_rawoutstream(&rawoutstream, fd);
-	return lib_vsprintf(&rawoutstream.public, fmt, ap);
+	lib_bufferedoutstream(&outstream, &rawoutstream.common);
+	ret = lib_vsprintf(&outstream.common, fmt, ap);
+	lib_stream_flush(&outstream.common);
+	return ret;
 }
