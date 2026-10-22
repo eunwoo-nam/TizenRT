@@ -1,58 +1,30 @@
 /****************************************************************************
- *
- * Copyright 2024 Samsung Electronics All Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
- * either express or implied. See the License for the specific
- * language governing permissions and limitations under the License.
- *
- ****************************************************************************/
-/****************************************************************************
  * drivers/lcd/st7789.c
  *
- *   Copyright (C) 2017=-2018 Gregory Nutt. All rights reserved.
- *   Author: Gregory Nutt <gnutt@nuttx.org>
+ * SPDX-License-Identifier: Apache-2.0
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.  The
+ * ASF licenses this file to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance with the
+ * License.  You may obtain a copy of the License at
  *
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in
- *    the documentation and/or other materials provided with the
- *    distribution.
- * 3. Neither the name NuttX nor the names of its contributors may be
- *    used to endorse or promote products derived from this software
- *    without specific prior written permission.
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
- * COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
- * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
- * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
- * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
- * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
- * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the
+ * License for the specific language governing permissions and limitations
+ * under the License.
  *
  ****************************************************************************/
 
 /****************************************************************************
  * Included Files
  ****************************************************************************/
+
+#include <tinyara/config.h>
 
 #include <sys/types.h>
 #include <stdint.h>
@@ -65,119 +37,127 @@
 #include <tinyara/arch.h>
 #include <tinyara/spi/spi.h>
 #include <tinyara/lcd/lcd.h>
-#include <tinyara/lcd/lcd_dev.h>
 #include <tinyara/lcd/st7789.h>
+
+#include "st7789.h"
+
+#ifdef CONFIG_LCD_ST7789
 
 /****************************************************************************
  * Pre-processor Definitions
  ****************************************************************************/
+
+/* CONFIG_SPI_CMDDATA has to be set for 4 wire interface */
+
+#if !defined(CONFIG_LCD_ST7789_3WIRE) && !defined(CONFIG_SPI_CMDDATA)
+#  error "CONFIG_SPI_CMDDATA option has to be set for SPI communication"
+#endif
+
 /* Verify that all configuration requirements have been met */
 
 #ifndef CONFIG_LCD_ST7789_SPIMODE
-#define CONFIG_LCD_ST7789_SPIMODE SPIDEV_MODE0
+#  define CONFIG_LCD_ST7789_SPIMODE SPIDEV_MODE0
 #endif
 
 /* SPI frequency */
 
 #ifndef CONFIG_LCD_ST7789_FREQUENCY
-#define CONFIG_LCD_ST7789_FREQUENCY 50000000
+#  define CONFIG_LCD_ST7789_FREQUENCY 1000000
 #endif
 
 /* Check contrast selection */
 
 #if !defined(CONFIG_LCD_MAXCONTRAST)
-#define CONFIG_LCD_MAXCONTRAST 1
+#  define CONFIG_LCD_MAXCONTRAST 1
 #endif
 
 /* Check power setting */
 
 #if !defined(CONFIG_LCD_MAXPOWER) || CONFIG_LCD_MAXPOWER < 1
-#define CONFIG_LCD_MAXPOWER 100
+#  define CONFIG_LCD_MAXPOWER 1
 #endif
 
 #if CONFIG_LCD_MAXPOWER > 255
-#error "CONFIG_LCD_MAXPOWER must be less than 256 to fit in uint8_t"
+#  error "CONFIG_LCD_MAXPOWER must be less than 256 to fit in uint8_t"
+#endif
+
+/* Check orientation */
+
+#if defined(CONFIG_LCD_PORTRAIT)
+#  if defined(CONFIG_LCD_LANDSCAPE) || defined(CONFIG_LCD_RLANDSCAPE) ||\
+      defined(CONFIG_LCD_RPORTRAIT) || defined(CONFIG_LCD_DYN_ORIENTATION)
+#    error "Cannot define both portrait and any other orientations"
+#  endif
+#elif defined(CONFIG_LCD_RPORTRAIT)
+#  if defined(CONFIG_LCD_LANDSCAPE) || defined(CONFIG_LCD_RLANDSCAPE) ||\
+      defined(CONFIG_LCD_DYN_ORIENTATION)
+#    error "Cannot define both rportrait and any other orientations"
+#  endif
+#elif defined(CONFIG_LCD_LANDSCAPE)
+#  if defined(CONFIG_LCD_RLANDSCAPE) || defined(CONFIG_LCD_DYN_ORIENTATION)
+#    error "Cannot define both landscape and any other orientations"
+#  endif
+#elif defined(CONFIG_LCD_DYN_ORIENTATION)
+#  ifdef CONFIG_LCD_RPORTRAIT
+#    error "Cannot define both landscape and dynamic orientation"
+#  endif
+#elif !defined(CONFIG_LCD_RPORTRAIT)
+#  define CONFIG_LCD_RPORTRAIT 1
 #endif
 
 /* Define prefixes for 3 wire communication if used */
 
 #ifdef CONFIG_LCD_ST7789_3WIRE
-#define LCD_ST7789_SPI_BITS 9
-#define LCD_ST7789_DATA_PREFIX (1 << 8)
-#define LCD_ST7789_CMD_PREFIX  (0 << 8)
+#  define LCD_ST7789_SPI_BITS 9
+#  define LCD_ST7789_DATA_PREFIX (1 << 8)
+#  define LCD_ST7789_CMD_PREFIX  (0 << 8)
 #else
-#define LCD_ST7789_SPI_BITS 8
-#define LCD_ST7789_DATA_PREFIX (0)
-#define LCD_ST7789_CMD_PREFIX  (0)
+#  define LCD_ST7789_SPI_BITS 8
+#  define LCD_ST7789_DATA_PREFIX (0)
+#  define LCD_ST7789_CMD_PREFIX  (0)
 #endif
 
 /* Display Resolution */
 
 #if !defined(CONFIG_LCD_ST7789_XRES)
-#define CONFIG_LCD_ST7789_XRES 240
+#  define CONFIG_LCD_ST7789_XRES 240
 #endif
 
 #if !defined(CONFIG_LCD_ST7789_YRES)
-#define CONFIG_LCD_ST7789_YRES 320
-#endif
-
-#if !defined(CONFIG_LCD_ST7789_YOFFSET)
-#define CONFIG_LCD_ST7789_YOFFSET 0
-#endif
-
-#if !defined(CONFIG_LCD_ST7789_XOFFSET)
-#define CONFIG_LCD_ST7789_XOFFSET 0
+#  define CONFIG_LCD_ST7789_YRES 320
 #endif
 
 #define ST7789_LUT_SIZE    CONFIG_LCD_ST7789_YRES
 
 #if defined(CONFIG_LCD_LANDSCAPE) || defined(CONFIG_LCD_RLANDSCAPE)
-#define ST7789_XRES       CONFIG_LCD_ST7789_YRES
-#define ST7789_YRES       CONFIG_LCD_ST7789_XRES
-#define ST7789_XOFFSET    CONFIG_LCD_ST7789_YOFFSET
-#define ST7789_YOFFSET    CONFIG_LCD_ST7789_XOFFSET
-#elif defined(CONFIG_LCD_PORTRAIT) || defined(CONFIG_LCD_RPORTRAIT)
-#define ST7789_XRES       CONFIG_LCD_ST7789_XRES
-#define ST7789_YRES       CONFIG_LCD_ST7789_YRES
-#define ST7789_XOFFSET    0
-#define ST7789_YOFFSET    0
+#  define ST7789_XRES       CONFIG_LCD_ST7789_YRES
+#  define ST7789_YRES       CONFIG_LCD_ST7789_XRES
+#  define ST7789_XOFFSET    CONFIG_LCD_ST7789_YOFFSET
+#  define ST7789_YOFFSET    CONFIG_LCD_ST7789_XOFFSET
 #else
-#define ST7789_XRES       CONFIG_LCD_ST7789_YRES
-#define ST7789_YRES       CONFIG_LCD_ST7789_XRES
-#define ST7789_XOFFSET    CONFIG_LCD_ST7789_YOFFSET
-#define ST7789_YOFFSET    CONFIG_LCD_ST7789_XOFFSET
+#  define ST7789_XRES       CONFIG_LCD_ST7789_XRES
+#  define ST7789_YRES       CONFIG_LCD_ST7789_YRES
+#  define ST7789_XOFFSET    CONFIG_LCD_ST7789_XOFFSET
+#  define ST7789_YOFFSET    CONFIG_LCD_ST7789_YOFFSET
 #endif
 
 /* Color depth and format */
 
-//#ifdef CONFIG_LCD_ST7789_BPP
-#if (CONFIG_LCD_ST7789_BPP == 12)
-#define ST7789_BPP           12
-#define ST7789_COLORFMT      FB_FMT_RGB12_444
-#define ST7789_BYTESPP       2
-#elif (CONFIG_LCD_ST7789_BPP == 16)
-#define ST7789_BPP           16
-#define ST7789_COLORFMT      FB_FMT_RGB16_565
-#define ST7789_BYTESPP       2
-#else
-#define ST7789_BPP           16
-#define ST7789_COLORFMT      FB_FMT_RGB16_565
-#define ST7789_BYTESPP       2
-#warning "Invalid color depth.  Falling back to 16bpp"
-#endif
-//#endif
-
-/* Default orientation */
-#if defined(CONFIG_LCD_PORTRAIT)
-#define ST7789_DEFAULT_ORIENTATION LCD_PORTRAIT
-#elif defined(CONFIG_LCD_LANDSCAPE)
-#define ST7789_DEFAULT_ORIENTATION LCD_LANDSCAPE
-#elif defined(CONFIG_LCD_RLANDSCAPE)
-#define ST7789_DEFAULT_ORIENTATION LCD_RLANDSCAPE
-#elif defined(CONFIG_LCD_RPORTRAIT)
-#define ST7789_DEFAULT_ORIENTATION LCD_RPORTRAIT
-#else
-#define ST7789_DEFAULT_ORIENTATION LCD_LANDSCAPE
+#ifdef CONFIG_LCD_ST7789_BPP
+#  if (CONFIG_LCD_ST7789_BPP == 12)
+#    define ST7789_BPP           12
+#    define ST7789_COLORFMT      FB_FMT_RGB12_444
+#    define ST7789_BYTESPP       2
+#  elif (CONFIG_LCD_ST7789_BPP == 16)
+#    define ST7789_BPP           16
+#    define ST7789_COLORFMT      FB_FMT_RGB16_565
+#    define ST7789_BYTESPP       2
+#  else
+#    define ST7789_BPP           16
+#    define ST7789_COLORFMT      FB_FMT_RGB16_565
+#    define ST7789_BYTESPP       2
+#    warning "Invalid color depth.  Falling back to 16bpp"
+#  endif
 #endif
 
 /****************************************************************************
@@ -190,12 +170,17 @@ struct st7789_dev_s {
 	/* Publicly visible device structure */
 
 	struct lcd_dev_s dev;
-	struct st7789_config_s *config;
+
 	/* Private LCD-specific information follows */
 
-	FAR struct spi_dev_s *spi;	/* SPI device */
-	uint8_t bpp;				/* Selected color depth */
-	uint8_t power;				/* Current power setting */
+	FAR struct spi_dev_s *spi;  /* SPI device */
+	uint8_t bpp;                /* Selected color depth */
+	uint8_t power;              /* Current power setting */
+
+#ifdef CONFIG_LCD_DYN_ORIENTATION
+	uint16_t xoff;
+	uint16_t yoff;
+#endif
 
 	/* This is working memory allocated by the LCD driver for each LCD device
 	 * and for each color plane. This memory will hold one raster line of data.
@@ -208,13 +193,9 @@ struct st7789_dev_s {
 	 * if there are multiple LCD devices, they must each have unique run
 	 * buffers.
 	 */
+
 	uint16_t runbuffer[ST7789_LUT_SIZE];
 };
-
-typedef struct Lcd_Init_Data {
-	u8 type;					//cmd 0 or data 1
-	u8 data;
-} Lcd_Init_Data;
 
 /* 3 wire interface for ST7789 requires the driver to send information
  * about command/data transfer as 9th bit of SPI transfer. This would
@@ -233,39 +214,62 @@ uint16_t rowbuff[ST7789_XRES * ST7789_BYTESPP];
  ****************************************************************************/
 
 /* Misc. Helpers */
-static void lcd_lock(FAR struct spi_dev_s *dev);
-static inline void lcd_unlock(FAR struct spi_dev_s *dev);
+
+static void st7789_select(FAR struct spi_dev_s *spi, int bits);
+static void st7789_deselect(FAR struct spi_dev_s *spi);
+
 static inline void st7789_sendcmd(FAR struct st7789_dev_s *dev, uint8_t cmd);
-static inline void st7789_senddata(FAR struct st7789_dev_s *dev, uint8_t *txbuf, int size);
-static inline void st7789_getdata(FAR struct st7789_dev_s *dev, uint8_t *rxbuf, int size);
-static void st7789_setarea(FAR struct st7789_dev_s *dev, uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1);
-static void st7789_bpp(FAR struct st7789_dev_s *dev, int bpp);
-static void st7789_wrram(FAR struct st7789_dev_s *dev, FAR const uint8_t *buff, size_t size, size_t skip, size_t count);
-#ifndef CONFIG_LCD_NOGETRUN
-static void st7789_rdram(FAR struct st7789_dev_s *dev, FAR uint8_t *buff, size_t size);
+static void st7789_sleep(FAR struct st7789_dev_s *dev, bool sleep);
+#ifdef  CONFIG_LCD_DYN_ORIENTATION
+static void st7789_setorientation(FAR struct st7789_dev_s *dev,
+                                  uint8_t orientation);
+#else
+static void st7789_setorientation(FAR struct st7789_dev_s *dev);
 #endif
+static void st7789_display(FAR struct st7789_dev_s *dev, bool on);
+static void st7789_setarea(FAR struct st7789_dev_s *dev,
+                           uint16_t x0, uint16_t y0,
+                           uint16_t x1, uint16_t y1);
+static void st7789_bpp(FAR struct st7789_dev_s *dev, int bpp);
+static void st7789_wrram(FAR struct st7789_dev_s *dev,
+                         FAR const uint8_t *buff, size_t size, size_t skip,
+                         size_t count);
+#ifndef CONFIG_LCD_NOGETRUN
+static void st7789_rdram(FAR struct st7789_dev_s *dev,
+                         FAR uint16_t *buff, size_t size);
+#endif
+static void st7789_fill(FAR struct st7789_dev_s *dev, uint16_t color);
 
 /* LCD Data Transfer Methods */
 
-static int st7789_putrun(FAR struct lcd_dev_s *dev, fb_coord_t row, fb_coord_t col, FAR const uint8_t *buffer, size_t npixels);
-static int st7789_putarea(FAR struct lcd_dev_s *dev, fb_coord_t row_start, fb_coord_t row_end, fb_coord_t col_start, fb_coord_t col_end, FAR const uint8_t *buffer, fb_coord_t stride);
+static int st7789_putrun(FAR struct lcd_dev_s *dev,
+                         fb_coord_t row, fb_coord_t col,
+                         FAR const uint8_t *buffer, size_t npixels);
+static int st7789_putarea(FAR struct lcd_dev_s *dev,
+                          fb_coord_t row_start, fb_coord_t row_end,
+                          fb_coord_t col_start, fb_coord_t col_end,
+                          FAR const uint8_t *buffer, fb_coord_t stride);
 #ifndef CONFIG_LCD_NOGETRUN
-static int st7789_getrun(FAR struct lcd_dev_s *dev, fb_coord_t row, fb_coord_t col, FAR uint8_t *buffer, size_t npixels);
+static int st7789_getrun(FAR struct lcd_dev_s *dev,
+                         fb_coord_t row, fb_coord_t col,
+                         FAR uint8_t *buffer, size_t npixels);
 #endif
 
 /* LCD Configuration */
 
-static int st7789_getvideoinfo(FAR struct lcd_dev_s *dev, FAR struct fb_videoinfo_s *vinfo);
-static int st7789_getplaneinfo(FAR struct lcd_dev_s *dev, unsigned int planeno, FAR struct lcd_planeinfo_s *pinfo);
+static int st7789_getvideoinfo(FAR struct lcd_dev_s *dev,
+                               FAR struct fb_videoinfo_s *vinfo);
+static int st7789_getplaneinfo(FAR struct lcd_dev_s *dev,
+                               unsigned int planeno,
+                               FAR struct lcd_planeinfo_s *pinfo);
 
 /* LCD Specific Controls */
 
 static int st7789_getpower(FAR struct lcd_dev_s *dev);
 static int st7789_setpower(FAR struct lcd_dev_s *dev, int power);
 static int st7789_getcontrast(FAR struct lcd_dev_s *dev);
-static int st7789_setcontrast(FAR struct lcd_dev_s *dev, unsigned int contrast);
-static int st7789_setorientation(FAR struct lcd_dev_s *dev, unsigned int orientation);
-static int st7789_init(FAR struct lcd_dev_s *dev);
+static int st7789_setcontrast(FAR struct lcd_dev_s *dev,
+                              unsigned int contrast);
 
 /****************************************************************************
  * Private Data
@@ -273,83 +277,72 @@ static int st7789_init(FAR struct lcd_dev_s *dev);
 
 static struct st7789_dev_s g_lcddev;
 
-static Lcd_Init_Data st7789_init_data[] = {
-	{0, 0x11},
-	{2, 120},
-	{0, 0x2a},
-	{1, 0x00}, {1, 0x00}, {1, 0x00}, {1, 0xef},
-	{0, 0x2b},
-	{1, 0x00}, {1, 0x28}, {1, 0x01}, {1, 0x17},
-	{0, 0xb2},
-	{1, 0x0c}, {1, 0x0c}, {1, 0x00}, {1, 0x33}, {1, 0x33},
-	{0, 0x20},
-	{0, 0xb7},
-	{1, 0x56},
-	{0, 0xbb},
-	{1, 0x38},
-	{0, 0xc0},
-	{1, 0x2c},
-	{0, 0xc2},
-	{1, 0x01},
-	{0, 0xc3},
-	{1, 0x1f},
-	{0, 0xc4},
-	{1, 0x20},
-	{0, 0xc6},
-	{1, 0x0f},
-	{0, 0xd0},
-	{1, 0xa6}, {1, 0xa1},
-	{0, 0xe0},
-	{1, 0xd0}, {1, 0x0d}, {1, 0x14}, {1, 0x0b}, {1, 0x0b}, {1, 0x07}, {1, 0x3a}, {1, 0x44}, {1, 0x50}, {1, 0x08}, {1, 0x13}, {1, 0x13}, {1, 0x2d}, {1, 0x32},
-	{0, 0xe1},
-	{1, 0xd0}, {1, 0x0d}, {1, 0x14}, {1, 0x0b}, {1, 0x0b}, {1, 0x07}, {1, 0x3a}, {1, 0x44}, {1, 0x50}, {1, 0x08}, {1, 0x13}, {1, 0x13}, {1, 0x2d}, {1, 0x32}, {1, 0x00}, {1, 0x00},
-	{0, 0x36},
-	{1, 0x00},
-	{0, 0x3A},
-	{1, 0x55},
-	{0, 0xe7},
-	{1, 0x00},
-	{0, 0x21},
-	{0, 0x29},
-	{0, 0x2C}
-};
-
 /****************************************************************************
  * Private Functions
  ****************************************************************************/
-/************************************************************************************
- * Name: lcd_lock
- ************************************************************************************/
 
-static void lcd_lock(FAR struct spi_dev_s *dev)
+/****************************************************************************
+ * Name: st7789_select
+ *
+ * Description:
+ *   Select the SPI, locking and  re-configuring if necessary
+ *
+ * Input Parameters:
+ *   spi   - Reference to the SPI driver structure
+ *   bits  - Number of SPI bits
+ *
+ * Returned Value:
+ *   None
+ *
+ * Assumptions:
+ *
+ ****************************************************************************/
+
+static void st7789_select(FAR struct spi_dev_s *spi, int bits)
 {
-	/* On SPI busses where there are multiple devices, it will be necessary to
-	 * lock SPI to have exclusive access to the busses for a sequence of
-	 * transfers.  The bus should be locked before the chip is selected.
-	 *
-	 * This is a blocking call and will not return until we have exclusiv access to
-	 * the SPI buss.  We will retain that exclusive access until the bus is unlocked.
+	/* Select ST7789 chip (locking the SPI bus in case there are multiple
+	 * devices competing for the SPI bus
 	 */
 
-	(void)SPI_LOCK(dev, true);
+	SPI_LOCK(spi, true);
+	SPI_SELECT(spi, SPIDEV_DISPLAY(0), true);
 
-	/* After locking the SPI bus, the we also need call the setfrequency, setbits, and
-	 * setmode methods to make sure that the SPI is properly configured for the device.
-	 * If the SPI buss is being shared, then it may have been left in an incompatible
-	 * state.
+	/* Now make sure that the SPI bus is configured for the ST7789 (it
+	 * might have gotten configured for a different device while unlocked)
 	 */
-	SPI_SETMODE(dev, CONFIG_LCD_ST7789_SPIMODE);
-	SPI_SETBITS(dev, LCD_ST7789_SPI_BITS);
-	SPI_SETFREQUENCY(dev, CONFIG_LCD_ST7789_FREQUENCY);
+
+	SPI_SETMODE(spi, CONFIG_LCD_ST7789_SPIMODE);
+	SPI_SETBITS(spi, bits);
+	SPI_SETFREQUENCY(spi, CONFIG_LCD_ST7789_FREQUENCY);
+#ifdef CONFIG_SPI_DELAY_CONTROL
+	SPI_SETDELAY(spi, CONFIG_LCD_ST7789_START_DELAY,
+	             CONFIG_LCD_ST7789_STOP_DELAY, CONFIG_LCD_ST7789_CS_DELAY,
+	             CONFIG_LCD_ST7789_IFDELAY);
+#endif
 }
 
-/************************************************************************************
- * Name: lcd_unlock
- ************************************************************************************/
+/****************************************************************************
+ * Name: st7789_deselect
+ *
+ * Description:
+ *   De-select the SPI
+ *
+ * Input Parameters:
+ *   spi  - Reference to the SPI driver structure
+ *
+ * Returned Value:
+ *   None
+ *
+ * Assumptions:
+ *
+ ****************************************************************************/
 
-static inline void lcd_unlock(FAR struct spi_dev_s *dev)
+static void st7789_deselect(FAR struct spi_dev_s *spi)
 {
-	(void)SPI_LOCK(dev, false);
+	/* De-select ST7789 chip and relinquish the SPI bus. */
+
+	SPI_SELECT(spi, SPIDEV_DISPLAY(0), false);
+	SPI_LOCK(spi, false);
 }
 
 /****************************************************************************
@@ -359,75 +352,180 @@ static inline void lcd_unlock(FAR struct spi_dev_s *dev)
  *   Send a command to the driver.
  *
  ****************************************************************************/
+
 static inline void st7789_sendcmd(FAR struct st7789_dev_s *dev, uint8_t cmd)
 {
 #ifdef CONFIG_LCD_ST7789_3WIRE
 	uint16_t txbuf;
-	/* Add command prefix (9th bit shoudl be 0 ) */
+
+	/* Add command prefix (9th bit should be 0 ) */
+
 	txbuf = LCD_ST7789_CMD_PREFIX | cmd;
-	SPI_SELECT(dev->spi, SPIDEV_DISPLAY, true);
+
+	st7789_select(dev->spi, LCD_ST7789_SPI_BITS);
 	SPI_SEND(dev->spi, txbuf);
-	SPI_SELECT(dev->spi, SPIDEV_DISPLAY, false);
+	st7789_deselect(dev->spi);
 #else
-	uint8_t spi_cmd[4];
-	spi_cmd[0] = cmd;
-	SPI_SELECT(dev->spi, SPIDEV_DISPLAY, true);
-	dev->config->cmddata(0);
-	SPI_SNDBLOCK(dev->spi, spi_cmd, 1);
-	SPI_SELECT(dev->spi, SPIDEV_DISPLAY, false);
+	st7789_select(dev->spi, LCD_ST7789_SPI_BITS);
+	SPI_CMDDATA(dev->spi, SPIDEV_DISPLAY(0), true);
+	SPI_SEND(dev->spi, cmd);
+	SPI_CMDDATA(dev->spi, SPIDEV_DISPLAY(0), false);
+	st7789_deselect(dev->spi);
 #endif
 }
 
 /****************************************************************************
- * Name: st7789_senddata
+ * Name: st7789_sleep
  *
  * Description:
- *   Send init data to the driver.
- * data - tx buffer
- * size - total bytes of words
- *        word size(8 bits)
+ *   Sleep or wake up the driver.
+ *
  ****************************************************************************/
 
-static inline void st7789_senddata(FAR struct st7789_dev_s *dev, uint8_t *txbuf, int size)
+static void st7789_sleep(FAR struct st7789_dev_s *dev, bool sleep)
 {
-#ifdef CONFIG_LCD_ST7789_3WIRE
-	uint16_t txbuf;
-	/* Add data prefix (9th bit shoudl be 1 ) */
-	SPI_SELECT(dev->spi, SPIDEV_DISPLAY, true);
-	for (int j = 0; j < size; j += 2) {
-		/* Take care of correct byte order. */
+	st7789_sendcmd(dev, sleep ? ST7789_SLPIN : ST7789_SLPOUT);
+	up_mdelay(120);
+}
 
-		rowbuff[j] = LCD_ST7789_DATA_PREFIX | (uint16_t) txbuf[j + 1 + (i * size)];
-		rowbuff[j + 1] = LCD_ST7789_DATA_PREFIX | (uint16_t) txbuf[j + (i * size)];
+/****************************************************************************
+ * Name: st7789_display
+ *
+ * Description:
+ *   Turn on or off the display.
+ *
+ ****************************************************************************/
+
+static void st7789_display(FAR struct st7789_dev_s *dev, bool on)
+{
+	st7789_sendcmd(dev, on ? ST7789_DISPON : ST7789_DISPOFF);
+#ifdef CONFIG_LCD_ST7789_INVCOLOR
+	st7789_sendcmd(dev, ST7789_INVON);
+#else
+	st7789_sendcmd(dev, ST7789_INVOFF);
+#endif
+}
+
+/****************************************************************************
+ * Name: st7789_setorientation
+ *
+ * Description:
+ *   Set screen orientation.
+ *
+ ****************************************************************************/
+#ifdef CONFIG_LCD_DYN_ORIENTATION
+static void st7789_setorientation(FAR struct st7789_dev_s *dev,
+                                  uint8_t orientation)
+{
+	/* No need to change the orientation in PORTRAIT mode */
+
+	if (orientation != LCD_PORTRAIT) {
+		st7789_sendcmd(dev, ST7789_MADCTL);
+		st7789_select(dev->spi, LCD_ST7789_SPI_BITS);
 	}
-	SPI_SNDBLOCK(dev->spi, rowbuff, size);
-	SPI_SELECT(dev->spi, SPIDEV_DISPLAY, false);
+
+	if (orientation == LCD_RLANDSCAPE) {
+		/* RLANDSCAPE : MY=1 MV=1 */
+
+		SPI_SEND(dev->spi, LCD_ST7789_DATA_PREFIX | 0xa0);
+	} else if (orientation == LCD_LANDSCAPE) {
+		/* LANDSCAPE : MX=1 MV=1 */
+
+		SPI_SEND(dev->spi, LCD_ST7789_DATA_PREFIX | 0x70);
+	} else if (orientation == LCD_RPORTRAIT) {
+		/* RPORTRAIT : MX=1 MY=1 */
+
+		SPI_SEND(dev->spi, LCD_ST7789_DATA_PREFIX | 0xc0);
+	}
+
+	st7789_deselect(dev->spi);
+}
 #else
-	SPI_SELECT(dev->spi, SPIDEV_DISPLAY, true);
-	dev->config->cmddata(1);
-	SPI_SNDBLOCK(dev->spi, txbuf, size);
-	SPI_SELECT(dev->spi, SPIDEV_DISPLAY, false);
-#endif
-}
-
-/****************************************************************************
- * Name: st7789_getdata
- *
- * Description:
- *   Get data from LCD.
- *
- * buf - rx buffer
- * size - total bytes of words
- *        word size(8 bits)
- ****************************************************************************/
-
-static inline void st7789_getdata(FAR struct st7789_dev_s *dev, uint8_t *rxbuf, int size)
+static void st7789_setorientation(FAR struct st7789_dev_s *dev)
 {
-	SPI_SELECT(dev->spi, SPIDEV_DISPLAY, true);
-	dev->config->cmddata(1);
-	SPI_RECVBLOCK(dev->spi, rxbuf, size);
-	SPI_SELECT(dev->spi, SPIDEV_DISPLAY, false);
+	/* Default value on reset */
+
+	uint8_t madctl = 0x00;
+
+	st7789_sendcmd(dev, ST7789_MADCTL);
+	st7789_select(dev->spi, LCD_ST7789_SPI_BITS);
+
+#if !defined(CONFIG_LCD_PORTRAIT)
+
+#  if defined(CONFIG_LCD_RLANDSCAPE)
+	/* RLANDSCAPE : MY=1 MV=1 */
+
+	madctl = 0xa0;
+
+#  elif defined(CONFIG_LCD_LANDSCAPE)
+	/* LANDSCAPE : MX=1 MV=1 */
+
+	madctl = 0x70;
+
+#  elif defined(CONFIG_LCD_RPORTRAIT)
+	/* RPORTRAIT : MX=1 MY=1 */
+
+	madctl = 0xc0;
+#  endif
+
+#endif
+
+	/* Mirror X/Y/V for current setting */
+
+#ifdef CONFIG_LCD_ST7789_MIRRORV
+	madctl ^= 0x20;
+#endif
+
+#ifdef CONFIG_LCD_ST7789_MIRRORX
+	madctl ^= 0x40;
+#endif
+
+#ifdef CONFIG_LCD_ST7789_MIRRORY
+	madctl ^= 0x80;
+#endif
+
+#ifdef CONFIG_LCD_ST7789_BGR
+	madctl |= 0x08;
+#endif
+
+	SPI_SEND(dev->spi, LCD_ST7789_DATA_PREFIX | madctl);
+
+	st7789_deselect(dev->spi);
 }
+#endif
+
+#ifdef CONFIG_LCD_ST7789_DATA_ENDIAN_LITTLE
+static void st7789_ramctl(FAR struct st7789_dev_s *dev)
+{
+	/* ============ ==== ==== ====== ====== ======== ===== ====== ======
+	 *  Parameters   D7   D6   D5     D4     D3       D2    D1     D0
+	 * ============ ==== ==== ====== ====== ======== ===== ====== ======
+	 *  1st (LSB)    0    0    0      RM     0        0     DM1    DM0
+	 *  2nd (MSB)    1    1    EPF1   EPF0   ENDIAN   RIM   MDT1   MDT0
+	 * ============ ==== ==== ====== ====== ======== ===== ====== ======
+	 */
+
+	uint16_t ramctl = 0x0;
+
+	st7789_sendcmd(dev, ST7789_RAMCTRL);
+	st7789_select(dev->spi, LCD_ST7789_SPI_BITS * 2);
+
+	/* Fill the reserved bits */
+
+	ramctl |= 0xc000;
+
+	/* Set EPF */
+
+	ramctl |= 0x3000;
+
+	/* Set RGB data endian */
+
+	ramctl |= 0x800;
+
+	SPI_SEND(dev->spi, LCD_ST7789_DATA_PREFIX | ramctl);
+	st7789_deselect(dev->spi);
+}
+#endif
 
 /****************************************************************************
  * Name: st7789_setarea
@@ -437,27 +535,47 @@ static inline void st7789_getdata(FAR struct st7789_dev_s *dev, uint8_t *rxbuf, 
  *
  ****************************************************************************/
 
-static void st7789_setarea(FAR struct st7789_dev_s *dev, uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1)
+static void st7789_setarea(FAR struct st7789_dev_s *dev,
+                           uint16_t x0, uint16_t y0,
+                           uint16_t x1, uint16_t y1)
 {
 	/* Set row address */
+
 	st7789_sendcmd(dev, ST7789_RASET);
-	SPI_SELECT(dev->spi, SPIDEV_DISPLAY, true);
-	dev->config->cmddata(1);
+	st7789_select(dev->spi, LCD_ST7789_SPI_BITS);
+#ifdef CONFIG_LCD_DYN_ORIENTATION
+	SPI_SEND(dev->spi, LCD_ST7789_DATA_PREFIX | ((y0 + g_lcddev.yoff) >> 8));
+	SPI_SEND(dev->spi, LCD_ST7789_DATA_PREFIX | ((y0 + g_lcddev.yoff) & 0xff));
+	SPI_SEND(dev->spi, LCD_ST7789_DATA_PREFIX | ((y1 + g_lcddev.yoff) >> 8));
+	SPI_SEND(dev->spi, LCD_ST7789_DATA_PREFIX | ((y1 + g_lcddev.yoff) & 0xff));
+#else
 	SPI_SEND(dev->spi, LCD_ST7789_DATA_PREFIX | ((y0 + ST7789_YOFFSET) >> 8));
-	SPI_SEND(dev->spi, LCD_ST7789_DATA_PREFIX | ((y0 + ST7789_YOFFSET) & 0xff));
+	SPI_SEND(dev->spi, LCD_ST7789_DATA_PREFIX |
+	                   ((y0 + ST7789_YOFFSET) & 0xff));
 	SPI_SEND(dev->spi, LCD_ST7789_DATA_PREFIX | ((y1 + ST7789_YOFFSET) >> 8));
-	SPI_SEND(dev->spi, LCD_ST7789_DATA_PREFIX | ((y1 + ST7789_YOFFSET) & 0xff));
-	SPI_SELECT(dev->spi, SPIDEV_DISPLAY, false);
+	SPI_SEND(dev->spi, LCD_ST7789_DATA_PREFIX |
+	                   ((y1 + ST7789_YOFFSET) & 0xff));
+#endif
+	st7789_deselect(dev->spi);
 
 	/* Set column address */
+
 	st7789_sendcmd(dev, ST7789_CASET);
-	SPI_SELECT(dev->spi, SPIDEV_DISPLAY, true);
-	dev->config->cmddata(1);
+	st7789_select(dev->spi, LCD_ST7789_SPI_BITS);
+#ifdef CONFIG_LCD_DYN_ORIENTATION
+	SPI_SEND(dev->spi, LCD_ST7789_DATA_PREFIX | ((x0 + g_lcddev.xoff) >> 8));
+	SPI_SEND(dev->spi, LCD_ST7789_DATA_PREFIX | ((x0 + g_lcddev.xoff) & 0xff));
+	SPI_SEND(dev->spi, LCD_ST7789_DATA_PREFIX | ((x1 + g_lcddev.xoff) >> 8));
+	SPI_SEND(dev->spi, LCD_ST7789_DATA_PREFIX | ((x1 + g_lcddev.xoff) & 0xff));
+#else
 	SPI_SEND(dev->spi, LCD_ST7789_DATA_PREFIX | ((x0 + ST7789_XOFFSET) >> 8));
-	SPI_SEND(dev->spi, LCD_ST7789_DATA_PREFIX | ((x0 + ST7789_XOFFSET) & 0xff));
+	SPI_SEND(dev->spi, LCD_ST7789_DATA_PREFIX |
+	                   ((x0 + ST7789_XOFFSET) & 0xff));
 	SPI_SEND(dev->spi, LCD_ST7789_DATA_PREFIX | ((x1 + ST7789_XOFFSET) >> 8));
-	SPI_SEND(dev->spi, LCD_ST7789_DATA_PREFIX | ((x1 + ST7789_XOFFSET) & 0xff));
-	SPI_SELECT(dev->spi, SPIDEV_DISPLAY, false);
+	SPI_SEND(dev->spi, LCD_ST7789_DATA_PREFIX |
+	                   ((x1 + ST7789_XOFFSET) & 0xff));
+#endif
+	st7789_deselect(dev->spi);
 }
 
 /****************************************************************************
@@ -471,14 +589,17 @@ static void st7789_setarea(FAR struct st7789_dev_s *dev, uint16_t x0, uint16_t y
 static void st7789_bpp(FAR struct st7789_dev_s *dev, int bpp)
 {
 	uint8_t depth;
+
 	/* REVISIT: Works only for 12 and 16 bpp! */
+
 	depth = bpp >> 2 | 1;
 	st7789_sendcmd(dev, ST7789_COLMOD);
-	SPI_SELECT(dev->spi, SPIDEV_DISPLAY, true);
-	dev->config->cmddata(1);
+	st7789_select(dev->spi, LCD_ST7789_SPI_BITS);
 	SPI_SEND(dev->spi, LCD_ST7789_DATA_PREFIX | depth);
-	SPI_SELECT(dev->spi, SPIDEV_DISPLAY, false);
+	st7789_deselect(dev->spi);
+
 	/* Cache the new BPP */
+
 	dev->bpp = bpp;
 }
 
@@ -491,43 +612,58 @@ static void st7789_bpp(FAR struct st7789_dev_s *dev, int bpp)
  *
  ****************************************************************************/
 
-static void st7789_wrram(FAR struct st7789_dev_s *dev, FAR const uint8_t *buff, size_t size, size_t skip, size_t count)
+static void st7789_wrram(FAR struct st7789_dev_s *dev,
+                         FAR const uint8_t *buff, size_t size, size_t skip,
+                         size_t count)
 {
 	size_t i;
 #ifdef CONFIG_LCD_ST7789_3WIRE
 	size_t j;
+	size_t rowsiz;
 #endif
+
 	st7789_sendcmd(dev, ST7789_RAMWR);
 
 #ifdef CONFIG_LCD_ST7789_3WIRE
-	if (count == 1) {
+	rowsiz = ST7789_XRES * ST7789_BYTESPP;
+
+	if (count == 1 && size > rowsiz) {
 		/* We cannot send the entire buffer at once, split it to
 		 * separate rows.
 		 */
-		count = ST7789_YRES;
-		size = ST7789_XRES * ST7789_BYTESPP;
+
+		count = size / rowsiz;
+		size = rowsiz;
 	}
 
-	SPI_SELECT(dev->spi, SPIDEV_DISPLAY, true);
+	st7789_select(dev->spi, LCD_ST7789_SPI_BITS);
+
 	/* For each row */
+
 	for (i = 0; i < count; i++) {
 		/* Copy data to rowbuff and add 9th bit */
-		for (j = 0; j < ST7789_XRES * ST7789_BYTESPP; j += 2) {
+
+		for (j = 0; j < size; j += 2) {
 			/* Take care of correct byte order. */
-			rowbuff[j] = LCD_ST7789_DATA_PREFIX | (uint16_t) buff[j + 1 + (i * (size + skip))];
-			rowbuff[j + 1] = LCD_ST7789_DATA_PREFIX | (uint16_t) buff[j + (i * (size + skip))];
+
+			rowbuff[j] = LCD_ST7789_DATA_PREFIX |
+			             (uint16_t)buff[j + 1 + (i * (size + skip))];
+			rowbuff[j + 1] = LCD_ST7789_DATA_PREFIX |
+			                 (uint16_t)buff[j + (i * (size + skip))];
 		}
+
 		SPI_SNDBLOCK(dev->spi, rowbuff, size);
 	}
 #else
-	SPI_SELECT(dev->spi, SPIDEV_DISPLAY, true);
-	dev->config->cmddata(1);
+	st7789_select(dev->spi, ST7789_BYTESPP * LCD_ST7789_SPI_BITS);
+
 	for (i = 0; i < count; i++) {
-		SPI_SNDBLOCK(dev->spi, buff + (i * (size + skip)), size);
+		SPI_SNDBLOCK(dev->spi, buff + (i * (size + skip)),
+		             size / ST7789_BYTESPP);
 	}
 #endif
 
-	SPI_SELECT(dev->spi, SPIDEV_DISPLAY, false);
+	st7789_deselect(dev->spi);
 }
 
 /****************************************************************************
@@ -538,45 +674,49 @@ static void st7789_wrram(FAR struct st7789_dev_s *dev, FAR const uint8_t *buff, 
  *
  ****************************************************************************/
 
-static void st7789_rdram(FAR struct st7789_dev_s *dev, FAR uint8_t *buff, size_t size)
+#ifndef CONFIG_LCD_NOGETRUN
+static void st7789_rdram(FAR struct st7789_dev_s *dev,
+                         FAR uint16_t *buff, size_t size)
 {
 	st7789_sendcmd(dev, ST7789_RAMRD);
-	SPI_SELECT(dev->spi, SPIDEV_DISPLAY, true);
-	dev->config->cmddata(1);
+
+	st7789_select(dev->spi, ST7789_BYTESPP * 8);
 	SPI_RECVBLOCK(dev->spi, buff, size);
-	SPI_SELECT(dev->spi, SPIDEV_DISPLAY, false);
+	st7789_deselect(dev->spi);
 }
+#endif
 
 /****************************************************************************
- * Name:  st7789_init_cmd
+ * Name: st7789_fill
  *
  * Description:
- *   Initialization command and data
+ *   Fill the display with the specified color.
  *
  ****************************************************************************/
 
-static int st7789_init_cmd(FAR struct st7789_dev_s *dev)
+static void st7789_fill(FAR struct st7789_dev_s *dev, uint16_t color)
 {
-	size_t i = 0;
-	size_t len = sizeof(st7789_init_data) / sizeof(st7789_init_data[0]);
-	while (i < len) {
-		switch (st7789_init_data[i].type) {
-		case 0:
-			st7789_sendcmd(dev, st7789_init_data[i].data);
-			break;
-		case 1:
-			st7789_senddata(dev, &st7789_init_data[i].data, 1);
-			break;
-		case 2:
-			up_mdelay(st7789_init_data[i].data);
-			break;
-		default:
-			printf("unknown command\n");
-			break;
-		}
-		i++;
+	int i;
+
+	st7789_setarea(dev, 0, 0, ST7789_XRES - 1, ST7789_YRES - 1);
+
+	st7789_sendcmd(dev, ST7789_RAMWR);
+#ifdef CONFIG_LCD_ST7789_3WIRE
+	st7789_select(dev->spi, LCD_ST7789_SPI_BITS);
+
+	for (i = 0; i < ST7789_XRES * ST7789_YRES; i++) {
+		SPI_SEND(dev->spi, LCD_ST7789_DATA_PREFIX | (color & 0xff00) >> 8);
+		SPI_SEND(dev->spi, LCD_ST7789_DATA_PREFIX | (color & 0xff));
 	}
-	return OK;
+#else
+	st7789_select(dev->spi, ST7789_BYTESPP * LCD_ST7789_SPI_BITS);
+
+	for (i = 0; i < ST7789_XRES * ST7789_YRES; i++) {
+		SPI_SEND(dev->spi, color);
+	}
+#endif
+
+	st7789_deselect(dev->spi);
 }
 
 /****************************************************************************
@@ -594,14 +734,18 @@ static int st7789_init_cmd(FAR struct st7789_dev_s *dev)
  *
  ****************************************************************************/
 
-static int st7789_putrun(FAR struct lcd_dev_s *dev, fb_coord_t row, fb_coord_t col, FAR const uint8_t *buffer, size_t npixels)
+static int st7789_putrun(FAR struct lcd_dev_s *dev,
+                         fb_coord_t row, fb_coord_t col,
+                         FAR const uint8_t *buffer, size_t npixels)
 {
 	FAR struct st7789_dev_s *priv = (FAR struct st7789_dev_s *)dev;
-	DEBUGASSERT(buffer && ((uintptr_t) buffer & 1) == 0);
-	lcd_lock(priv->spi);
+
+	ginfo("row: %d col: %d npixels: %d\n", row, col, npixels);
+	DEBUGASSERT(buffer && ((uintptr_t)buffer & 1) == 0);
+
 	st7789_setarea(priv, col, row, col + npixels - 1, row);
 	st7789_wrram(priv, buffer, npixels * ST7789_BYTESPP, 0, 1);
-	lcd_unlock(priv->spi);
+
 	return OK;
 }
 
@@ -620,30 +764,45 @@ static int st7789_putrun(FAR struct lcd_dev_s *dev, fb_coord_t row, fb_coord_t c
  *   buffer    - The buffer containing the area to be written to the LCD
  *   stride    - Length of a line in bytes. This parameter may be necessary
  *               to allow the LCD driver to calculate the offset for partial
- *               writes when the buffer needs to be splited for row-by-row
+ *               writes when the buffer needs to be split for row-by-row
  *               writing.
  *
  ****************************************************************************/
 
-static int st7789_putarea(FAR struct lcd_dev_s *dev, fb_coord_t row_start, fb_coord_t row_end, fb_coord_t col_start, fb_coord_t col_end, FAR const uint8_t *buffer, fb_coord_t stride)
+static int st7789_putarea(FAR struct lcd_dev_s *dev,
+                          fb_coord_t row_start, fb_coord_t row_end,
+                          fb_coord_t col_start, fb_coord_t col_end,
+                          FAR const uint8_t *buffer, fb_coord_t stride)
 {
 	FAR struct st7789_dev_s *priv = (FAR struct st7789_dev_s *)dev;
 	size_t cols = col_end - col_start + 1;
 	size_t rows = row_end - row_start + 1;
 	size_t row_size = cols * ST7789_BYTESPP;
-	DEBUGASSERT(buffer && ((uintptr_t) buffer & 1) == 0);
-	lcd_lock(priv->spi);
+
+	ginfo("row_start: %d row_end: %d col_start: %d col_end: %d\n",
+	       row_start, row_end, col_start, col_end);
+
+	DEBUGASSERT(buffer && ((uintptr_t)buffer & 1) == 0);
+
 	st7789_setarea(priv, col_start, row_start, col_end, row_end);
+
 	/* If the stride is the same of the row, a single SPI transfer is enough.
 	 * That is always true for lcddev. For framebuffer, that indicates a full
 	 * screen or full row update.
 	 */
+
 	if (stride == row_size) {
+		/* simpler case, we can just send the whole buffer */
+
+		ginfo("Using full screen/full row mode\n");
 		st7789_wrram(priv, buffer, rows * row_size, 0, 1);
 	} else {
+		/* We have to go row by row */
+
+		ginfo("Falling-back to row by row mode\n");
 		st7789_wrram(priv, buffer, row_size, stride - row_size, rows);
 	}
-	lcd_unlock(priv->spi);
+
 	return OK;
 }
 
@@ -663,15 +822,19 @@ static int st7789_putarea(FAR struct lcd_dev_s *dev, fb_coord_t row_start, fb_co
  ****************************************************************************/
 
 #ifndef CONFIG_LCD_NOGETRUN
-static int st7789_getrun(FAR struct lcd_dev_s *dev, fb_coord_t row, fb_coord_t col, FAR uint8_t *buffer, size_t npixels)
+static int st7789_getrun(FAR struct lcd_dev_s *dev,
+                         fb_coord_t row, fb_coord_t col,
+                         FAR uint8_t *buffer, size_t npixels)
 {
 	FAR struct st7789_dev_s *priv = (FAR struct st7789_dev_s *)dev;
-	FAR uint8_t *dest = (FAR uint8_t *) buffer;
-	DEBUGASSERT(buffer && ((uintptr_t) buffer & 1) == 0);
-	lcd_lock(priv->spi);
+	FAR uint16_t *dest = (FAR uint16_t *)buffer;
+
+	ginfo("row: %d col: %d npixels: %d\n", row, col, npixels);
+	DEBUGASSERT(buffer && ((uintptr_t)buffer & 1) == 0);
+
 	st7789_setarea(priv, col, row, col + npixels - 1, row);
 	st7789_rdram(priv, dest, npixels);
-	lcd_unlock(priv->spi);
+
 	return OK;
 }
 #endif
@@ -684,13 +847,17 @@ static int st7789_getrun(FAR struct lcd_dev_s *dev, fb_coord_t row, fb_coord_t c
  *
  ****************************************************************************/
 
-static int st7789_getvideoinfo(FAR struct lcd_dev_s *dev, FAR struct fb_videoinfo_s *vinfo)
+static int st7789_getvideoinfo(FAR struct lcd_dev_s *dev,
+                               FAR struct fb_videoinfo_s *vinfo)
 {
 	DEBUGASSERT(dev && vinfo);
-	vinfo->fmt = ST7789_COLORFMT;	/* Color format: RGB16-565: RRRR RGGG GGGB BBBB */
-	vinfo->xres = ST7789_XRES;	/* Horizontal resolution in pixel columns */
-	vinfo->yres = ST7789_YRES;	/* Vertical resolution in pixel rows */
-	vinfo->nplanes = 1;			/* Number of color planes supported */
+	lcdinfo("fmt: %d xres: %d yres: %d nplanes: 1\n",
+	        ST7789_COLORFMT, ST7789_XRES, ST7789_YRES);
+
+	vinfo->fmt     = ST7789_COLORFMT;    /* Color format: RGB16-565: RRRR RGGG GGGB BBBB */
+	vinfo->xres    = ST7789_XRES;        /* Horizontal resolution in pixel columns */
+	vinfo->yres    = ST7789_YRES;        /* Vertical resolution in pixel rows */
+	vinfo->nplanes = 1;                  /* Number of color planes supported */
 	return OK;
 }
 
@@ -702,17 +869,23 @@ static int st7789_getvideoinfo(FAR struct lcd_dev_s *dev, FAR struct fb_videoinf
  *
  ****************************************************************************/
 
-static int st7789_getplaneinfo(FAR struct lcd_dev_s *dev, unsigned int planeno, FAR struct lcd_planeinfo_s *pinfo)
+static int st7789_getplaneinfo(FAR struct lcd_dev_s *dev,
+                               unsigned int planeno,
+                               FAR struct lcd_planeinfo_s *pinfo)
 {
 	FAR struct st7789_dev_s *priv = (FAR struct st7789_dev_s *)dev;
+
 	DEBUGASSERT(dev && pinfo && planeno == 0);
-	pinfo->putrun = st7789_putrun;	/* Put a run into LCD memory */
-	pinfo->putarea = st7789_putarea;	/* Put an area into LCD */
+	lcdinfo("planeno: %d bpp: %d\n", planeno, ST7789_BPP);
+
+	pinfo->putrun = st7789_putrun;                  /* Put a run into LCD memory */
+	pinfo->putarea = st7789_putarea;                /* Put an area into LCD */
 #ifndef CONFIG_LCD_NOGETRUN
-	pinfo->getrun = st7789_getrun;	/* Get a run from LCD memory */
+	pinfo->getrun = st7789_getrun;                  /* Get a run from LCD memory */
 #endif
-	pinfo->buffer = (FAR uint8_t *) priv->runbuffer;	/* Run scratch buffer */
-	pinfo->bpp = priv->bpp;		/* Bits-per-pixel */
+	pinfo->buffer = (FAR uint8_t *)priv->runbuffer; /* Run scratch buffer */
+	pinfo->bpp    = priv->bpp;                      /* Bits-per-pixel */
+	pinfo->dev    = dev;                            /* The lcd device */
 	return OK;
 }
 
@@ -723,6 +896,8 @@ static int st7789_getplaneinfo(FAR struct lcd_dev_s *dev, unsigned int planeno, 
 static int st7789_getpower(FAR struct lcd_dev_s *dev)
 {
 	FAR struct st7789_dev_s *priv = (FAR struct st7789_dev_s *)dev;
+
+	lcdinfo("power: %d\n", priv->power);
 	return priv->power;
 }
 
@@ -733,73 +908,30 @@ static int st7789_getpower(FAR struct lcd_dev_s *dev)
 static int st7789_setpower(FAR struct lcd_dev_s *dev, int power)
 {
 	FAR struct st7789_dev_s *priv = (FAR struct st7789_dev_s *)dev;
+
+	lcdinfo("power: %d\n", power);
 	DEBUGASSERT((unsigned)power <= CONFIG_LCD_MAXPOWER);
+
 	/* Set new power level */
-	lcd_lock(priv->spi);
+
 	if (power > 0) {
-		priv->config->backlight(power);
-		st7789_sendcmd(priv, ST7789_DISPON);
+		/* Turn on the display */
+
+		st7789_display(priv, true);
+
+		/* Save the power */
+
 		priv->power = power;
 	} else {
-		st7789_sendcmd(priv, ST7789_DISPOFF);
+		/* Turn off the display */
+
+		st7789_display(priv, false);
+
+		/* Save the power */
+
 		priv->power = 0;
 	}
-	lcd_unlock(priv->spi);
-	return OK;
-}
 
-/****************************************************************************
- * Name:  st7789_init
- *
- * Description:
- *   init the lcd
- *
- ****************************************************************************/
-
-static int st7789_init(FAR struct lcd_dev_s *dev)
-{
-	FAR struct st7789_dev_s *priv = (FAR struct st7789_dev_s *)dev;
-	priv->config->reset();
-	lcd_lock(priv->spi);
-	st7789_init_cmd(priv);
-	st7789_bpp(priv, ST7789_BPP);
-	st7789_sendcmd(priv, ST7789_DISPON);
-	lcd_unlock(priv->spi);
-
-	st7789_setorientation(dev, ST7789_DEFAULT_ORIENTATION);
-
-	return OK;
-}
-
-/****************************************************************************
- * Name:  st7789_setorientation
- *
- * Description:
- *   Set LCD orientation(PORTRAIT/LANDSCAPE).
- *
- ****************************************************************************/
-
-static int st7789_setorientation(FAR struct lcd_dev_s *dev, unsigned int orientation)
-{
-	FAR struct st7789_dev_s *priv = (FAR struct st7789_dev_s *)dev;
-	lcd_lock(priv->spi);
-	st7789_sendcmd(priv, ST7789_MADCTL);
-	SPI_SELECT(priv->spi, SPIDEV_DISPLAY, true);
-	priv->config->cmddata(1);
-	if (orientation == LCD_PORTRAIT) {
-		SPI_SEND(priv->spi, LCD_ST7789_DATA_PREFIX | ST7789_PORTRAIT);
-	}
-	else if (orientation == LCD_RPORTRAIT) {
-		SPI_SEND(priv->spi, LCD_ST7789_DATA_PREFIX | ST7789_RPORTRAIT);
-	}
-	else if (orientation == LCD_LANDSCAPE) {
-		SPI_SEND(priv->spi, LCD_ST7789_DATA_PREFIX | ST7789_LANDSCAPE);
-	}
-	else if (orientation == LCD_RLANDSCAPE) {
-		SPI_SEND(priv->spi, LCD_ST7789_DATA_PREFIX | ST7789_RLANDSCAPE);
-	}
-	SPI_SELECT(priv->spi, SPIDEV_DISPLAY, false);
-	lcd_unlock(priv->spi);
 	return OK;
 }
 
@@ -813,13 +945,8 @@ static int st7789_setorientation(FAR struct lcd_dev_s *dev, unsigned int orienta
 
 static int st7789_getcontrast(FAR struct lcd_dev_s *dev)
 {
-	FAR struct st7789_dev_s *priv = (FAR struct st7789_dev_s *)dev;
-	uint8_t buf[2];
-	lcd_lock(priv->spi);
-	st7789_sendcmd(priv, ST7789_RDDISBV);
-	st7789_getdata(priv, buf, 2);
-	lcd_unlock(priv->spi);
-	return buf[0] << 2 || buf[1];
+	lcdinfo("Not implemented\n");
+	return -ENOSYS;
 }
 
 /****************************************************************************
@@ -830,14 +957,11 @@ static int st7789_getcontrast(FAR struct lcd_dev_s *dev)
  *
  ****************************************************************************/
 
-static int st7789_setcontrast(FAR struct lcd_dev_s *dev, unsigned int contrast)
+static int st7789_setcontrast(FAR struct lcd_dev_s *dev,
+                              unsigned int contrast)
 {
-	FAR struct st7789_dev_s *priv = (FAR struct st7789_dev_s *)dev;
-	lcd_lock(priv->spi);
-	st7789_sendcmd(priv, ST7789_WRDISBV);
-	st7789_senddata(priv, &contrast, 1);
-	lcd_unlock(priv->spi);
-	return OK;
+	lcdinfo("contrast: %d\n", contrast);
+	return -ENOSYS;
 }
 
 /****************************************************************************
@@ -859,25 +983,47 @@ static int st7789_setcontrast(FAR struct lcd_dev_s *dev, unsigned int contrast)
  *
  ****************************************************************************/
 
-FAR struct lcd_dev_s *st7789_lcdinitialize(FAR struct spi_dev_s *spi, struct st7789_config_s *config)
+#ifdef CONFIG_LCD_DYN_ORIENTATION
+FAR struct lcd_dev_s *st7789_lcdinitialize(FAR struct spi_dev_s *spi,
+                                           uint8_t orientation,
+                                           uint16_t xoff, uint16_t yoff)
+#else
+FAR struct lcd_dev_s *st7789_lcdinitialize(FAR struct spi_dev_s *spi)
+#endif
 {
 	FAR struct st7789_dev_s *priv = &g_lcddev;
+
 	/* Initialize the driver data structure */
+
 	priv->dev.getvideoinfo = st7789_getvideoinfo;
 	priv->dev.getplaneinfo = st7789_getplaneinfo;
-	priv->dev.getpower = st7789_getpower;
-	priv->dev.setpower = st7789_setpower;
-	priv->dev.getcontrast = st7789_getcontrast;
-	priv->dev.setcontrast = st7789_setcontrast;
-	priv->dev.setorientation = st7789_setorientation;
-	priv->dev.init = st7789_init;
-	priv->spi = spi;
-	priv->config = config;
+	priv->dev.getpower     = st7789_getpower;
+	priv->dev.setpower     = st7789_setpower;
+	priv->dev.getcontrast  = st7789_getcontrast;
+	priv->dev.setcontrast  = st7789_setcontrast;
+	priv->spi              = spi;
 
-	priv->config->backlight(CONFIG_LCD_MAXPOWER);
+#ifdef CONFIG_LCD_DYN_ORIENTATION
+	g_lcddev.xoff = xoff;
+	g_lcddev.yoff = yoff;
+#endif
 
-	st7789_init(&priv->dev);
+	/* Init the hardware and clear the display */
+
+	st7789_sleep(priv, false);
+	st7789_bpp(priv, ST7789_BPP);
+#ifdef  CONFIG_LCD_DYN_ORIENTATION
+	st7789_setorientation(priv, orientation);
+#else
+	st7789_setorientation(priv);
+#endif
+#ifdef CONFIG_LCD_ST7789_DATA_ENDIAN_LITTLE
+	st7789_ramctl(priv);
+#endif
+	st7789_display(priv, true);
+	st7789_fill(priv, CONFIG_LCD_ST7789_DEFAULT_COLOR);
+
 	return &priv->dev;
 }
 
-//#endif /* CONFIG_LCD_ST7789 */
+#endif /* CONFIG_LCD_ST7789 */
