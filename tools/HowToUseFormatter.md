@@ -65,6 +65,12 @@ mechanical rules of the C coding style guide:
   the original spacing is kept, e.g. `a * b` versus `type *name`, or
   `(x) - 1` versus `(type)-1`.
 - `extern "C" {` blocks are not indented.
+- `case` blocks (`case X: {` or `case X:` followed by `{` on the next
+  line) keep the author's position of the `break;` after the block.
+- A comment between `}` and `else`/`while`, or between a control header
+  and its `{`, cannot be moved by the formatter. Such [M07] violations
+  are reported as `file:line: warning: ...` by `--check`, `--diff` and
+  `-v` (and make `--check` fail); move the comment by hand.
 - Regions between `/* *INDENT-OFF* */` and `/* *INDENT-ON* */` (or
   `// clang-format off` / `// clang-format on`) and regions guarded by
   `__ASSEMBLY__`/`__ASSEMBLER__` are left verbatim.

@@ -234,6 +234,24 @@ class FormatterTest(unittest.TestCase):
         ]).replace('\t#endif', '#endif').replace('\t\n', '\n')
         self.check(src, src)
 
+    def warnings_of(self, src):
+        warnings = []
+        cformatter.format_source(src, warnings)
+        return warnings
+
+    def test_m07_warnings(self):
+        # a comment between '}' / header and 'else' / '{' cannot be moved
+        # by the formatter: reported for a manual fix
+        src = body(['if (a) {', '\tx = 1;', '}', '/* other */',
+                    'else {', '\tx = 2;', '}'])
+        self.assertEqual([w[0] for w in self.warnings_of(src)], [7])
+        src = body(['if (a)', '\t/* comment */', '{', '\tx = 1;', '}'])
+        self.assertEqual([w[0] for w in self.warnings_of(src)], [5])
+        # conditional compilation between them is a normal pattern
+        src = body(['if (a) {', '\tx = 1;', '} else', '#endif', '{',
+                    '\tx = 2;', '}'])
+        self.assertEqual(self.warnings_of(src), [])
+
     def test_extern_c_is_not_indented(self):
         src = ('#ifdef __cplusplus\n'
                'extern "C" {\n'

@@ -96,14 +96,15 @@ TAB_WIDTH = 4
 
 
 class Tok(object):
-    __slots__ = ('kind', 'text', 'nl_before', 'ws', 'lead')
+    __slots__ = ('kind', 'text', 'nl_before', 'ws', 'lead', 'line')
 
-    def __init__(self, kind, text, nl_before, ws, lead):
+    def __init__(self, kind, text, nl_before, ws, lead, line=0):
         self.kind = kind
         self.text = text
         self.nl_before = nl_before      # newlines before the token
         self.ws = ws                    # blanks right before the token
         self.lead = lead                # indentation of its source line
+        self.line = line                # source line number (1-based)
 
     def __repr__(self):
         return 'Tok(%s, %r)' % (self.kind, self.text[:40])
@@ -126,11 +127,13 @@ def tokenize(text):
     ws = ''
     lead = ''
     line_start = True
+    line = 1
 
     while i < n:
         c = text[i]
         if c == '\n':
             nl += 1
+            line += 1
             ws = ''
             line_start = True
             i += 1
@@ -143,6 +146,7 @@ def tokenize(text):
         if m:
             # line splice outside a directive: plain line break
             nl += 1
+            line += 1
             ws = ''
             line_start = True
             i = m.end()
@@ -188,7 +192,8 @@ def tokenize(text):
         tok_text = text[i:end]
         if kind in ('PREPROC', 'COMMENT'):
             tok_text = tok_text.rstrip(' \t\r')
-        toks.append(Tok(kind, tok_text, nl, ws, lead))
+        toks.append(Tok(kind, tok_text, nl, ws, lead, line))
+        line += text.count('\n', i, end)
         nl = 0
         ws = ''
         line_start = False
@@ -580,6 +585,7 @@ class Analysis(object):
                 k = sig_back(toks, idx, self.pmatch)
                 if k >= 0 and is_ident(toks[k], 'switch'):
                     self.switch_brace.add(idx)
+        self.warnings = []          # (line, message) for a manual fix
         self.asm_region = asm_region_indices(toks) | \
             indent_off_indices(toks)
 
@@ -997,6 +1003,20 @@ def layout(toks, a):
         elif i in a.label_head:
             nl = True                                   # [R03]
 
+        # ---- [M07] violations that only moving a comment can fix -------
+        if nl and im is not None and im.kind == 'COMMENT' and \
+                i not in a.asm_region:
+            if is_op(t, '{') and cls in ('ctrl', 'switch', 'type'):
+                a.warnings.append((t.line, '[M07] opening brace cannot be '
+                                   'attached to its header: move the '
+                                   'comment'))
+            elif ptok is not None and is_op(ptok, '}') and \
+                    a.brace_class(pi) != 'init' and \
+                    (is_ident(t, 'else') or
+                     (is_ident(t, 'while') and pi in a.do_close)):
+                a.warnings.append((t.line, "[M07] '%s' should follow '}': "
+                                   'move the comment' % t.text))
+
         # ---- a closing brace returns to the outer indent ---------------
         closing = None
         if is_op(t, '}') and st.stack:
@@ -1157,8 +1177,10 @@ def _indent(toks, i, t, st, a, cls, closing):
     return st.indent()                               # [M01]
 
 
-def format_source(text):
-    """One formatting pass over *text*; returns the formatted source."""
+def format_source(text, warnings=None):
+    """One formatting pass over *text*; returns the formatted source.
+    Rule violations the formatter cannot fix are appended to *warnings*
+    as (line, message) when a list is given."""
     if not text.strip():
         return text
     toks = tokenize(text)
@@ -1168,7 +1190,10 @@ def format_source(text):
     # mark switch bodies in the brace classes used by the layout
     for idx in a.switch_brace:
         a.bclass[idx] = 'switch'
-    return layout(toks, a)
+    out = layout(toks, a)
+    if warnings is not None:
+        warnings.extend(a.warnings)
+    return out
 
 
 def token_signature(text):
@@ -1190,10 +1215,11 @@ def token_signature(text):
 
 
 class Result(object):
-    def __init__(self, path, status, message=''):
+    def __init__(self, path, status, message='', warnings=()):
         self.path = path
         self.status = status
         self.message = message
+        self.warnings = list(warnings)
 
 
 def format_file(path, check=False, backup=False, show_diff=False):
@@ -1211,8 +1237,9 @@ def format_file(path, check=False, backup=False, show_diff=False):
     if is_cplusplus(tokenize(source)):
         return Result(path, 'skipped', 'C++ source, use cxxformatter.sh')
 
+    warnings = []
     try:
-        formatted = format_source(source)
+        formatted = format_source(source, warnings)
     except Exception as e:                       # noqa: BLE001
         return Result(path, 'error', 'formatter failed: %s' % e)
 
@@ -1233,15 +1260,15 @@ def format_file(path, check=False, backup=False, show_diff=False):
     if crlf:
         formatted = formatted.replace('\n', '\r\n')
     if formatted == original:
-        return Result(path, 'unchanged')
+        return Result(path, 'unchanged', warnings=warnings)
 
     if check:
-        return Result(path, 'would-format')
+        return Result(path, 'would-format', warnings=warnings)
     if show_diff:
         diff = difflib.unified_diff(
             original.splitlines(True), formatted.splitlines(True),
             fromfile=path, tofile=path + ' (formatted)')
-        return Result(path, 'would-format', ''.join(diff))
+        return Result(path, 'would-format', ''.join(diff), warnings)
     if backup:
         with open(path + '.orig', 'w', encoding='utf-8',
                   errors='surrogateescape', newline='') as f:
@@ -1249,7 +1276,7 @@ def format_file(path, check=False, backup=False, show_diff=False):
     with open(path, 'w', encoding='utf-8', errors='surrogateescape',
               newline='') as f:
         f.write(formatted)
-    return Result(path, 'formatted')
+    return Result(path, 'formatted', warnings=warnings)
 
 
 def collect_targets(targets):
@@ -1278,8 +1305,9 @@ def main(argv=None):
     parser.add_argument('targets', nargs='+', metavar='TARGET',
                         help='.c/.h file or directory')
     parser.add_argument('--check', action='store_true',
-                        help='report files needing formatting; '
-                             'exit 1 when found (for CI)')
+                        help='report files needing formatting and rule '
+                             'violations to fix manually; exit 1 when '
+                             'found (for CI)')
     parser.add_argument('--diff', action='store_true',
                         help='print a unified diff instead of writing')
     parser.add_argument('--backup', action='store_true',
@@ -1295,6 +1323,7 @@ def main(argv=None):
 
     counts = {}
     failed = 0
+    nwarn = 0
     for path in files:
         res = format_file(path, check=args.check,
                           show_diff=args.diff, backup=args.backup)
@@ -1307,14 +1336,20 @@ def main(argv=None):
                 print(res.message if args.diff else res.path)
             elif args.verbose:
                 print('%s: %s' % (res.path, res.status))
+        nwarn += len(res.warnings)
+        if args.verbose or args.check or args.diff:
+            for line, msg in res.warnings:
+                print('%s:%d: warning: %s' % (res.path, line, msg))
 
     if not (args.check or args.diff or args.verbose):
         summary = ', '.join('%d %s' % (v, k)
                             for k, v in sorted(counts.items()))
+        if nwarn:
+            summary += ', %d warning(s) to fix manually (see -v)' % nwarn
         print('%d file(s): %s' % (len(files), summary or 'nothing'))
 
     if args.check:
-        return 1 if counts.get('would-format') or failed else 0
+        return 1 if counts.get('would-format') or failed or nwarn else 0
     return 1 if failed else 0
 
 
