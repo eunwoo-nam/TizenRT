@@ -269,6 +269,18 @@ class FormatterTest(unittest.TestCase):
                'int y = 2;\n')
         self.check(src, src)
 
+    def test_directive_with_multiline_comment(self):
+        # a block comment opened on a directive line continues the
+        # directive: its other lines are comment text, not code
+        src = ('#define A (1 << 0) /* first line\n'
+               '                    * continues */\n'
+               '#define B 2 /* x */ /* y\n'
+               '                      */\n'
+               'int x=1;\n')
+        self.check(src, src.replace('int x=1;', 'int x = 1;'))
+        toks = cformatter.tokenize(src)
+        self.assertEqual([t.kind for t in toks][:2], ['PREPROC', 'PREPROC'])
+
     def test_cplusplus_detection(self):
         toks = cformatter.tokenize('class Foo {\npublic:\n\tint x;\n};\n')
         self.assertTrue(cformatter.is_cplusplus(toks))
