@@ -1,24 +1,8 @@
 /****************************************************************************
- *
- * Copyright 2025 Samsung Electronics All Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
- * either express or implied. See the License for the specific
- * language governing permissions and limitations under the License.
- *
- ****************************************************************************/
-/****************************************************************************
  * include/nuttx/mtd/nand_scheme.h
  *
- *   Copyright (c) 2012, Atmel Corporation
+ * SPDX-License-Identifier: BSD-3-Clause
+ * SPDX-FileCopyrightText: 2012, Atmel Corporation
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -49,8 +33,8 @@
  *
  ****************************************************************************/
 
-#ifndef __INCLUDE_MTD_NAND_SCHEME_H
-#define __INCLUDE_MTD_NAND_SCHEME_H
+#ifndef __INCLUDE_NUTTX_MTD_NAND_SCHEME_H
+#define __INCLUDE_NUTTX_MTD_NAND_SCHEME_H
 
 /****************************************************************************
  * Included Files
@@ -69,19 +53,18 @@
  * Public Types
  ****************************************************************************/
 
-struct nand_scheme_s
-{
-  uint8_t bbpos;        /* Bad block position marker */
-  uint8_t eccsize;      /* Number of bytes of ECC correction */
-  uint8_t nxbytes;      /* Number of extra bytes */
+struct nand_scheme_s {
+	uint8_t bbpos;        /* Bad block position marker */
+	uint8_t eccsize;      /* Number of bytes of ECC correction */
+	uint8_t nxbytes;      /* Number of extra bytes */
 
-  /* ECC byte position offsets */
+	/* ECC byte position offsets */
 
-  uint8_t eccbytepos[CONFIG_MTD_NAND_MAXSPAREECCBYTES];
+	uint8_t eccbytepos[CONFIG_MTD_NAND_MAXSPAREECCBYTES];
 
-  /* Extra byte position offsets */
+	/* Extra byte position offsets */
 
-  uint8_t xbytepos[CONFIG_MTD_NAND_MAXSPAREEXTRABYTES];
+	uint8_t xbytepos[CONFIG_MTD_NAND_MAXSPAREEXTRABYTES];
 };
 
 /****************************************************************************
@@ -327,4 +310,4 @@ int nandscheme_build4096(FAR struct nand_scheme_s *scheme,
 #endif
 
 #endif /* __ASSEMBLY__ */
-#endif /* __INCLUDE_MTD_NAND_SCHEME_H */
+#endif /* __INCLUDE_NUTTX_MTD_NAND_SCHEME_H */

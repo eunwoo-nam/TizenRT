@@ -1,58 +1,27 @@
 /****************************************************************************
+ * include/nuttx/random.h
  *
- * Copyright 2018 Samsung Electronics All Rights Reserved.
+ * SPDX-License-Identifier: Apache-2.0
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.  The
+ * ASF licenses this file to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance with the
+ * License.  You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
- * either express or implied. See the License for the specific
- * language governing permissions and limitations under the License.
- *
- ****************************************************************************/
-/****************************************************************************
- * include/tinyara/random.h
- *
- *   Copyright (C) 2015-2017 Haltian Ltd. All rights reserved.
- *   Authors: Juha Niskanen <juha.niskanen@haltian.com>
- *            Jussi Kivilinna <jussi.kivilinna@haltian.com>
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in
- *    the documentation and/or other materials provided with the
- *    distribution.
- * 3. Neither the name NuttX nor the names of its contributors may be
- *    used to endorse or promote products derived from this software
- *    without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
- * COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
- * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
- * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
- * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
- * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
- * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the
+ * License for the specific language governing permissions and limitations
+ * under the License.
  *
  ****************************************************************************/
 
-#ifndef __INCLUDE_TINYARA_RANDOM_H
-#define __INCLUDE_TINYARA_RANDOM_H
+#ifndef __INCLUDE_NUTTX_RANDOM_H
+#define __INCLUDE_NUTTX_RANDOM_H
 
 /****************************************************************************
  * Included Files
@@ -60,8 +29,6 @@
 
 #include <tinyara/config.h>
 #include <stddef.h>
-
-#include <sys/random.h>			/* getrandom() */
 
 /****************************************************************************
  * Pre-processor Definitions
@@ -81,8 +48,8 @@
 /* Allow above macros to always exist in source without ifdefs */
 
 #ifndef CONFIG_CRYPTO_RANDOM_POOL
-#define up_rngaddint(k, x)            ((void)(k), (void)(x))
-#define up_rngaddentropy(k, buf, x)   ((void)(k), (void)(buf), (void)(x))
+#  define up_rngaddint(k, x)            ((void)(k),(void)(x))
+#  define up_rngaddentropy(k, buf, x)   ((void)(k),(void)(buf),(void)(x))
 #endif
 
 /****************************************************************************
@@ -101,9 +68,9 @@ enum rnd_source_t {
 	RND_SRC_TIME = 0,
 	RND_SRC_IRQ,
 	RND_SRC_SENSOR,
-	RND_SRC_HW,             /* unique per HW UID or coming from factory line. */
-	RND_SRC_SW,             /* unique per SW version. */
-	RND_SRC_UI              /* buttons etc. user-visible interface elements. */
+	RND_SRC_HW,      /* unique per HW UID or coming from factory line. */
+	RND_SRC_SW,      /* unique per SW version. */
+	RND_SRC_UI       /* buttons etc. user-visible interface elements. */
 };
 
 /****************************************************************************
@@ -113,7 +80,8 @@ enum rnd_source_t {
 #ifdef CONFIG_BOARD_ENTROPY_POOL
 /* Entropy pool structure can be provided by board source. Use for this is,
  * for example, allocate entropy pool from special area of RAM which content
- * is kept over system reset. */
+ * is kept over system reset.
+ */
 
 extern struct entropy_pool_s board_entropy_pool;
 #endif
@@ -131,7 +99,7 @@ extern struct entropy_pool_s board_entropy_pool;
  *   Add one integer to entropy pool, contributing a specific kind
  *   of entropy to pool.
  *
- * Parameters:
+ * Input Parameters:
  *   kindof  - Enumeration constant telling where val came from
  *   val     - Integer to be added
  *
@@ -148,7 +116,7 @@ void up_rngaddint(enum rnd_source_t kindof, int val);
  * Description:
  *   Add buffer of integers to entropy pool.
  *
- * Parameters:
+ * Input Parameters:
  *   kindof  - Enumeration constant telling where val came from
  *   buf     - Buffer of integers to be added
  *   n       - Number of elements in buf
@@ -158,7 +126,18 @@ void up_rngaddint(enum rnd_source_t kindof, int val);
  *
  ****************************************************************************/
 
-void up_rngaddentropy(enum rnd_source_t kindof, FAR const uint32_t *buf, size_t n);
+void up_rngaddentropy(enum rnd_source_t kindof, FAR const uint32_t *buf,
+                      size_t n);
+
+/****************************************************************************
+ * Name: up_rngbuf
+ *
+ * Description:
+ *   Fill a buffer of arbitrary length with randomness.
+ *
+ ****************************************************************************/
+
+void up_rngbuf(FAR void *bytes, size_t nbytes);
 
 /****************************************************************************
  * Name: up_rngreseed
@@ -180,6 +159,6 @@ void up_rngreseed(void);
 
 void up_randompool_initialize(void);
 
-#endif  /* CONFIG_CRYPTO_RANDOM_POOL */
+#endif /* CONFIG_CRYPTO_RANDOM_POOL */
 
-#endif  /* __INCLUDE_TINYARA_RANDOM_H */
+#endif /* __INCLUDE_NUTTX_RANDOM_H */

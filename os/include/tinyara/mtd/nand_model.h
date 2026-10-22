@@ -1,24 +1,8 @@
 /****************************************************************************
- *
- * Copyright 2025 Samsung Electronics All Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
- * either express or implied. See the License for the specific
- * language governing permissions and limitations under the License.
- *
- ****************************************************************************/
-/****************************************************************************
  * include/nuttx/mtd/nand_model.h
  *
- *   Copyright (c) 2012, Atmel Corporation
+ * SPDX-License-Identifier: BSD-3-Clause
+ * SPDX-FileCopyrightText: 2012, Atmel Corporation
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -49,8 +33,8 @@
  *
  ****************************************************************************/
 
-#ifndef __INCLUDE_MTD_NAND_MODEL_H
-#define __INCLUDE_MTD_NAND_MODEL_H
+#ifndef __INCLUDE_NUTTX_MTD_NAND_MODEL_H
+#define __INCLUDE_NUTTX_MTD_NAND_MODEL_H
 
 /****************************************************************************
  * Included Files
@@ -83,18 +67,17 @@
 
 /* Describes a particular model of NAND FLASH device. */
 
-struct nand_model_s
-{
-  uint8_t  devid;         /* Identifier for the device */
-  uint8_t  options;       /* Special options for the NandFlash */
-  uint16_t pagesize;      /* Size of the data area of a page in bytes */
-  uint16_t sparesize;     /* Size of the spare area of a page in bytes */
-  uint16_t devsize;       /* Size of the device in MB */
-  uint16_t blocksize;     /* Size of one block in kilobytes */
+struct nand_model_s {
+	uint8_t  devid;         /* Identifier for the device */
+	uint8_t  options;       /* Special options for the NandFlash */
+	uint16_t pagesize;      /* Size of the data area of a page in bytes */
+	uint16_t sparesize;     /* Size of the spare area of a page in bytes */
+	uint16_t devsize;       /* Size of the device in MB */
+	uint16_t blocksize;     /* Size of one block in kilobytes */
 
-  /* Spare area placement scheme */
+	/* Spare area placement scheme */
 
-  FAR const struct nand_scheme_s *scheme;
+	FAR const struct nand_scheme_s *scheme;
 };
 
 /****************************************************************************
@@ -392,4 +375,4 @@ unsigned int nandmodel_getsparesize(FAR const struct nand_model_s *model);
 #endif
 
 #endif /* __ASSEMBLY__ */
-#endif /* __INCLUDE_MTD_NAND_MODEL_H */
+#endif /* __INCLUDE_NUTTX_MTD_NAND_MODEL_H */

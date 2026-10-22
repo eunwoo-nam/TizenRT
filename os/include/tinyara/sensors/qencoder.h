@@ -1,57 +1,27 @@
 /****************************************************************************
+ * include/nuttx/sensors/qencoder.h
  *
- * Copyright 2016 Samsung Electronics All Rights Reserved.
+ * SPDX-License-Identifier: Apache-2.0
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.  The
+ * ASF licenses this file to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance with the
+ * License.  You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
- * either express or implied. See the License for the specific
- * language governing permissions and limitations under the License.
- *
- ****************************************************************************/
-/****************************************************************************
- * include/tinyara/sensors/qencoder.h
- *
- *   Copyright (C) 2012 Gregory Nutt. All rights reserved.
- *   Author: Gregory Nutt <gnutt@nuttx.org>
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in
- *    the documentation and/or other materials provided with the
- *    distribution.
- * 3. Neither the name NuttX nor the names of its contributors may be
- *    used to endorse or promote products derived from this software
- *    without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
- * COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
- * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
- * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
- * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
- * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
- * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the
+ * License for the specific language governing permissions and limitations
+ * under the License.
  *
  ****************************************************************************/
 
-#ifndef __INCLUDE_TINYARA_SENSORS_QENCODER_H
-#define __INCLUDE_TINYARA_SENSORS_QENCODER_H
+#ifndef __INCLUDE_NUTTX_SENSORS_QENCODER_H
+#define __INCLUDE_NUTTX_SENSORS_QENCODER_H
 
 /****************************************************************************
  * Included Files
@@ -60,42 +30,78 @@
 #include <tinyara/config.h>
 #include <tinyara/fs/ioctl.h>
 
-#ifdef CONFIG_QENCODER
+#ifdef CONFIG_SENSORS_QENCODER
 
 /****************************************************************************
- * Pre-Processor Definitions
+ * Pre-processor Definitions
  ****************************************************************************/
+
 /* Configuration ************************************************************
- * CONFIG_QENCODER - Enables support for the quadrature encoder upper half
+ * CONFIG_SENSORS_QENCODER - Enables support for the quadrature encoder upper
+ * half
  */
 
 /* IOCTL Commands ***********************************************************/
+
 /* The Quadrature Encode module uses a standard character driver framework.
- * However, since the driver is a devices control interface and not a data
- * transfer interface, the majority of the functionality is implemented in
- * driver ioctl calls.  The PWM ioctal commands are lised below:
+ * However, since the driver is a device control interface rather than a
+ * data transfer interface, the majority of the functionality is implemented
+ * in driver ioctl calls.  The PWM ioctl commands are listed below:
  *
  * QEIOC_POSITION - Get the current position from the encoder.
  *   Argument: int32_t pointer to the location to return the position.
  * QEIOC_RESET - Reset the position to zero.
  *   Argument: None
+ * QEIOC_SETPOSMAX - Set the maximum position for the encoder.
+ *   Argument: uint32_t maximum position
+ * QEIOC_SETINDEX - Set the index position for the encoder.
+ *   Argument: uint32_t index position
+ * QEIOC_GETINDEX - Get the index position and count of the encoder.
+ *   The structure also contains current position so QEIOC_POSITION
+ *   is not required when QEIOC_GETINDEX is used.
+ *   Argument: qe_index_s structure (refer below)
  */
 
-#define QEIOC_POSITION     _QEIOC(0x0001)	/* Arg: int32_t* pointer */
-#define QEIOC_RESET        _QEIOC(0x0002)	/* Arg: None */
+#define QEIOC_POSITION     _QEIOC(0x0001) /* Arg: int32_t* pointer */
+#define QEIOC_RESET        _QEIOC(0x0002) /* Arg: None */
+#define QEIOC_SETPOSMAX    _QEIOC(0x0003) /* Arg: uint32_t */
+#define QEIOC_SETINDEX     _QEIOC(0x0004) /* Arg: uint32_t */
+#define QEIOC_GETINDEX     _QEIOC(0x0005) /* Arg: qe_index_s struct */
 
-/* User defined ioctl cms should use QEIOC_USER like this:
- *
- * #define QEIOC_MYCMD1    _QEIOC(QEIOC_USER)
- * #define QEIOC_MYCMD2    _QEIOC(QEIOC_USER+1)
- * ...
+#define QE_FIRST           0x0001         /* First required command */
+#define QE_NCMDS           5              /* 5 required commands */
+
+/* User defined ioctl commands are also supported. These will be forwarded
+ * by the upper-half QE driver to the lower-half QE driver via the ioctl()
+ * method of the QE lower-half interface.  However, the lower-half driver
+ * must reserve a block of commands as follows in order prevent IOCTL
+ * command numbers from overlapping.
  */
 
-#define QEIOC_USER         0x0003
+/* See arch/arm/src/tiva/tiva_qencoder.h (Not usable at that location) */
+
+#define QE_TIVA_FIRST      (QE_FIRST + QE_NCMDS)
+#define QE_TIVA_NCMDS      5
+
+/* See include/nuttx/sensors/as5048b.h */
+
+#define QE_AS5048B_FIRST   (QE_TIVA_FIRST + QE_TIVA_NCMDS)
+#define QE_AS5048B_NCMDS   4
+
+/* See arch/arm/src/imxrt/imxrt_enc.h */
+
+#define QE_IMXRT_FIRST     (QE_AS5048B_FIRST + QE_AS5048B_NCMDS)
+#define QE_IMXRT_NCMDS     7
+
+/* See include/nuttx/sensors/as5048a.h */
+
+#define QE_AS5048A_FIRST   (QE_IMXRT_FIRST + QE_IMXRT_NCMDS)
+#define QE_AS5048A_NCMDS   4
 
 /****************************************************************************
  * Public Types
  ****************************************************************************/
+
 /* This is the vtable that is used to by the upper half quadrature encoder
  * to call back into the lower half quadrature encoder.
  */
@@ -110,23 +116,43 @@ struct qe_ops_s {
 	CODE int (*setup)(FAR struct qe_lowerhalf_s *lower);
 
 	/* This method is called when the driver is closed.  The lower half driver
-	 * should stop data collection, free any resources, disable timer hardware, and
-	 * put the system into the lowest possible power usage state
+	 * should stop data collection, free any resources, disable timer hardware,
+	 * and put the system into the lowest possible power usage state
 	 */
 
 	CODE int (*shutdown)(FAR struct qe_lowerhalf_s *lower);
 
 	/* Return the current position measurement. */
 
-	CODE int (*position)(FAR struct qe_lowerhalf_s *lower, int32_t *pos);
+	CODE int (*position)(FAR struct qe_lowerhalf_s *lower, FAR int32_t *pos);
+
+	/* Set the maximum encoder position. */
+
+	CODE int (*setposmax)(FAR struct qe_lowerhalf_s *lower, uint32_t pos);
 
 	/* Reset the position measurement to zero. */
 
 	CODE int (*reset)(FAR struct qe_lowerhalf_s *lower);
 
+	/* Set the index pin position */
+
+	CODE int (*setindex)(FAR struct qe_lowerhalf_s *lower, uint32_t pos);
+
 	/* Lower-half logic may support platform-specific ioctl commands */
 
-	CODE int (*ioctl)(FAR struct qe_lowerhalf_s *lower, int cmd, unsigned long arg);
+	CODE int (*ioctl)(FAR struct qe_lowerhalf_s *lower,
+	                  int cmd, unsigned long arg);
+};
+
+/* Structure qe_index_s is used for QEIOC_GETINDEX call. This call returns
+ * current encoder position, the last index position and number of index
+ * occurrences.
+ */
+
+struct qe_index_s {
+	int32_t qenc_pos;     /* Qencoder actual position */
+	int32_t indx_pos;     /* Index last position */
+	int16_t indx_cnt;     /* Number of index occurrences */
 };
 
 /* This is the interface between the lower half quadrature encoder driver
@@ -135,9 +161,9 @@ struct qe_ops_s {
  * quadrature encoder driver is registered.
  *
  * Normally that lower half logic will have its own, custom state structure
- * that is simply cast to struct qe_lowerhalf_s.  In order to perform such casts,
- * the initial fields of the custom state structure match the initial fields
- * of the following generic lower half state structure.
+ * that is simply cast to struct qe_lowerhalf_s.  In order to perform such
+ * casts, the initial fields of the custom state structure match the initial
+ * fields of the following generic lower half state structure.
  */
 
 struct qe_lowerhalf_s {
@@ -150,7 +176,6 @@ struct qe_lowerhalf_s {
 	/* The custom timer state structure may include additional fields after
 	 * the pointer to the callback structure.
 	 */
-
 };
 
 /****************************************************************************
@@ -159,7 +184,8 @@ struct qe_lowerhalf_s {
 
 #ifdef __cplusplus
 #define EXTERN extern "C"
-extern "C" {
+extern "C"
+{
 #else
 #define EXTERN extern
 #endif
@@ -183,12 +209,12 @@ extern "C" {
  *
  ****************************************************************************/
 
-EXTERN int qe_register(FAR const char *devpath, FAR struct qe_lowerhalf_s *lower);
+int qe_register(FAR const char *devpath, FAR struct qe_lowerhalf_s *lower);
 
 #undef EXTERN
 #ifdef __cplusplus
 }
 #endif
 
-#endif							/* CONFIG_QENCODER */
-#endif							/* __INCLUDE_TINYARA_SENSORS_QENCODER_H */
+#endif /* CONFIG_SENSORS_QENCODER */
+#endif /* __INCLUDE_NUTTX_SENSORS_QENCODER_H */

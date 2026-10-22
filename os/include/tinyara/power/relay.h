@@ -1,25 +1,9 @@
 /****************************************************************************
+ * include/nuttx/power/relay.h
  *
- * Copyright 2016 Samsung Electronics All Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
- * either express or implied. See the License for the specific
- * language governing permissions and limitations under the License.
- *
- ****************************************************************************/
-/****************************************************************************
- * TinyAra Relay Interfaces
- *
- *   Copyright (C) 2015 Max Nekludov. All rights reserved.
- *   Author: Max Nekludov <macscomp@gmail.com>
+ * SPDX-License-Identifier: BSD-3-Clause
+ * SPDX-FileCopyrightText: 2015 Max Nekludov. All rights reserved.
+ * SPDX-FileContributor: Max Nekludov <macscomp@gmail.com>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -50,8 +34,8 @@
  *
  ****************************************************************************/
 
-#ifndef __INCLUDE_TINYARA_POWER_RELAY_H
-#define __INCLUDE_TINYARA_POWER_RELAY_H
+#ifndef __INCLUDE_NUTTX_POWER_RELAY_H
+#define __INCLUDE_NUTTX_POWER_RELAY_H
 
 /****************************************************************************
  * Included Files
@@ -61,21 +45,102 @@
 
 #include <stdint.h>
 
+#include <tinyara/mutex.h>
 #include <tinyara/fs/ioctl.h>
 
 /****************************************************************************
  * Pre-Processor Definitions
  ****************************************************************************/
+
 /* IOCTL Commands ***********************************************************/
 
-#define RELAYIOC_CTRL   _RELAYIOC(0x0001)	/* Relay control
-											 * IN: unsigned long integer
-											 *     0=open
-											 *     1=close
-											 * OUT: None */
+#define RELAYIOC_SET    _RELAYIOC(0x0001) /* Relay state set
+                                           * IN: pointer of bool
+                                           *     false=disable, open
+                                           *     true=enable, close
+                                           * OUT: None */
+
+#define RELAYIOC_GET    _RELAYIOC(0x0002) /* Relay state get
+                                           * IN: pointer of bool
+                                           * OUT:
+                                           *     false=disable, open
+                                           *     true=enable, close */
 
 /****************************************************************************
  * Public Types
  ****************************************************************************/
 
-#endif							/* __INCLUDE_TINYARA_POWER_RELAY_H */
+struct relay_dev_s;
+struct relay_ops_s {
+	CODE int (*set)(FAR struct relay_dev_s *dev, bool onoff);
+	CODE int (*get)(FAR struct relay_dev_s *dev, FAR bool *onoff);
+	CODE int (*ioctl)(FAR struct relay_dev_s *dev, int cmd,
+	                  unsigned long arg);
+};
+
+struct relay_dev_s {
+	FAR const struct relay_ops_s *ops;
+	mutex_t                       lock;
+};
+
+/****************************************************************************
+ * Public Function Prototypes
+ ****************************************************************************/
+
+#ifdef __cplusplus
+#define EXTERN extern "C"
+extern "C"
+{
+#else
+#define EXTERN extern
+#endif
+
+/****************************************************************************
+ * Name: relay_register
+ *
+ * Description:
+ *   Register the relay driver to the vfs.
+ *
+ * Input Parameters:
+ *   dev     - the relay device
+ *   devname - the relay device name
+ *
+ * Returned Value:
+ *   Zero (OK) on success; a negated errno value on failure.
+ *
+ ****************************************************************************/
+
+#ifdef CONFIG_RELAY
+int relay_register(FAR struct relay_dev_s *dev, FAR const char *devname);
+#endif
+
+/****************************************************************************
+ * Name: relay_gpio_register
+ *
+ * Description:
+ *   Register the relay device based on the ioexpander device
+ *
+ * Input Parameters:
+ *   iodev     - The ioexpander dev pointer.
+ *   iopin     - The relay gpio pin number.
+ *   ioinvert  - true : enable (relay close) is low , disable (relay open)
+ *                      is high.
+ *               false: enable (rekat close) is high, disable (relay open)
+ *                      is low.
+ *   devname   - The relay device name.
+ *
+ * Returned Value:
+ *   Zero (OK) on success; a negated errno value on failure.
+ *
+ ****************************************************************************/
+
+#ifdef CONFIG_RELAY_GPIO
+int relay_gpio_register(FAR struct ioexpander_dev_s *iodev, uint8_t iopin,
+                        bool ioinvert, FAR const char *devname);
+#endif
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* __INCLUDE_NUTTX_POWER_RELAY_H */
