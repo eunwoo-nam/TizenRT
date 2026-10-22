@@ -1,22 +1,7 @@
 /****************************************************************************
- *
- * Copyright 2023 Samsung Electronics All Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
- * either express or implied. See the License for the specific
- * language governing permissions and limitations under the License.
- *
- ****************************************************************************/
-/****************************************************************************
  * arch/arm/src/armv7-a/arm_fpuconfig.S
+ *
+ * SPDX-License-Identifier: Apache-2.0
  *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -40,7 +25,8 @@
  ****************************************************************************/
 
 #include <tinyara/config.h>
-#include "cp15.h"
+
+#include <arch/irq.h>
 
 #ifdef CONFIG_ARCH_FPU
 
@@ -64,6 +50,8 @@
  ****************************************************************************/
 
 	.text
+	.syntax	unified
+	.arm
 
 /****************************************************************************
  * Public Functions
@@ -78,7 +66,6 @@
  ****************************************************************************/
 
 	.globl	arm_fpuconfig
-	.section	.vectors, "ax"
 	.type	arm_fpuconfig, %function
 
 arm_fpuconfig:
@@ -90,6 +77,13 @@ arm_fpuconfig:
 	mcr		CP15_CPACR(r0)
 
 	/* Enable access to CP10 and CP11 in CP15.NSACR */
+
+#ifdef CONFIG_ARCH_TRUSTZONE_SECURE
+	mrc		CP15_NSACR(r0)
+	orr		r0, r0, #0xc00
+	mcr		CP15_NSACR(r0)
+#endif
+
 	/* REVISIT: Do we need to do this? */
 
 	/* Set FPEXC.EN (B30) */

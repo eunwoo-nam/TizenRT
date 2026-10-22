@@ -1,22 +1,7 @@
 /****************************************************************************
- *
- * Copyright 2023 Samsung Electronics All Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
- * either express or implied. See the License for the specific
- * language governing permissions and limitations under the License.
- *
- ****************************************************************************/
-/****************************************************************************
  * arch/arm/src/armv7-a/arm_pgalloc.c
+ *
+ * SPDX-License-Identifier: Apache-2.0
  *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -53,6 +38,7 @@
 
 #include "mmu.h"
 #include "pgalloc.h"
+#include "sched/sched.h"
 
 #ifdef CONFIG_BUILD_KERNEL
 
@@ -70,12 +56,8 @@
 
 static uintptr_t alloc_pgtable(void)
 {
-	irqstate_t flags;
 	uintptr_t paddr;
 	uint32_t *l2table;
-#ifndef CONFIG_ARCH_PGPOOL_MAPPING
-	uint32_t l1save;
-#endif
 
 	/* Allocate one physical page for the L2 page table */
 
@@ -84,19 +66,9 @@ static uintptr_t alloc_pgtable(void)
 	if (paddr) {
 		DEBUGASSERT(MM_ISALIGNED(paddr));
 
-		flags = enter_critical_section();
-
-#ifdef CONFIG_ARCH_PGPOOL_MAPPING
 		/* Get the virtual address corresponding to the physical page address */
 
 		l2table = (uint32_t *)arm_pgvaddr(paddr);
-#else
-		/* Temporarily map the page into the virtual address space */
-
-		l1save = mmu_l1_getentry(ARCH_SCRATCH_VBASE);
-		mmu_l1_setentry(paddr & ~SECTION_MASK, ARCH_SCRATCH_VBASE, MMU_MEMFLAGS);
-		l2table = (uint32_t *)(ARCH_SCRATCH_VBASE | (paddr & SECTION_MASK));
-#endif
 
 		/* Initialize the page table */
 
@@ -106,14 +78,8 @@ static uintptr_t alloc_pgtable(void)
 		 * memory.
 		 */
 
-		up_flush_dcache((uintptr_t)l2table, (uintptr_t)l2table + MM_PGSIZE);
-
-#ifndef CONFIG_ARCH_PGPOOL_MAPPING
-		/* Restore the scratch section page table entry */
-
-		mmu_l1_restore(ARCH_SCRATCH_VBASE, l1save);
-#endif
-		leave_critical_section(flags);
+		up_flush_dcache((uintptr_t)l2table,
+		                (uintptr_t)l2table + MM_PGSIZE);
 	}
 
 	return paddr;
@@ -128,12 +94,11 @@ static uintptr_t alloc_pgtable(void)
  *
  ****************************************************************************/
 
-static int get_pgtable(group_addrenv_t *addrenv, uintptr_t vaddr)
+static int get_pgtable(arch_addrenv_t *addrenv, uintptr_t vaddr)
 {
 	uint32_t l1entry;
 	uintptr_t paddr;
 	unsigned int hpoffset;
-	unsigned int hpndx;
 
 	/* The current implementation only supports extending the user heap
 	 * region as part of the implementation of user sbrk().
@@ -148,8 +113,7 @@ static int get_pgtable(group_addrenv_t *addrenv, uintptr_t vaddr)
 		return 0;
 	}
 
-	hpndx = hpoffset >> 20;
-	l1entry = (uintptr_t) addrenv->heap[hpndx];
+	l1entry = (uintptr_t)mmu_l1_getentry(vaddr);
 	if (l1entry == 0) {
 		/* No page table has been allocated... allocate one now */
 
@@ -160,11 +124,10 @@ static int get_pgtable(group_addrenv_t *addrenv, uintptr_t vaddr)
 			 */
 
 			l1entry = paddr | MMU_L1_PGTABFLAGS;
-			addrenv->heap[hpndx] = (uintptr_t *)l1entry;
 
 			/* And instantiate the modified environment */
 
-			up_addrenv_select(addrenv, NULL);
+			up_addrenv_select(addrenv);
 		}
 	}
 
@@ -210,28 +173,22 @@ static int get_pgtable(group_addrenv_t *addrenv, uintptr_t vaddr)
 
 uintptr_t pgalloc(uintptr_t brkaddr, unsigned int npages)
 {
-	struct tcb_s *tcb = sched_self();
-	struct task_group_s *group;
+	struct tcb_s *tcb = this_task();
+	struct arch_addrenv_s *addrenv;
 	uint32_t *l2table;
-	irqstate_t flags;
 	uintptr_t paddr;
-#ifndef CONFIG_ARCH_PGPOOL_MAPPING
-	uint32_t l1save;
-#endif
 	unsigned int index;
 
-	binfo("tcb->pid=%d tcb->group=%p\n", tcb->pid, tcb->group);
+	binfo("tcb->pid=%d tcb->group=%p\n", tcb->pid, tcb->addrenv_own);
 	binfo("brkaddr=%x npages=%d\n", brkaddr, npages);
-	DEBUGASSERT(tcb && tcb->group);
-	group = tcb->group;
+	DEBUGASSERT(tcb && tcb->addrenv_own);
+	addrenv = &tcb->addrenv_own->addrenv;
 
 	/* The current implementation only supports extending the user heap
 	 * region as part of the implementation of user sbrk().  This function
 	 * needs to be expanded to also handle (1) extending the user stack
 	 * space and (2) extending the kernel memory regions as well.
 	 */
-
-	DEBUGASSERT((group->tg_flags & GROUP_FLAG_ADDRENV) != 0);
 
 	/* brkaddr = 0 means that no heap has yet been allocated */
 
@@ -245,38 +202,22 @@ uintptr_t pgalloc(uintptr_t brkaddr, unsigned int npages)
 	for (; npages > 0; npages--) {
 		/* Get the physical address of the level 2 page table */
 
-		paddr = get_pgtable(&group->tg_addrenv, brkaddr);
+		paddr = get_pgtable(addrenv, brkaddr);
 		binfo("l2 page table (paddr=%x)\n", paddr);
 		binfo("brkaddr=%x\n", brkaddr);
 		if (paddr == 0) {
 			return 0;
 		}
 
-		flags = enter_critical_section();
-
-#ifdef CONFIG_ARCH_PGPOOL_MAPPING
 		/* Get the virtual address corresponding to the physical page address */
 
 		l2table = (uint32_t *)arm_pgvaddr(paddr);
-#else
-		/* Temporarily map the level 2 page table into the "scratch" virtual
-		 * address space
-		 */
-
-		l1save = mmu_l1_getentry(ARCH_SCRATCH_VBASE);
-		mmu_l1_setentry(paddr & ~SECTION_MASK, ARCH_SCRATCH_VBASE, MMU_MEMFLAGS);
-		l2table = (uint32_t *)(ARCH_SCRATCH_VBASE | (paddr & SECTION_MASK));
-#endif
 
 		/* Back up L2 entry with physical memory */
 
 		paddr = mm_pgalloc(1);
 		binfo("a new page (paddr=%x)\n", paddr);
 		if (paddr == 0) {
-#ifndef CONFIG_ARCH_PGPOOL_MAPPING
-			mmu_l1_restore(ARCH_SCRATCH_VBASE, l1save);
-#endif
-			leave_critical_section(flags);
 			return 0;
 		}
 
@@ -297,17 +238,11 @@ uintptr_t pgalloc(uintptr_t brkaddr, unsigned int npages)
 		 * memory.
 		 */
 
-		up_flush_dcache((uintptr_t)&l2table[index], (uintptr_t)&l2table[index] + sizeof(uint32_t));
-
-#ifndef CONFIG_ARCH_PGPOOL_MAPPING
-		/* Restore the scratch L1 page table entry */
-
-		mmu_l1_restore(ARCH_SCRATCH_VBASE, l1save);
-#endif
-		leave_critical_section(flags);
+		up_flush_dcache((uintptr_t)&l2table[index],
+		                (uintptr_t)&l2table[index] + sizeof(uint32_t));
 	}
 
 	return brkaddr;
 }
 
-#endif							/* CONFIG_BUILD_KERNEL */
+#endif /* CONFIG_BUILD_KERNEL */
