@@ -156,6 +156,33 @@ scanned for numbers split at the exponent sign; none is left.
   the conditions of the nuttx-apps Makefile; `fork.c` and `multiuser.c`
   (TizenRT additions) are kept but not built.
 
+## License headers
+
+Samsung Electronics Apache 2.0 headers are applied with
+`tools/license/license_manager.py` of branch
+`agent/261021_license-manager` (12777249), used from a separate
+checkout as the formatter:
+
+| Files | Count | Header |
+|---|---|---|
+| TizenRT files that had a Samsung header on master | 1122 | the master header, same text and year, on top of the NuttX header |
+| TizenRT files without a Samsung header but with a NuttX license | 13 | `license_manager.py add` (year of the first git add: 2023 ×10, 2016 ×1, 2026 ×2) |
+| New files with a NuttX Apache or a third-party license, and 9 data headers without a license | 2548 | `license_manager.py add --year 2026`; for types the tool does not know (.S, .ld, .defs, Makefile.*, C++ headers without extension) the tool's own functions |
+| Kconfig, .gitignore, .csv, .patch, docs, defconfig | - | unchanged |
+
+Only the header is added: each file is the previous file with the header
+in front of it, codesim results and cformatter are unchanged, and the four
+QEMU configurations still pass.
+
+`license_manager.py check` takes the year of the first `git add` of the
+current path (no `--follow`), so 501 files are reported as YEAR_MISMATCH
+although their header follows the rules above: files moved by this
+migration (430), renamed earlier in the TizenRT history (25), already
+different on master (19) and new NuttX files on paths TizenRT had
+deleted (27).  Do not run `license_manager.py fix` on them.  The list,
+the third-party licensed files and the files without a license are in
+[NuttX-12.13.0-License-Warnings.md](NuttX-12.13.0-License-Warnings.md).
+
 ## Known gaps
 
 - Only qemu-armv7a and mps2-an521 are ported.  The other TizenRT boards
