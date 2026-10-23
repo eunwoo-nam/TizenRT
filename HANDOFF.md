@@ -57,6 +57,7 @@ library, drivers: per group).
 | c80d1840 8e5f6d3e | os/board: boardctl.c move, qemu-armv7a + mps2-an521 + Board.mk/Makefile |
 | 422cae36 | Kconfig integration (os/Kconfig, Kconfig.debug, arch, arm, board, adapted NuttX Kconfigs, apps_entry) |
 | 0f89d2cf | re-format the 9 files with exponent numbers after the cformatter fix 51e698d9 |
+| 90a584b6 | license ②: Samsung header added to 2548 new NuttX files (2026) and 13 existing NuttX-licensed files (git add year); docs/NuttX-12.13.0-License-Warnings.md; license sections in the migration notes and the report |
 | 90ad849c | license ①: Samsung headers of 1122 existing files restored from master (same text/year, 665 same path + 457 moved) |
 | ceb8595e | docs/NuttX-12.13.0-Migration-Report.md: final report in Korean (results rebuilt and run from 28d774bd, user decisions, own decisions with reasons, deviations); test group counts corrected to 33/31 (34/32 counted the argv[0] line) |
 | 1268b92d | docs/NuttX-12.13.0-Migration.md (mapping, rules, exclusions, intentional differences, known gaps) |
@@ -112,7 +113,7 @@ the formatter (`1e - 1`); `ppnum.py` (see Tools) scans for that.
   `CONFIG_NFILE_DESCRIPTORS`/`CONFIG_NFILE_STREAMS` (removed in NuttX) are
   still used by le_tc, ftpc, libcoap, lwm2m examples and the vi Kconfig.
 
-## License step (in progress)
+## License step (done)
 
 User decisions (license):
 - Tool: `tools/license/license_manager.py` of branch
@@ -136,17 +137,27 @@ YEAR_MISMATCH and `fix` would rewrite their year.  The clone was shallow;
 `git fetch --unshallow --filter=blob:none origin` gives the full history
 the tool needs.
 
-State: ① done (90ad849c).  Next ②: `lic.py add` (tool `add --year 2026`
-for supported types, tool functions for the others), warnings doc
-docs/NuttX-12.13.0-License-Warnings.md, doc updates, verification (lic.py
-verify, tool check with and without --year, nxsync verify, cformatter,
-4 QEMU configs).
+State: ① 90ad849c, ② 90a584b6, both pushed.  Results:
+- lic.py verify: every file is the previous file + header (bad 0).
+- `license_manager.py check --year 2026` on the new files: all OK.
+- `license_manager.py check` (no year, full history, 3615 files):
+  Missing 0, YEAR_MISMATCH 501 = W4 of the warnings doc (moved 430,
+  history rename 25, master mismatch 19, re-added path 27).
+- nxsync verify 3858/24 unchanged (build files compared without the
+  leading Samsung block), cformatter unchanged, 4 QEMU configs pass
+  (33/31 groups); qemu-armv7a/ostest rechecked after the last change.
+- User decisions (2nd round): the 11 existing files without a Samsung
+  header use the git add year (2023, sched_yield.c 2016); the 27 new
+  files on deleted paths keep 2026 (W4).
 
 `$S/nxsync/lic.py classify|restore|add|verify` (not committed): groups
 A (restore, 1122), B (existing + NuttX license, 13), C1 (new NuttX
 Apache, 2408), C2 (new third-party, 131), C3 (new data .h, 9), skip 280;
 report in $S/nxsync/reports/lic.json; LIC_PRE=<commit before the license
-commits> (9951064d) when re-run after a commit.
+commits> (9951064d) when re-run after a commit.  `lic_w4.py` explains the
+tool's YEAR_MISMATCH list ($S/lic_mismatch.txt) and `lic_doc.py` writes
+the warnings doc.  dockerd dies with the worker: restart it with
+`(dockerd > $S/dockerd.log 2>&1 &)` before building.
 
 ## Next steps
 
