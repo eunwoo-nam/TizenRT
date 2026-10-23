@@ -1,23 +1,5 @@
 /****************************************************************************
- *
- * Copyright 2026 Samsung Electronics All Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
- * either express or implied. See the License for the specific
- * language governing permissions and limitations under the License.
- *
- ****************************************************************************/
-
-/****************************************************************************
- * apps/examples/testcase/ostest/dev_null.c
+ * apps/testing/ostest/dev_null.c
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -63,39 +45,36 @@ static FAR char buffer[1024];
 
 int dev_null_test(void)
 {
-  int nbytes;
-  int fd;
+	int nbytes;
+	int fd;
 
-  fd = open("/dev/null", O_RDWR);
-  if (fd < 0)
-    {
-      printf("dev_null: ERROR Failed to open /dev/null\n");
-      ASSERT(false);
-      return -1;
-    }
+	fd = open("/dev/null", O_RDWR);
+	if (fd < 0) {
+		printf("dev_null: ERROR Failed to open /dev/null\n");
+		ASSERT(false);
+		return -1;
+	}
 
-  nbytes = read(fd, buffer, 1024);
-  if (nbytes < 0)
-    {
-      printf("dev_null: ERROR Failed to read from /dev/null\n");
-      ASSERT(false);
-      close(fd);
-      return -1;
-    }
+	nbytes = read(fd, buffer, 1024);
+	if (nbytes < 0) {
+		printf("dev_null: ERROR Failed to read from /dev/null\n");
+		ASSERT(false);
+		close(fd);
+		return -1;
+	}
 
-  printf("dev_null: Read %d bytes from /dev/null\n", nbytes);
+	printf("dev_null: Read %d bytes from /dev/null\n", nbytes);
 
-  nbytes = write(fd, buffer, 1024);
-  if (nbytes < 0)
-    {
-      printf("dev_null: ERROR Failed to write to /dev/null\n");
-      ASSERT(false);
-      close(fd);
-      return -1;
-    }
+	nbytes = write(fd, buffer, 1024);
+	if (nbytes < 0) {
+		printf("dev_null: ERROR Failed to write to /dev/null\n");
+		ASSERT(false);
+		close(fd);
+		return -1;
+	}
 
-  printf("dev_null: Wrote %d bytes to /dev/null\n", nbytes);
+	printf("dev_null: Wrote %d bytes to /dev/null\n", nbytes);
 
-  close(fd);
-  return 0;
+	close(fd);
+	return 0;
 }
