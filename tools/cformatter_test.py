@@ -281,6 +281,17 @@ class FormatterTest(unittest.TestCase):
         toks = cformatter.tokenize(src)
         self.assertEqual([t.kind for t in toks][:2], ['PREPROC', 'PREPROC'])
 
+    def test_number_with_exponent_sign(self):
+        # the sign of an exponent is part of the number: '1e - 1' does
+        # not compile ("exponent has no digits")
+        src = ('double a[]={1e-1,1E+16,0x1p-3,.5e+2f};\n'
+               'int b=c-1;\n')
+        self.check(src, 'double a[] = {1e-1, 1E+16, 0x1p-3, .5e+2f};\n'
+                        'int b = c - 1;\n')
+        toks = cformatter.tokenize('x=1e-1+e-1;\n')
+        self.assertEqual([t.text for t in toks if t.kind == 'NUM'],
+                         ['1e-1', '1'])
+
     def test_cplusplus_detection(self):
         toks = cformatter.tokenize('class Foo {\npublic:\n\tint x;\n};\n')
         self.assertTrue(cformatter.is_cplusplus(toks))
