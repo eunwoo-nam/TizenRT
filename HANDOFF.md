@@ -57,6 +57,7 @@ library, drivers: per group).
 | c80d1840 8e5f6d3e | os/board: boardctl.c move, qemu-armv7a + mps2-an521 + Board.mk/Makefile |
 | 422cae36 | Kconfig integration (os/Kconfig, Kconfig.debug, arch, arm, board, adapted NuttX Kconfigs, apps_entry) |
 | 0f89d2cf | re-format the 9 files with exponent numbers after the cformatter fix 51e698d9 |
+| 3af7c335 | apps/examples/testcase/ostest ← nuttx-apps 12.13.0 testing/ostest (entry point stays `ostest_main`, TizenRT Make.defs with the nuttx-apps conditions, fork.c/multiuser.c kept but not built) |
 | 1612c7b6 | build system: tools/Config.mk, mkdeps/mkconfig/cfgdefine, *.defs, Makefile.unix, Directories/FlatLibs/LibTargets.mk, arch/arm/src/Makefile, drivers/fs makefiles, include guards for not-synced headers, include/queue.h, libc/mm bin dirs removed |
 
 Every sync commit was verified with tizenrt-nuttx-similarity core: all
@@ -67,14 +68,13 @@ the formatter (`1e - 1`); `ppnum.py` (see Tools) scans for that.
 
 ## In progress
 
-- `qemu-armv7a/ostest`: every OS library builds
-  (build/output/libraries: libarch libbinfmt libboards libc libdrivers
-  libfs libmm libsched + framework/external).  The link stops at
-  apps/examples/testcase/ostest (old sighelper.c compares sigset_t
-  with `==`): next step syncs ostest with nuttx-apps 12.13.0.
+- `qemu-armv7a/ostest` builds, boots on QEMU and passes:
+  34 test groups, `ostest_main: Exiting with status 0`, then poweroff.
 - Not committed yet: `build/configs/qemu-armv7a/{Make.defs,
-  scripts/dramboot.ld, ostest/defconfig}` and apps/system/utils
-  `CONFIG_LIB_HOMEDIR` → `CONFIG_LIBC_HOMEDIR`.
+  scripts/dramboot.ld, ostest/defconfig}` (seed adds
+  `CONFIG_SCHED_WAITPID=y` for TESTING_OSTEST_WAITRESULT/POWEROFF),
+  apps/system/utils `CONFIG_LIB_HOMEDIR` → `CONFIG_LIBC_HOMEDIR`,
+  apps/system/system_file/system_file.c includes `<tinyara/crc32.h>`.
 
 ## Next steps
 
@@ -83,8 +83,7 @@ the formatter (`1e - 1`); `ppnum.py` (see Tools) scans for that.
 2. Run QEMU:
    `qemu-system-arm -cpu cortex-a7 -nographic -machine virt,virtualization=off,gic-version=2 -net none -chardev stdio,id=con,mux=on -serial chardev:con -mon chardev=con,mode=readline -kernel build/output/bin/tinyara`
    Pass: `ostest_main: Exiting with status 0`.
-3. Sync ostest with nuttx-apps 12.13.0 (`testing/ostest`), keep
-   `ostest_main` and the TASH registration. Add the `tash` config.
+3. Add the qemu-armv7a `tash` config (TASH + `ostest` command).
 4. mps2-an521: build/configs/mps2-an521 (Make.defs, flash.ld, ostest,
    tash), run with `qemu-system-arm -M mps2-an521 -nographic ... -kernel`.
    QEMU 8.2 → default CMSDK IRQs (swap only for QEMU >= 9.2).
