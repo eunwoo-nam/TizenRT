@@ -57,11 +57,12 @@ library, drivers: per group).
 | c80d1840 8e5f6d3e | os/board: boardctl.c move, qemu-armv7a + mps2-an521 + Board.mk/Makefile |
 | 422cae36 | Kconfig integration (os/Kconfig, Kconfig.debug, arch, arm, board, adapted NuttX Kconfigs, apps_entry) |
 | 0f89d2cf | re-format the 9 files with exponent numbers after the cformatter fix 51e698d9 |
+| ceb8595e | docs/NuttX-12.13.0-Migration-Report.md: final report in Korean (results rebuilt and run from 28d774bd, user decisions, own decisions with reasons, deviations); test group counts corrected to 33/31 (34/32 counted the argv[0] line) |
 | 1268b92d | docs/NuttX-12.13.0-Migration.md (mapping, rules, exclusions, intentional differences, known gaps) |
-| a989f610 | build/configs/mps2-an521: Make.defs, scripts/flash.ld, ostest, tash, qemu_run.sh, README.md. **Both pass on QEMU** (32 groups; no FPU/prio-inherit as in NuttX nsh; no board_power_off so QEMU keeps running) |
+| a989f610 | build/configs/mps2-an521: Make.defs, scripts/flash.ld, ostest, tash, qemu_run.sh, README.md. **Both pass on QEMU** (31 groups; no FPU/prio-inherit as in NuttX nsh; no board_power_off so QEMU keeps running) |
 | 98ff0124 | build/configs/qemu-armv7a/tash (+README): TASH via `preapp_start`, `ostest` from TASH passes |
 | 52b06bd1 | apps: TASH/FS_CMDS no longer depend on NFILE_DESCRIPTORS (removed in NuttX), fscmd.c guard dropped, local mount point handler type (foreach_mountpoint_t is OS internal now) |
-| f4e15eed | build/configs/qemu-armv7a: Make.defs, scripts/dramboot.ld, ostest/defconfig, qemu_run.sh, README.md. **ostest passes on QEMU** (34 groups, `ostest_main: Exiting with status 0`, poweroff) |
+| f4e15eed | build/configs/qemu-armv7a: Make.defs, scripts/dramboot.ld, ostest/defconfig, qemu_run.sh, README.md. **ostest passes on QEMU** (33 groups, `ostest_main: Exiting with status 0`, poweroff) |
 | 0d962fae | apps/system: `CONFIG_LIB_HOMEDIR` → `CONFIG_LIBC_HOMEDIR`, system_file.c includes `<tinyara/crc32.h>` |
 | 3af7c335 | apps/examples/testcase/ostest ← nuttx-apps 12.13.0 testing/ostest (entry point stays `ostest_main`, TizenRT Make.defs with the nuttx-apps conditions, fork.c/multiuser.c kept but not built) |
 | 1612c7b6 | build system: tools/Config.mk, mkdeps/mkconfig/cfgdefine, *.defs, Makefile.unix, Directories/FlatLibs/LibTargets.mk, arch/arm/src/Makefile, drivers/fs makefiles, include guards for not-synced headers, include/queue.h, libc/mm bin dirs removed |
@@ -92,6 +93,9 @@ the formatter (`1e - 1`); `ppnum.py` (see Tools) scans for that.
   synced files identical to NuttX 12.13.0 / nuttx-apps; the 24 others are
   the intentional changes listed in docs/NuttX-12.13.0-Migration.md.
   `ppnum.py`: no split exponent numbers.
+- Final rerun from 28d774bd (distclean → configure → make → QEMU): all
+  four configurations pass (qemu-armv7a 33 groups, mps2-an521 31 groups).
+  The final report is docs/NuttX-12.13.0-Migration-Report.md.
 - All planned steps are done.  Remaining work is in "Known gaps" of the
   migration doc (other boards, protected/kernel build, moved headers,
   NFILE_DESCRIPTORS users, CONFIG_PM boards).
