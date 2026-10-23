@@ -57,6 +57,7 @@ library, drivers: per group).
 | c80d1840 8e5f6d3e | os/board: boardctl.c move, qemu-armv7a + mps2-an521 + Board.mk/Makefile |
 | 422cae36 | Kconfig integration (os/Kconfig, Kconfig.debug, arch, arm, board, adapted NuttX Kconfigs, apps_entry) |
 | 0f89d2cf | re-format the 9 files with exponent numbers after the cformatter fix 51e698d9 |
+| f4e15eed | build/configs/qemu-armv7a: Make.defs, scripts/dramboot.ld, ostest/defconfig, qemu_run.sh, README.md. **ostest passes on QEMU** (34 groups, `ostest_main: Exiting with status 0`, poweroff) |
 | 0d962fae | apps/system: `CONFIG_LIB_HOMEDIR` → `CONFIG_LIBC_HOMEDIR`, system_file.c includes `<tinyara/crc32.h>` |
 | 3af7c335 | apps/examples/testcase/ostest ← nuttx-apps 12.13.0 testing/ostest (entry point stays `ostest_main`, TizenRT Make.defs with the nuttx-apps conditions, fork.c/multiuser.c kept but not built) |
 | 1612c7b6 | build system: tools/Config.mk, mkdeps/mkconfig/cfgdefine, *.defs, Makefile.unix, Directories/FlatLibs/LibTargets.mk, arch/arm/src/Makefile, drivers/fs makefiles, include guards for not-synced headers, include/queue.h, libc/mm bin dirs removed |
@@ -69,11 +70,14 @@ the formatter (`1e - 1`); `ppnum.py` (see Tools) scans for that.
 
 ## In progress
 
-- `qemu-armv7a/ostest` builds, boots on QEMU and passes:
-  34 test groups, `ostest_main: Exiting with status 0`, then poweroff.
-- Not committed yet: `build/configs/qemu-armv7a/{Make.defs,
-  scripts/dramboot.ld, ostest/defconfig}` (seed adds
-  `CONFIG_SCHED_WAITPID=y` for TESTING_OSTEST_WAITRESULT/POWEROFF).
+- `qemu-armv7a/ostest` is done (f4e15eed); `./dbuild.sh build` uses the
+  2.0.1-qemu image.  The defconfig is a full .config made by
+  `kc_test.sh` from `seed.config` (nuttx nsh defconfig values + ostest
+  entry point + `CONFIG_SCHED_WAITPID=y` for WAITRESULT/POWEROFF + the
+  TizenRT apps switched off); copy os/.config to the defconfig.
+- Next: qemu-armv7a `tash` config.
+- Note: the apps preconfig regenerates apps/examples/SoundPlayer/Kconfig
+  and Kconfig_ENTRY (pre-existing TizenRT behavior); `git checkout` them.
 - Known gap (not in the QEMU builds, rule 3): TizenRT code of other
   boards/drivers still includes headers NuttX 12.13.0 moved or removed:
   `tinyara/i2c.h` (48 files, now `tinyara/i2c/i2c_master.h`),
@@ -84,17 +88,14 @@ the formatter (`1e - 1`); `ppnum.py` (see Tools) scans for that.
 
 ## Next steps
 
-1. Build `qemu-armv7a/ostest` in docker (`build.sh`, see Tools) and fix
-   the errors per area until build/output/bin/tinyara links.
-2. Run QEMU:
-   `qemu-system-arm -cpu cortex-a7 -nographic -machine virt,virtualization=off,gic-version=2 -net none -chardev stdio,id=con,mux=on -serial chardev:con -mon chardev=con,mode=readline -kernel build/output/bin/tinyara`
-   Pass: `ostest_main: Exiting with status 0`.
-3. Add the qemu-armv7a `tash` config (TASH + `ostest` command).
-4. mps2-an521: build/configs/mps2-an521 (Make.defs, flash.ld, ostest,
+1. qemu-armv7a `tash` config (TASH + `ostest` command); run with
+   `build/configs/qemu-armv7a/qemu_run.sh`, type `ostest`, check
+   `ostest_main: Exiting with status 0`.
+2. mps2-an521: build/configs/mps2-an521 (Make.defs, flash.ld, ostest,
    tash), run with `qemu-system-arm -M mps2-an521 -nographic ... -kernel`.
    QEMU 8.2 → default CMSDK IRQs (swap only for QEMU >= 9.2).
-5. Docs: build/configs/<board>/README.md, docs/NuttX-12.13.0-Migration.md.
-6. Final codesim report over all synced files.
+3. Docs: build/configs/mps2-an521/README.md, docs/NuttX-12.13.0-Migration.md.
+4. Final codesim report over all synced files.
 
 ## Environment (recreate after a new session)
 
