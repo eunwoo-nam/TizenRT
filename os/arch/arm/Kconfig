@@ -1,13 +1,74 @@
 #
 # For a description of the syntax of this configuration file,
-# see kconfig-language at https://www.kernel.org/doc/Documentation/kbuild/kconfig-language.txt
+# see the file kconfig-language.txt in the NuttX tools repository.
 #
 
 if ARCH_ARM
+comment "ARM Options"
 
 choice
-	prompt "ARM chip selection"
-	default ARCH_CHIP_S5J
+	prompt "ARM Toolchain Selection"
+	default ARM_TOOLCHAIN_GNU_EABI
+
+config ARM_TOOLCHAIN_IAR
+	bool "IAR ANSI C/C++ toolchain"
+	select CYGWIN_WINTOOL if WINDOWS_CYGWIN
+
+config ARM_TOOLCHAIN_BUILDROOT
+	bool "Buildroot (Cygwin or Linux)"
+	depends on !WINDOWS_NATIVE
+	select ARCH_TOOLCHAIN_GCC
+
+config ARM_TOOLCHAIN_BUILDROOT_OABI
+	bool "OABI (vs EABI)"
+	depends on !WINDOWS_NATIVE
+	select ARCH_TOOLCHAIN_GCC
+	---help---
+		Most of the older buildroot toolchains are OABI
+
+config ARM_TOOLCHAIN_GNU_EABI
+	bool "Generic GNU EABI toolchain"
+	select ARCH_TOOLCHAIN_GCC
+	---help---
+		This option should work for any modern GNU toolchain (GCC 4.5 or newer)
+
+config ARM_TOOLCHAIN_GNU_OABI
+	bool "Generic GNU OABI toolchain"
+	select ARCH_TOOLCHAIN_GCC
+	---help---
+		This option should work for any GNU toolchain.
+
+config ARM_TOOLCHAIN_CLANG
+	bool "LLVM Clang toolchain"
+	depends on !LIBM_TOOLCHAIN
+	select ARCH_TOOLCHAIN_CLANG
+
+config ARM_TOOLCHAIN_ARMCLANG
+	bool "ARM Compiler Clang toolchain"
+	select ARCH_TOOLCHAIN_ARMCLANG
+
+config ARM_TOOLCHAIN_GHS
+	bool "ARM Compiler Green Hills Software toolchain"
+	select ARCH_TOOLCHAIN_GHS
+
+endchoice # ARM Toolchain Selection
+
+choice
+	prompt "ARM MCU selection"
+	default ARCH_CHIP_STM32
+
+config ARCH_CHIP_MPS
+	bool "MPS ARM Series"
+	---help---
+		MPS platform (MPS2 MPS3)
+
+config ARCH_CHIP_QEMU_ARM
+	bool "QEMU virt platform (ARMv7a)"
+	select ARCH_HAVE_POWEROFF
+	select ARCH_HAVE_RESET
+	select ARCH_IDLE_CUSTOM
+	---help---
+		QEMU virt platform (ARMv7a)
 
 config ARCH_CHIP_LM
 	bool "TI/Luminary Stellaris"
@@ -135,10 +196,370 @@ config ARCH_CHIP_AMEBASMART
 	---help---
 		Realtek AMEBASMART architectures (ARM Cortex-A32).
 
-endchoice
+endchoice # ARM MCU selection
+
+config ARCH_ARM7TDMI
+	bool
+	default n
+	select ARCH_DCACHE
+	select ARCH_ICACHE
+	---help---
+		The Arm7TDMI-S is an excellent workhorse processor capable of a wide
+		array of applications. Traditionally used in mobile handsets, the
+		processor is now broadly in many non-mobile applications.
+
+config ARCH_ARM920T
+	bool
+	default n
+	select ARCH_DCACHE
+	select ARCH_ICACHE
+	select ARCH_HAVE_MMU
+	select ARCH_USE_MMU
+	---help---
+		The ARM9 processor family is built around the ARM9TDMI processor and
+		incorporates the 16-bit Thumb instruction set. The ARM9 Thumb family
+		includes the ARM920T and ARM922T cached processor macrocells:
+
+		- Dual 16k caches for applications running Symbian OS, Palm OS,
+		  Linux and Windows CE,
+		- Dual 8k caches for applications running Symbian OS, Palm OS, Linux
+		  and Windows CE Applications
+
+config ARCH_ARM926EJS
+	bool
+	default n
+	select ARCH_DCACHE
+	select ARCH_ICACHE
+	select ARCH_HAVE_MMU
+	select ARCH_USE_MMU
+	---help---
+		Arm926EJ-S is the entry point processor capable of supporting full
+		Operating Systems including Linux, WindowsCE, and Symbian.
+
+		The ARM9E processor family enables single processor solutions for
+		microcontroller, DSP and Java applications. The ARM9E family of
+		products are DSP-enhanced 32-bit RISC processors, for applications
+		requiring a mix of DSP and microcontroller performance. The family
+		includes the ARM926EJ-S, ARM946E-S, ARM966E-S, and ARM968E-S
+		processor macrocells. They include signal processing extensions to
+		enhance 16-bit fixed point performance using a single-cycle 32 x 16
+		multiply-accumulate (MAC) unit, and implement the 16-bit Thumb
+		instruction set. The ARM926EJ-S processor also includes ARM Jazelle
+		technology which enables the direct execution of Java bytecodes in
+		hardware.
+
+config ARCH_ARM1136J
+	bool
+	default n
+	select ARCH_DCACHE
+	select ARCH_ICACHE
+	select ARCH_HAVE_MMU
+	select ARCH_USE_MMU
+	---help---
+		Arm1136J(F)-S is very similar to Arm926EJ-S, but includes an
+		extended pipeline, basic SIMD (Single Instruction Multiple Data)
+		instructions, and improved frequency and performance.
+
+config ARCH_ARM1156T2
+	bool
+	default n
+	select ARCH_DCACHE
+	select ARCH_ICACHE
+	select ARCH_HAVE_MMU
+	select ARCH_USE_MMU
+	---help---
+		Arm1156T2(F)-S is the highest-performance processor in the real-time
+		Classic Arm family.
+
+config ARCH_ARM1176JZ
+	bool
+	default n
+	select ARCH_DCACHE
+	select ARCH_ICACHE
+	select ARCH_HAVE_MMU
+	select ARCH_USE_MMU
+	---help---
+		Arm1176JZ(F)-S is the highest-performance single-core processor in
+		the Classic Arm family. It also introduced TrustZone technology to
+		enable secure execution outside of the reach of malicious code.
+
+config ARCH_ARMV6M
+	bool
+	default n
+	select ARCH_HAVE_CPUINFO
+
+config ARCH_CORTEXM0
+	bool
+	default n
+	select ARM_THUMB
+	select ARCH_ARMV6M
+	select ARCH_HAVE_IRQPRIO
+	select ARCH_HAVE_IRQTRIGGER
+	select ARCH_HAVE_RAMVECTORS
+	select ARCH_HAVE_RESET
+	select ARCH_HAVE_HARDFAULT_DEBUG
+
+config ARCH_ARMV7M
+	bool
+	default n
+	select ARCH_HAVE_CPUINFO
+	select ARCH_HAVE_DEBUG
+	select ARCH_HAVE_PERF_EVENTS
+
+config ARCH_CORTEXM3
+	bool
+	default n
+	select ARM_THUMB
+	select ARCH_ARMV7M
+	select ARCH_HAVE_IRQPRIO
+	select ARCH_HAVE_IRQTRIGGER
+	select ARCH_HAVE_RAMVECTORS
+	select ARCH_HAVE_HIPRI_INTERRUPT
+	select ARCH_HAVE_RESET
+	select ARCH_HAVE_TESTSET
+	select ARCH_HAVE_HARDFAULT_DEBUG
+	select ARCH_HAVE_MEMFAULT_DEBUG
+	select ARCH_HAVE_BUSFAULT_DEBUG
+	select ARCH_HAVE_USAGEFAULT_DEBUG
+
+config ARCH_CORTEXM4
+	bool
+	default n
+	select ARM_THUMB
+	select ARCH_ARMV7M
+	select ARCH_HAVE_IRQPRIO
+	select ARCH_HAVE_IRQTRIGGER
+	select ARCH_HAVE_RAMVECTORS
+	select ARCH_HAVE_HIPRI_INTERRUPT
+	select ARCH_HAVE_RESET
+	select ARCH_HAVE_TESTSET
+	select ARCH_HAVE_HARDFAULT_DEBUG
+	select ARCH_HAVE_MEMFAULT_DEBUG
+	select ARCH_HAVE_BUSFAULT_DEBUG
+	select ARCH_HAVE_USAGEFAULT_DEBUG
+
+config ARCH_CORTEXM7
+	bool
+	default n
+	select ARM_THUMB
+	select ARCH_ARMV7M
+	select ARCH_HAVE_FPU
+	select ARCH_HAVE_IRQPRIO
+	select ARCH_HAVE_IRQTRIGGER
+	select ARCH_HAVE_RAMVECTORS
+	select ARCH_HAVE_HIPRI_INTERRUPT
+	select ARCH_HAVE_RESET
+	select ARCH_HAVE_TESTSET
+	select ARCH_HAVE_HARDFAULT_DEBUG
+	select ARCH_HAVE_MEMFAULT_DEBUG
+	select ARCH_HAVE_BUSFAULT_DEBUG
+	select ARCH_HAVE_USAGEFAULT_DEBUG
+
+config ARCH_ARMV7A
+	bool
+	default n
+	select ARCH_HAVE_CPUINFO
+	select ARCH_HAVE_DEBUG
+	select ARCH_HAVE_PERF_EVENTS
+	select ARM_HAVE_WFE_SEV
+
+config ARCH_CORTEXA5
+	bool
+	default n
+	select ARCH_ARMV7A
+	select ARCH_DCACHE
+	select ARCH_ICACHE
+	select ARCH_HAVE_MMU
+	select ARCH_USE_MMU
+	select ARCH_HAVE_TESTSET
+	select ARM_HAVE_MPCORE
+
+config ARCH_CORTEXA7
+	bool
+	default n
+	select ARCH_ARMV7A
+	select ARCH_DCACHE
+	select ARCH_ICACHE
+	select ARCH_HAVE_MMU
+	select ARCH_USE_MMU
+	select ARCH_HAVE_TESTSET
+	select ARCH_HAVE_FPU
+	select ARM_HAVE_MPCORE
+
+config ARCH_CORTEXA8
+	bool
+	default n
+	select ARCH_ARMV7A
+	select ARCH_DCACHE
+	select ARCH_ICACHE
+	select ARCH_HAVE_MMU
+	select ARCH_USE_MMU
+	select ARCH_HAVE_TESTSET
+
+config ARCH_CORTEXA9
+	bool
+	default n
+	select ARCH_ARMV7A
+	select ARCH_DCACHE
+	select ARCH_ICACHE
+	select ARCH_HAVE_MMU
+	select ARCH_USE_MMU
+	select ARCH_HAVE_TESTSET
+	select ARM_HAVE_MPCORE
+
+config ARCH_ARMV7R
+	bool
+	default n
+	select ARCH_HAVE_CPUINFO
+	select ARCH_HAVE_PERF_EVENTS
+	select ARCH_HAVE_PERF_EVENTS_USER_ACCESS
+
+config ARCH_CORTEXR4
+	bool
+	default n
+	select ARCH_ARMV7R
+	select ARCH_DCACHE
+	select ARCH_ICACHE
+	select ARCH_HAVE_MPU
+	select ARCH_HAVE_TESTSET
+
+config ARCH_CORTEXR5
+	bool
+	default n
+	select ARCH_ARMV7R
+	select ARCH_DCACHE
+	select ARCH_ICACHE
+	select ARCH_HAVE_MPU
+	select ARCH_HAVE_TESTSET
+
+config ARCH_CORTEXR7
+	bool
+	default n
+	select ARCH_ARMV7R
+	select ARCH_DCACHE
+	select ARCH_ICACHE
+	select ARCH_HAVE_MPU
+	select ARCH_HAVE_TESTSET
+
+config ARCH_CORTEXR52
+	bool
+	default n
+	select ARCH_ARMV8R
+	select ARCH_HAVE_MPU
+	select ARCH_HAVE_TESTSET
+
+config ARCH_ARMV8M
+	bool
+	default n
+	select ARCH_HAVE_CPUINFO
+	select ARCH_HAVE_DEBUG
+	select ARCH_HAVE_PERF_EVENTS
+
+config ARCH_CORTEXM23
+	bool
+	default n
+	select ARM_THUMB
+	select ARCH_ARMV8M
+	select ARCH_HAVE_IRQPRIO
+	select ARCH_HAVE_IRQTRIGGER
+	select ARCH_HAVE_RAMVECTORS
+	select ARCH_HAVE_HIPRI_INTERRUPT
+	select ARCH_HAVE_RESET
+	select ARCH_HAVE_TESTSET
+	select ARCH_HAVE_HARDFAULT_DEBUG
+
+config ARCH_CORTEXM33
+	bool
+	default n
+	select ARM_THUMB
+	select ARCH_ARMV8M
+	select ARCH_HAVE_IRQPRIO
+	select ARCH_HAVE_IRQTRIGGER
+	select ARCH_HAVE_RAMVECTORS
+	select ARCH_HAVE_HIPRI_INTERRUPT
+	select ARCH_HAVE_RESET
+	select ARCH_HAVE_TESTSET
+	select ARCH_HAVE_HARDFAULT_DEBUG
+	select ARCH_HAVE_MEMFAULT_DEBUG
+	select ARCH_HAVE_BUSFAULT_DEBUG
+	select ARCH_HAVE_USAGEFAULT_DEBUG
+	select ARCH_HAVE_SECUREFAULT_DEBUG if ARCH_TRUSTZONE_SECURE
+
+config ARCH_CORTEXM35P
+	bool
+	default n
+	select ARM_THUMB
+	select ARCH_ARMV8M
+	select ARCH_HAVE_IRQPRIO
+	select ARCH_HAVE_IRQTRIGGER
+	select ARCH_HAVE_RAMVECTORS
+	select ARCH_HAVE_HIPRI_INTERRUPT
+	select ARCH_HAVE_RESET
+	select ARCH_HAVE_TESTSET
+	select ARCH_HAVE_HARDFAULT_DEBUG
+	select ARCH_HAVE_MEMFAULT_DEBUG
+	select ARCH_HAVE_BUSFAULT_DEBUG
+	select ARCH_HAVE_USAGEFAULT_DEBUG
+	select ARCH_HAVE_SECUREFAULT_DEBUG if ARCH_TRUSTZONE_SECURE
+
+config ARCH_CORTEXM55
+	bool
+	default n
+	select ARM_THUMB
+	select ARCH_ARMV8M
+	select ARCH_HAVE_IRQPRIO
+	select ARCH_HAVE_IRQTRIGGER
+	select ARCH_HAVE_RAMVECTORS
+	select ARCH_HAVE_HIPRI_INTERRUPT
+	select ARCH_HAVE_RESET
+	select ARCH_HAVE_TESTSET
+	select ARCH_HAVE_HARDFAULT_DEBUG
+	select ARCH_HAVE_MEMFAULT_DEBUG
+	select ARCH_HAVE_BUSFAULT_DEBUG
+	select ARCH_HAVE_USAGEFAULT_DEBUG
+	select ARCH_HAVE_SECUREFAULT_DEBUG if ARCH_TRUSTZONE_SECURE
+
+config ARCH_CORTEXM85
+	bool
+	default n
+	select ARM_THUMB
+	select ARCH_ARMV8M
+	select ARCH_HAVE_IRQPRIO
+	select ARCH_HAVE_IRQTRIGGER
+	select ARCH_HAVE_RAMVECTORS
+	select ARCH_HAVE_HIPRI_INTERRUPT
+	select ARCH_HAVE_RESET
+	select ARCH_HAVE_TESTSET
+	select ARCH_HAVE_HARDFAULT_DEBUG
+	select ARCH_HAVE_MEMFAULT_DEBUG
+	select ARCH_HAVE_BUSFAULT_DEBUG
+	select ARCH_HAVE_USAGEFAULT_DEBUG
+	select ARCH_HAVE_SECUREFAULT_DEBUG if ARCH_TRUSTZONE_SECURE
+
+config ARCH_ARMV8R
+	bool
+	default n
+	select ARCH_HAVE_CPUINFO
+	select ARCH_HAVE_PERF_EVENTS
+	select ONESHOT
+	select ONESHOT_COUNT
+	select ALARM_ARCH
+
+
+config ARCH_FAMILY
+	string
+	default "arm"		if ARCH_ARM7TDMI || ARCH_ARM920T || ARCH_ARM926EJS || ARCH_ARM1136J || ARCH_ARM1156T2 || ARCH_ARM1176JZ
+	default "armv6-m"	if ARCH_ARMV6M
+	default "armv7-a"	if ARCH_ARMV7A
+	default "armv7-m"	if ARCH_ARMV7M
+	default "armv7-r"	if ARCH_ARMV7R
+	default "armv8-m"	if ARCH_ARMV8M
+	default "armv8-r"	if ARCH_ARMV8R
 
 config ARCH_CHIP
 	string
+	default "qemu"		if ARCH_CHIP_QEMU_ARM
+	default "mps"		if ARCH_CHIP_MPS
 	default "s5j"		if ARCH_CHIP_S5J
 	default "tiva"      if ARCH_CHIP_LM
 	default "bcm4390x"	if ARCH_CHIP_BCM4390X
@@ -153,139 +574,404 @@ config ARCH_CHIP
 	default "imx6"		if ARCH_CHIP_IMX6
 
 config ARM_THUMB
-        bool "Thumb Mode"
-        default n
+	bool "Thumb Mode"
+	default n
 
-config ARM_HAVE_DPFPU32
-        bool
-        select ARCH_HAVE_DPFPU
-        default n
-        ---help---
-                FPU implemented in the VFPv[3|4]-D32 format that supports
-                32 double-precision floating-point registers.
+config ARM_HAVE_PSCI
+	bool "ARM PSCI (Power State Coordination Interface) Support"
+	default n
+	---help---
+		This Power State Coordination Interface (PSCI) defines
+		a standard interface for power management. the PCSI need
+		to implement handling firmware at EL2 or EL3. The option
+		maybe not applicable for arm core without PCSI firmware
+		interface implement
 
 config ARM_HAVE_WFE_SEV
-        bool "Support WFE_SEV"
-        default n
-        ---help---
-                WFE instruction cause the core to enter low power state.
-                This reduces the power drawn to static leakage current only.
+	bool
+	default n
+	---help---
+		Use WFE and SEV instructions for spinlock to reduce power consumption
+
+config ARM_HAVE_DPFPU32
+	bool
+	select ARCH_HAVE_DPFPU
+	default n
+	---help---
+		FPU implemented in the VFPv[3|4]-D32 format that supports
+		32 double-precision floating-point registers.
 
 config ARM_HAVE_NEON
-        bool
-        default n
-        select ARM_HAVE_DPFPU32
-        ---help---
-                Decide whether to support NEON instruction
+	bool
+	default n
+	select ARM_HAVE_DPFPU32
+	---help---
+		Decide whether support NEON instruction
+
+config ARM_HAVE_DSP
+	bool
+	default n
+	---help---
+		Decide whether support DSP instruction
+
+config ARM_HAVE_MVE
+	bool
+	default n
+	---help---
+		Decide whether support MVE instruction
+
+config ARM_HAVE_PACBTI
+	bool
+	default n
+	---help---
+		Decide whether support PACBTI(Pointer Authentication and Branch Target Identification) Extension
+
+config ARM_PSCI
+	bool "Enabled PSCI"
+	depends on ARM_HAVE_PSCI
+	default n
+	---help---
+		See ARM_HAVE_PSCI for details
 
 config ARM_FPU_ABI_SOFT
-        bool "Soft Float ABI"
-        default n
-        depends on ARCH_HAVE_FPU
-        ---help---
-                Pass float value via integer register (-mfloat-abi=softfp)
+	bool "Soft Float ABI"
+	default n
+	depends on ARCH_HAVE_FPU
+	---help---
+		Pass float value via integer register (-mfloat-abi=softfp)
+
+config ARM_BUSY_WAIT
+	bool "Busy wait when boot"
+	default n
+	depends on ARCH_HAVE_MULTICPU
+	---help---
+		On a system with multiple CPU cores, when the system is powered on,
+		multiple cores may start running simultaneously. In this case, software
+		is required to handle the startup logic for multi-core synchronization.
+		One approach is to use global variables.
+		however, the global variable region may not have been initialized yet.
+		In such scenarios, we can use a busywait flag to
+		implement the synchronization strategy.
+
+config ARM_BUSY_WAIT_FLAG_ADDR
+	hex "Busy wait flag address"
+	depends on ARM_BUSY_WAIT
+	---help---
+		The busywait address is typically a region that is initialized to 0
+		during the boot phase.
 
 config ARM_DPFPU32
-        bool "FPU with 32 double-precision register"
-        default y
-        depends on ARCH_DPFPU && ARM_HAVE_DPFPU32
+	bool "FPU with 32 double-precision register"
+	default y
+	depends on ARCH_DPFPU && ARM_HAVE_DPFPU32
 
 config ARM_NEON
-        bool "Advanced SIMD (NEON) Extension"
-        default y
-        depends on ARM_HAVE_NEON && ARM_DPFPU32
+	bool "Advanced SIMD (NEON) Extension"
+	default y
+	depends on ARM_HAVE_NEON && ARM_DPFPU32
+
+config ARM_DSP
+	bool "Advanced DSP Extension"
+	default y
+	depends on ARM_HAVE_DSP
+	---help---
+		Enables DSP Extension
+
+config ARM_PACBTI
+	bool "Advanced PACBTI Extension"
+	default y
+	depends on ARM_HAVE_PACBTI
+	---help---
+		Enables PACBTI(Pointer Authentication and Branch Target Identification) Extension
+
+config ARM_HAVE_MPU_UNIFIED
+	bool
+	default n
+	---help---
+		Automatically selected to indicate that the CPU supports a
+		unified MPU for both instruction and data addresses.
 
 config ARM_HAVE_MPCORE
-        bool
-        default n
-        ---help---
-                Decide whether support MPCore extension
-
-comment "ARM Options"
-
-config ARCH_CORTEXM3
 	bool
 	default n
-	select ARCH_HAVE_IRQPRIO
-	select ARCH_HAVE_CMNVECTOR
-	select ARCH_HAVE_RAMVECTORS
-	select ARCH_HAVE_HIPRI_INTERRUPT
-	select ARCH_ARMV7M_FAMILY
+	---help---
+		Decide whether support MPCore extension
 
-config ARCH_CORTEXM4
+config ARM_MPU
+	bool "MPU support"
+	default n
+	depends on ARCH_HAVE_MPU
+	select ARCH_USE_MPU
+	---help---
+		Build in support for the ARM Cortex-M3/4/7 Memory Protection Unit (MPU).
+		Check your chip specifications first; not all Cortex-M3/4/7 chips
+		support the MPU.
+
+config ARM_MPU_NREGIONS
+	int "Number of MPU regions"
+	default 16 if ARCH_CORTEXM7
+	default 8 if !ARCH_CORTEXM7
+	depends on ARM_MPU
+	---help---
+		This is the number of protection regions supported by the MPU.
+
+config ARM_MPU_RESET
+	bool "MPU Reset before MPU initialization"
+	default n
+	depends on ARM_MPU
+	---help---
+		Configures the MPU initialization sequence to disable the MPU
+		before configuring it.
+
+		This may be needed in a system with a bootloader that has
+		configured the MPU prior to running NuttX. This may be all that is
+		needed to allow booting if the previous MPU configuration allow
+		the system to execute the MPU initialization code. If not use
+		ARM_MPU_EARLY_RESET.
+
+config ARM_MPU_EARLY_RESET
+	bool "MPU Early Reset"
+	default n
+	depends on ARCH_HAVE_MPU
+	---help---
+		Configures the early system initialization sequence to disable the MPU.
+
+		This may be needed in a system with a bootloader that has
+		configured the MPU prior to running NuttX. This is useful if the system
+		faults during bbs, or data initialization or before the
+		stm32_mpuinitialize can be called.
+
+		Note: This can be used without MPU Support enabled.
+
+config ARM_COREDUMP_REGION
+	bool "Add coredump region"
+	depends on COREDUMP
+	default n
+	---help---
+		Add coredump region includes nvic and mpu for cortex-M.
+
+config ARCH_HAVE_LOWVECTORS
+	bool
+
+config ARCH_LOWVECTORS
+	bool "Vectors in low memory"
+	default n
+	depends on ARCH_HAVE_LOWVECTORS
+	---help---
+		Support ARM vectors in low memory.
+
+config ARCH_ROMPGTABLE
+	bool "ROM page table"
+	default n
+	depends on ARCH_USE_MMU
+	---help---
+		Support a fixed memory mapping use a (read-only) page table in
+		ROM/FLASH.
+
+config ARCH_HAVE_HARDFAULT_DEBUG
 	bool
 	default n
-	select ARCH_HAVE_IRQPRIO
-	select ARCH_HAVE_CMNVECTOR
-	select ARCH_HAVE_RAMVECTORS
-	select ARCH_HAVE_HIPRI_INTERRUPT
-	select ARCH_ARMV7M_FAMILY
 
-config ARCH_CORTEXM7
+config DEBUG_HARDFAULT_ALERT
+	bool "Hard-Fault Alert Debug"
+	default n
+	depends on ARCH_HAVE_HARDFAULT_DEBUG && DEBUG_ALERT
+	---help---
+		Enables debug alert output to the SYSLOG when a hard fault
+		occurs.  This output is sometimes helpful when debugging difficult
+		hard fault problems.
+
+config DEBUG_HARDFAULT_INFO
+	bool "Hard-Fault Informational Output"
+	default n
+	depends on ARCH_HAVE_HARDFAULT_DEBUG && DEBUG_INFO
+	---help---
+		Enables informational alert output to the SYSLOG when a hard fault
+		occurs.  This output is sometimes helpful when debugging difficult
+		hard fault problems but may be more than you want to see in some
+		cases.
+
+config ARCH_HAVE_MEMFAULT_DEBUG
 	bool
 	default n
-	select ARCH_HAVE_FPU
-	select ARCH_HAVE_IRQPRIO
-	select ARCH_HAVE_IRQTRIGGER
-	select ARCH_HAVE_CMNVECTOR
-	select ARCH_HAVE_RAMVECTORS
-	select ARCH_HAVE_LAZYFPU
-	select ARCH_HAVE_HIPRI_INTERRUPT
-	select ARCH_HAVE_RESET
-	select ARCH_HAVE_COHERENT_DCACHE if ELF || MODULE
-	select ARCH_HAVE_HARDFAULT_DEBUG
-	select ARCH_HAVE_MEMFAULT_DEBUG
-	select ARCH_HAVE_NESTED_INTERRUPT
-	select ARCH_ARMV7M_FAMILY
 
-config ARCH_CORTEXM33
+config DEBUG_MEMFAULT
+	bool "Verbose Mem-Fault Debug"
+	default n
+	depends on ARCH_HAVE_MEMFAULT_DEBUG && DEBUG_ALERT && ARCH_USE_MPU
+	---help---
+		Enables verbose debug output when a mem fault occurs.  This verbose
+		output is sometimes helpful when debugging difficult mem fault problems,
+		but may be more than you typically want to see.
+
+config ARCH_HAVE_BUSFAULT_DEBUG
 	bool
 	default n
-	select ARCH_HAVE_FPU
-	select ARCH_HAVE_IRQPRIO
-	select ARCH_HAVE_CMNVECTOR
-	select ARCH_HAVE_RAMVECTORS
-	select ARCH_HAVE_RESET
-	select ARCH_HAVE_HIPRI_INTERRUPT
-	select ARCH_ARMV8M_FAMILY
-	select ARCH_HAVE_NESTED_INTERRUPT
-	select ARCH_HAVE_LAZYFPU
-	select ARCH_HAVE_COHERENT_DCACHE if ELF || MODULE
 
-config ARCH_CORTEXM55
+config DEBUG_BUSFAULT
+	bool "Verbose Bus-Fault Debug"
+	default n
+	depends on ARCH_HAVE_BUSFAULT_DEBUG && DEBUG_ALERT
+	---help---
+		Enables verbose debug output when a bus fault occurs.  This verbose
+		output is sometimes helpful when debugging difficult bus fault problems,
+		but may be more than you typically want to see.
+
+config ARCH_HAVE_USAGEFAULT_DEBUG
 	bool
 	default n
-	select ARCH_HAVE_FPU
-	select ARCH_HAVE_IRQPRIO
-	select ARCH_HAVE_CMNVECTOR
-	select ARCH_HAVE_RAMVECTORS
-	select ARCH_HAVE_RESET
-	select ARCH_HAVE_HIPRI_INTERRUPT
-	select ARCH_ARMV8M_FAMILY
-	select ARCH_HAVE_NESTED_INTERRUPT
-	select ARCH_HAVE_LAZYFPU
 
-config ARCH_CORTEXA9
+config DEBUG_USAGEFAULT
+	bool "Verbose Usage-Fault Debug"
+	default n
+	depends on ARCH_HAVE_USAGEFAULT_DEBUG && DEBUG_ALERT
+	---help---
+		Enables verbose debug output when a usage fault occurs.  This verbose
+		output is sometimes helpful when debugging difficult usage fault problems,
+		but may be more than you typically want to see.
+
+config ARCH_HAVE_SECUREFAULT_DEBUG
 	bool
 	default n
-	select ARCH_DCACHE
-	select ARCH_ICACHE
-	select ARCH_HAVE_MMU
-	select ARCH_USE_MMU
-	select ARCH_HAVE_TESTSET
-	select ARCH_HAVE_THREAD_LOCAL
-	select ARM_HAVE_MPCORE
-	select ARCH_ARMV7A_FAMILY
 
-config ARCH_CORTEXR4
-	bool
+config DEBUG_SECUREFAULT
+	bool "Verbose Secure-Fault Debug"
 	default n
-	select ARCH_HAVE_MPU
-	select ARCH_HAVE_CMNVECTOR
-	select ARCH_HAVE_COHERENT_DCACHE if ELF || MODULE
-	select ARCH_HAVE_DABORTSTACK if !ARCH_CHIP_BCM4390X
-	select ARCH_ARMV7R_FAMILY
+	depends on ARCH_HAVE_SECUREFAULT_DEBUG && DEBUG_ALERT
+	---help---
+		Enables verbose debug output when a usage fault is occurs.  This verbose
+		output is sometimes helpful when debugging difficult usage fault problems,
+		but may be more than you typically want to see.
 
+config ARM_SEMIHOSTING_POWEROFF
+	bool "Semihosting POWEROFF support"
+	default n
+	---help---
+		Enable use of semihosting function to poweroff target.
+
+config ARM_SEMIHOSTING_SYSLOG
+	bool "Semihosting SYSLOG support"
+	select SYSLOG_REGISTER
+	---help---
+		Enable hooks to support semihosting syslog output.
+
+config ARM_SEMIHOSTING_HOSTFS
+	bool "Semihosting HostFS"
+	depends on FS_HOSTFS
+	---help---
+		Mount HostFS through semihosting.
+
+		This doesn't support some directory operations like readdir because
+		of the limitations of semihosting mechanism.
+
+if ARM_SEMIHOSTING_HOSTFS
+
+config ARM_SEMIHOSTING_HOSTFS_CACHE_COHERENCE
+	bool "Cache coherence in semihosting hostfs"
+	depends on ARCH_DCACHE
+	---help---
+		Flush & Invalidate cache before & after bkpt instruction.
+
+endif # ARM_SEMIHOSTING_HOSTFS
+
+if SCHED_BACKTRACE
+
+choice
+	prompt "Choose ARM unwinder"
+	default UNWINDER_ARM
+	---help---
+		This determines which method will be used for unwinding nuttx stack
+		traces for debug.
+
+config UNWINDER_FRAME_POINTER
+	bool "Frame pointer unwinder"
+	select FRAME_POINTER
+	---help---
+		This option enables the frame pointer unwinder for unwinding
+		nuttx stack traces.
+
+config UNWINDER_STACK_POINTER
+	bool "Stack pointer unwinder"
+	---help---
+		This option enables the stack pointer unwinder for unwinding
+		nuttx stack traces.
+
+config UNWINDER_ARM
+	bool "ARM EHABI stack unwinder"
+	select FRAME_POINTER
+	---help---
+		This option enables stack unwinding support in the nuttx
+		using the information automatically generated by the
+		compiler. The resulting nuttx image is slightly bigger but
+		the performance is not affected. Currently, this feature
+		only works with EABI compilers.
+
+endchoice # Choose ARM unwinder
+
+endif
+
+if ARCH_ARMV7A
+source "arch/arm/src/armv7-a/Kconfig"
+endif
+if ARCH_ARMV7M
+source "arch/arm/src/armv7-m/Kconfig"
+endif
+if ARCH_ARMV7R
+source "arch/arm/src/armv7-r/Kconfig"
+endif
+if ARCH_ARMV8M
+source "arch/arm/src/armv8-m/Kconfig"
+endif
+if ARCH_CHIP_QEMU_ARM
+source "arch/arm/src/qemu/Kconfig"
+endif
+if ARCH_CHIP_MPS
+source "arch/arm/src/mps/Kconfig"
+endif
+if ARCH_CHIP_IMX6
+source "arch/arm/src/imx6/Kconfig"
+endif
+if ARCH_CHIP_LM
+source arch/arm/src/tiva/Kconfig
+endif
+if ARCH_CHIP_S5J
+source arch/arm/src/s5j/Kconfig
+endif
+if ARCH_CHIP_BCM4390X
+source arch/arm/src/bcm4390x/Kconfig
+endif
+if ARCH_CHIP_STM32
+source arch/arm/src/stm32/Kconfig
+endif
+if ARCH_CHIP_IMXRT
+source arch/arm/src/imxrt/Kconfig
+endif
+if ARCH_CHIP_STM32L4
+source arch/arm/src/stm32l4/Kconfig
+endif
+if ARCH_CHIP_AMEBAD
+source arch/arm/src/amebad/Kconfig
+endif
+if ARCH_CHIP_AMEBALITE
+source arch/arm/src/amebalite/Kconfig
+endif
+if ARCH_CHIP_AMEBASMART
+source arch/arm/src/amebasmart/Kconfig
+endif
+if ARCH_CHIP_ARMINO
+source arch/arm/src/armino/Kconfig
+endif
+if ARCH_CHIP_STM32H745
+source arch/arm/src/stm32h745/Kconfig
+endif
+endif # ARCH_ARM
+
+
+#
+# TizenRT options that NuttX does not have
+#
+
+if ARCH_ARM
 config ARCH_CORTEXA32
 	bool
 	default n
@@ -316,13 +1002,6 @@ config ARCH_ARMV7A_FAMILY
 	bool
 	default n
 
-config ARCH_FAMILY
-	string
-	default "armv7-a"	if ARCH_ARMV7A_FAMILY
-	default "armv7-m"	if ARCH_ARMV7M_FAMILY
-	default "armv7-r"	if ARCH_ARMV7R_FAMILY
-	default "armv8-m"	if ARCH_ARMV8M_FAMILY
-
 config ARCH_HAVE_CMNVECTOR
 	bool
 
@@ -334,45 +1013,6 @@ config ARM_CMNVECTOR
 		Some architectures use their own, built-in vector logic.  Some use only
 		the common vector logic.  Some can use either their own built-in vector
 		logic or the common vector logic.
-
-config ARCH_HAVE_FPU
-	bool
-	default n
-
-config ARCH_HAVE_DPFPU
-	bool
-	default n
-
-config ARCH_HAVE_LAZYFPU
-	bool
-
-config ARCH_FPU
-	bool "FPU support"
-	default n
-	depends on ARCH_HAVE_FPU
-	---help---
-		Build in support for the ARM Cortex-M4 Floating Point Unit (FPU).
-		Check your chip specifications first; not all Cortex-M4 chips support the FPU.
-
-config ARCH_DPFPU
-	bool "Double precision FPU support"
-	default y
-	depends on ARCH_FPU && ARCH_HAVE_DPFPU
-	---help---
-		Enable toolchain support for double precision (64-bit) floating
-		point if both the toolchain and the hardware support it.
-
-config ARM_HAVE_MPU_UNIFIED
-	bool
-	default n
-	---help---
-		Automatically selected to indicate that the CPU supports a
-		unified MPU for both instruction and data addresses.
-
-config ARM_MPU
-	bool
-	default n
-	select ARCH_USE_MPU
 
 config ARMV7M_MPU
 	bool "MPU support"
@@ -409,23 +1049,6 @@ config ARMV8M_MPU_NREGIONS
 	---help---
 		This is the number of protection regions supported by the MPU.
 
-config ARCH_HAVE_LOWVECTORS
-	bool
-
-config ARCH_LOWVECTORS
-	bool "Vectors in low memory"
-	default n
-	depends on ARCH_HAVE_LOWVECTORS
-	---help---
-		Support ARM vectors in low memory.
-
-config ARCH_ROMPGTABLE
-	bool "ROM page table"
-	default n
-	depends on ARCH_USE_MMU
-	---help---
-		Support a fixed memory mapping use a (read-only) page table in ROM/FLASH.
-
 config ARCH_HAVE_TICKSUPPRESS
 	bool
 	default n
@@ -438,8 +1061,6 @@ config DEBUG_HARDFAULT
 		Enables verbose debug output when a hard fault is occurs.  This verbose
 		output is sometimes helpful when debugging difficult hard fault problems,
 		but may be more than you typcially want to see.
-
-comment "Exception stack options"
 
 config ARCH_HAVE_DABORTSTACK
 	bool
@@ -491,9 +1112,7 @@ config STACK_OVERFLOW_PROTECTION_DISABLE
 		Disable Stack Overflow Protection.
 
 endchoice
-
 if MPU_STACK_OVERFLOW_PROTECTION
-
 config MPU_STACK_GUARD_SIZE
 	int "Stack Guard size configuration range(32-1024)"
 	default 32
@@ -503,7 +1122,6 @@ config MPU_STACK_GUARD_SIZE
 		The size can be set in the range of 32 to 1024 bytes.
 		Setting large stack guard size will be a wastage of memory.
 endif
-
 config SYSTEM_REBOOT_REASON
 	bool "Enable System Reboot Reason Interfaces"
 	default n
@@ -513,52 +1131,4 @@ config SYSTEM_REBOOT_REASON
 		Interfaces can be used through prctl with
 		PR_REBOOT_REASON_READ, PR_REBOOT_REASON_WRITE and PR_REBOOT_REASON_CLEAR.
 
-if ARCH_ARMV7A_FAMILY
-source "arch/arm/src/armv7-a/Kconfig"
-endif
-if ARCH_ARMV7M_FAMILY
-source arch/arm/src/armv7-m/Kconfig
-endif
-if ARCH_ARMV8M_FAMILY
-source arch/arm/src/armv8-m/Kconfig
-endif
-if ARCH_ARMV7R_FAMILY
-source arch/arm/src/armv7-r/Kconfig
-endif
-if ARCH_CHIP_IMX6
-source "arch/arm/src/imx6/Kconfig"
-endif
-if ARCH_CHIP_LM
-source arch/arm/src/tiva/Kconfig
-endif
-if ARCH_CHIP_S5J
-source arch/arm/src/s5j/Kconfig
-endif
-if ARCH_CHIP_BCM4390X
-source arch/arm/src/bcm4390x/Kconfig
-endif
-if ARCH_CHIP_STM32
-source arch/arm/src/stm32/Kconfig
-endif
-if ARCH_CHIP_IMXRT
-source arch/arm/src/imxrt/Kconfig
-endif
-if ARCH_CHIP_STM32L4
-source arch/arm/src/stm32l4/Kconfig
-endif
-if ARCH_CHIP_AMEBAD
-source arch/arm/src/amebad/Kconfig
-endif
-if ARCH_CHIP_AMEBALITE
-source arch/arm/src/amebalite/Kconfig
-endif
-if ARCH_CHIP_AMEBASMART
-source arch/arm/src/amebasmart/Kconfig
-endif
-if ARCH_CHIP_ARMINO
-source arch/arm/src/armino/Kconfig
-endif
-if ARCH_CHIP_STM32H745
-source arch/arm/src/stm32h745/Kconfig
-endif
 endif
