@@ -1,0 +1,180 @@
+# NuttX 12.13.0 Migration
+
+TizenRT `os/` was forked from NuttX 7.x in 2016.  This migration brings
+the NuttX 12.13.0 code (tag `nuttx-12.13.0`, release notes commit
+b9b5d9afbf5a) and the OS test of nuttx-apps 12.13.0 (e4b84b2) into
+TizenRT.  The TizenRT build system, Kconfig and defconfig style, the
+`os/kernel` and `os/include/tinyara` names and the TizenRT apps,
+framework and external code are kept.
+
+The result is verified on two QEMU boards, FLAT build only:
+
+| Board | CPU | Configs | Result on QEMU 8.2 |
+|---|---|---|---|
+| [qemu-armv7a](../build/configs/qemu-armv7a/README.md) | Cortex-A7, `virt`, GICv2, PL011 | `ostest`, `tash` | 34 test groups pass, `ostest_main: Exiting with status 0` |
+| [mps2-an521](../build/configs/mps2-an521/README.md) | Cortex-M33, MPS2 AN521, CMSDK UART | `ostest`, `tash` | 32 test groups pass, `ostest_main: Exiting with status 0` |
+
+## Layout
+
+| NuttX 12.13.0 | TizenRT | Notes |
+|---|---|---|
+| `sched/` | `os/kernel/` | `sched/wqueue` → `os/kernel/wqueue` (was `os/wqueue`) |
+| `include/nuttx/` | `os/include/tinyara/` | |
+| `include/` | `os/include/` | `debug.h` ends with a TizenRT macro block |
+| `libs/libc` | `os/libs/libc` | was `lib/libc`; `binfmt/libelf` → `libs/libc/elf`, `binfmt/libbuiltin` → `libs/libc/builtin`, user work queue → `libs/libc/wqueue` |
+| `libs/{libm,libxx,libbuiltin,libdsp,libnx}` | `os/libs/...` | `lib/libc/math` → `libs/libm/libm`, `lib/libxx` → `libs/libxx` |
+| `mm/`, `fs/`, `binfmt/`, `audio/`, `syscall/` | same under `os/` | `fs/driver/block` → `fs/driver`, `fs/driver/mtd` → `drivers/mtd` |
+| `graphics/`, `video/` | `os/graphics`, `os/video` | new |
+| `drivers/*` | `os/drivers/*` | driver files at the root of `os/drivers` moved to the NuttX subdirectories first |
+| `arch/arm/{src,include}/{common,armv7-a,armv8-m,qemu,mps}` | `os/arch/arm/...` | |
+| `boards/boardctl.c` | `os/board/boardctl.c` | was `os/arch/boardctl.c` |
+| `boards/arm/{qemu/qemu-armv7a,mps/mps2-an521}` | `os/board/<board>/{Kconfig,include,src}` + `build/configs/<board>/{Make.defs,scripts,<config>/defconfig}` | |
+| nuttx-apps `testing/ostest` | `apps/examples/testcase/ostest` | |
+
+Directories and files were moved with `git mv` before the sync commits,
+so `git log --follow` shows their TizenRT history.
+
+## Rules applied to the synced files
+
+- Only include paths are renamed: `#include <nuttx/...>` →
+  `<tinyara/...>`; in makefiles and Kconfig `sched/` → `kernel/` and
+  `boards/` → `board/`.  Header guards, `__NUTTX__` and comments keep
+  their NuttX names.
+- C files are formatted with `tools/cformatter.py` of branch
+  `agent/261022_improve-cformatter-tool`, which changes only whitespace.
+  Two formatter bugs were fixed on that branch during the migration:
+  3463f629 (block comments continued from a directive line) and
+  51e698d9 (the sign of an exponent, `1e-1`, was spaced as an operator).
+- NuttX code uses the NuttX logging macros.  `os/include/debug.h` maps
+  the TizenRT macros (`dbg`, `lldbg`, `vdbg`, `sdbg`, the
+  binary/task manager families, ...) onto them.
+- TizenRT changes inside synced NuttX files (task manager, binary
+  manager, heapinfo hooks, ...) are overwritten.  Samsung-only files are
+  kept and switched off by configuration.
+- TizenRT files of NuttX origin that 12.13.0 removed or renamed (old
+  `up_*.c` of the synced arch directories, ...) are deleted.
+
+## Not synced
+
+| Area | Reason |
+|---|---|
+| net: `net/`, `drivers/net`, `drivers/wireless`, `include/{net,netinet,arpa,netpacket}`, `sys/socket.h`, `sys/sockio.h`, `sys/un.h`, `netdb.h`, `ifaddrs.h`, `include/nuttx/{net,usrsock}`, `libs/libc/{net,netdb}`, `fs/socket` | TizenRT keeps its own network stack |
+| pm: `drivers/power/pm`, pm headers | TizenRT keeps `os/pm` |
+| `wireless/` | not used |
+| `fs/nfs` | NFSv3 client on the NuttX network stack |
+| openamp: `openamp/`, `drivers/rpmsg`, `drivers/rptun`, `fs/rpmsgfs`, every `*rpmsg*`/`*rptun*` file | not used |
+| `crypto/`, `cmake/` | out of scope |
+| `tools/`, `dummy/`, `pass1/` | NuttX build system; TizenRT `os/tools` is kept |
+| drivers TizenRT does not have | not added, except `note` and what the QEMU boards need (`serial/uart_pl011`, `serial/serial_cmsdk`, `timers`) |
+| other arch and board directories | only the two QEMU boards are ported |
+
+NuttX files that include a header of a not-synced area unconditionally
+get an include guard with the option of that area, for example:
+
+```c
+#if defined(CONFIG_PM)
+#  include <tinyara/power/pm.h>
+#endif
+```
+
+## Build system
+
+TizenRT keeps `tools/configure.sh <board>/<config>`, `dbuild.sh`,
+`build/output/{bin,libraries}` and full `.config` defconfigs.  What the
+NuttX makefiles need was taken from NuttX:
+
+- `os/tools/Config.mk`: NuttX 12.13.0 Config.mk (BOARD_DIR is
+  `os/board/<board>`, `drivers/dummy` is the default platform directory,
+  fixed GCC prefixes, a lock in ARCHIVE for parallel builds).
+- `os/tools/mkdeps.c` (NuttX), `os/tools/{D,Rust,Swift,Zig}.defs`
+  (included by the arch Toolchain.defs), `mkconfig.c` (NuttX sanity
+  checks + TizenRT board macros), `cfgdefine.c` (string options used as
+  identifiers such as `CONFIG_INIT_ENTRYPOINT`).
+- `os/Makefile.unix`, `Directories.mk`, `FlatLibs.mk`, `LibTargets.mk`:
+  `libs/` instead of `lib/`, libsched from `kernel`, libboards, libm,
+  libbuiltin, libxx, libnx, libgraphics, libvideo, libdsp.  libwque is
+  gone.
+- `os/arch/arm/src/Makefile`: NuttX makefile linking
+  `build/output/bin/tinyara`.
+- Kconfig: the NuttX Kconfig files with the TizenRT-only symbols merged
+  into `os/Kconfig`, `os/Kconfig.debug`, `os/arch/Kconfig`,
+  `os/arch/arm/Kconfig` and `os/board/Kconfig`.
+- `tools/docker/Dockerfile`: `tizenrt/tizenrt:2.0.1` plus a static
+  `qemu-system-arm` 8.2, tag `tizenrt/tizenrt:2.0.1-qemu`, selected by
+  `CONFIG_DOCKER_VERSION="2.0.1-qemu"`.
+
+## Entry point
+
+NuttX 12.13.0 starts only `CONFIG_INIT_ENTRYPOINT`.  The TizenRT
+pre-application start-up of the old `os_bringup` is gone, so a TASH
+configuration uses `CONFIG_INIT_ENTRYPOINT="preapp_start"`
+(`apps/system/init`), which starts TASH and registers the builtin
+commands.  `CONFIG_USER_ENTRYPOINT` is no longer used by the OS.
+
+## Files that differ from NuttX on purpose
+
+`tizenrt-nuttx-similarity` core compares every synced file with its
+NuttX file (renames tinyara=nuttx, TinyAra=NuttX, TINYARA=NUTTX):
+**3858 of 3882 files are identical**.  The 24 others are:
+
+| File | Change |
+|---|---|
+| `os/include/debug.h` | TizenRT macro block at the end |
+| `os/include/.gitignore` | ignores the generated `apps` link |
+| `os/include/tinyara/power/regulator.h` | `power/pm.h` include guard |
+| `os/kernel/sched/sched_cpuload_{oneshot,period}.c` | `power/pm.h` include guard |
+| `os/drivers/drivers_initialize.c` | include guards (crypto, rpmsg, net, pm, usrsock) |
+| `os/drivers/syslog/syslog_initialize.c` | `syslog_rpmsg.h` include guard |
+| `os/drivers/serial/serial.c`, `os/drivers/timers/watchdog.c` | `power/pm.h` include guard |
+| `os/fs/fs_initialize.c` | `rpmsgfs.h` include guard |
+| `os/arch/arm/src/qemu/qemu_boot.c` | `syslog_rpmsg.h` include guard |
+| `os/board/qemu-armv7a/src/qemu_bringup.c` | `rpmsg_port.h` include guard |
+| `os/drivers/Kconfig`, `os/drivers/Makefile` | not-synced drivers dropped, TizenRT drivers added |
+| `os/drivers/power/{Kconfig,Make.defs}` | `pm` dropped |
+| `os/fs/{Kconfig,Makefile}` | `nfs`, `rpmsgfs` (and `socket` in the Makefile) dropped |
+| `os/libs/libc/Kconfig` | `net`, `netdb` dropped |
+| `os/libs/libc/machine/Kconfig`, `os/libs/libc/machine/arm/Kconfig` | arch directories that are not synced dropped |
+| `os/libs/libc/misc/Make.defs` | TEA cipher dropped (`crypto/tea.h` is not synced) |
+| `os/arch/arm/src/Makefile` | links `build/output/bin/tinyara` from `build/output/libraries` |
+| `apps/examples/testcase/ostest/ostest_main.c` | entry point `ostest_main()` (`main()` with CONFIG_BUILD_KERNEL) |
+
+A token comparison ignores whitespace, so the synced C files were also
+scanned for numbers split at the exponent sign; none is left.
+
+## TizenRT changes outside the synced files
+
+- `os/include/queue.h`: compatibility header for the 85 TizenRT files
+  that include `<queue.h>` (NuttX has `<tinyara/queue.h>` only).
+- `os/drivers/pm/Make.defs`: the TizenRT `/dev/pm` driver is built only
+  with `CONFIG_PM`.
+- `apps/system/utils`: `CONFIG_LIBC_HOMEDIR` (renamed in NuttX),
+  `fscmd.c` without the `CONFIG_NFILE_DESCRIPTORS` guard and with its own
+  mount point callback type; `apps/shell` and the `FS_CMDS` option no
+  longer depend on `NFILE_DESCRIPTORS`.
+- `apps/system/system_file/system_file.c`: includes `<tinyara/crc32.h>`.
+- `apps/examples/testcase/ostest`: `Make.defs` in the TizenRT form with
+  the conditions of the nuttx-apps Makefile; `fork.c` and `multiuser.c`
+  (TizenRT additions) are kept but not built.
+
+## Known gaps
+
+- Only qemu-armv7a and mps2-an521 are ported.  The other TizenRT boards
+  and chips still use the old arch code and the old driver interfaces.
+- Protected and kernel builds are not updated (`ProtectedLibs.mk`,
+  `KernelLibs.mk`, the userspace linker scripts).
+- TizenRT code that is not built for the QEMU boards still includes
+  headers that NuttX 12.13.0 moved or removed: `tinyara/i2c.h` (now
+  `tinyara/i2c/i2c_master.h`), `tinyara/fs/mtd.h` (now
+  `tinyara/mtd/mtd.h`), `crc8.h`/`crc16.h`/`crc32.h` (now
+  `tinyara/crc*.h`), `tinyara/time.h`, `tinyara/math.h`,
+  `tinyara/fs/dirent.h`, `tinyara/configdata.h`, `tinyara/float.h`.
+- `CONFIG_NFILE_DESCRIPTORS` and `CONFIG_NFILE_STREAMS` (removed in
+  NuttX) are still used by le_tc, ftpc, libcoap, lwm2m and the vi
+  Kconfig.
+- A board with `CONFIG_PM` needs the NuttX `power/pm.h` and
+  `drivers/power/pm`, which are not synced.
+- mps2-an521 has no `board_power_off()` in NuttX 12.13.0, so its ostest
+  configuration cannot power QEMU off.
+- The apps preconfig regenerates `apps/examples/SoundPlayer/Kconfig`
+  and `Kconfig_ENTRY` (behavior of TizenRT `apps/tools/mkkconfig.sh`,
+  not of this migration).
