@@ -17,7 +17,7 @@ Done means: `qemu-armv7a` (Cortex-A7, QEMU virt, PL011) and `mps2-an521`
 | Topic | Decision |
 |---|---|
 | armv8-m board | mps2-an521 |
-| Formatter | `tools/cformatter.py` of TizenRT branch `agent/261022_improve-cformatter-tool`, used from a separate worktree and not merged. The fix 3463f629 (comments continued from a directive line) was pushed to that branch with the user's approval. |
+| Formatter | `tools/cformatter.py` of TizenRT branch `agent/261022_improve-cformatter-tool`, used from a separate worktree and not merged. Fixes pushed to that branch: 3463f629 (comments continued from a directive line, approved by the user) and 51e698d9 (exponent sign of numbers: `1e-1` was formatted as `1e - 1`). |
 | libs | NuttX layout `os/libs/{libc,libm,libxx,libbuiltin,libdsp,libnx}`. `lib/` is gone. |
 | Rename | Only include paths: `#include <nuttx/..>` → `<tinyara/..>`, and makefile/Kconfig paths `sched` → `kernel`, `boards` → `board`. Header guards, `__NUTTX__` and comments stay. |
 | Folders kept | `os/kernel` (= NuttX sched), `os/include/tinyara` (= include/nuttx) |
@@ -56,10 +56,13 @@ library, drivers: per group).
 | 706971a3 | os/arch/arm: common, armv7-a, armv8-m, qemu, mps |
 | c80d1840 8e5f6d3e | os/board: boardctl.c move, qemu-armv7a + mps2-an521 + Board.mk/Makefile |
 | 422cae36 | Kconfig integration (os/Kconfig, Kconfig.debug, arch, arm, board, adapted NuttX Kconfigs, apps_entry) |
+| 0f89d2cf | re-format the 9 files with exponent numbers after the cformatter fix 51e698d9 |
 
 Every sync commit was verified with tizenrt-nuttx-similarity core: all
 copied C files are token-identical to NuttX 12.13.0 (renames
 tinyara=nuttx), other files byte-identical after the path rename.
+The token check ignores whitespace, so it cannot see a number split by
+the formatter (`1e - 1`); `ppnum.py` (see Tools) scans for that.
 
 ## In progress
 
@@ -83,6 +86,24 @@ Build system integration (Phase 3), not committed yet:
   System.map in $(OUTBIN_DIR).
 - `os/drivers/Makefile`, `os/drivers/power/Make.defs`, `os/fs/Makefile`:
   drop includes of not-synced dirs, add TizenRT-only drivers.
+  `os/drivers/pm/Make.defs` (TizenRT /dev/pm) only with CONFIG_PM.
+- Include guards for headers that are not synced (user decision: guard
+  every such include, do not add the header): crypto, rpmsg*, net/tun,
+  net/loopback, usrsock_rpmsg, power/pm.h (drivers_initialize.c,
+  serial.c, watchdog.c, sched_cpuload_*.c, power/regulator.h),
+  syslog_rpmsg.h, rpmsg_port.h, fs_initialize.c rpmsgfs.h. Form:
+  `#if defined(CONFIG_X)\n#  include <h>\n#endif` (`adapt.py guards`).
+- `os/libs/libc/misc/Make.defs`: lib_tea_* dropped (crypto/tea.h not
+  synced, no users).
+- `os/include/queue.h`: TizenRT compat header → `<tinyara/queue.h>`
+  (NuttX removed it; 85 TizenRT files include it).
+- `os/tools/mkdeps.c` = NuttX 12.13.0 (the old one could not handle
+  `clock/clock.c` style sources), `os/tools/{D,Rust,Swift,Zig}.defs` from
+  NuttX (included by arch Toolchain.defs), `cfgdefine.c` dequotes
+  INIT_ENTRYPOINT etc.
+- `os/libs/libc/{bin,kbin,ubin}`, `os/mm/{bin,kbin,ubin}` removed: the
+  NuttX Makefiles create and clean them.
+- apps: `CONFIG_LIB_HOMEDIR` → `CONFIG_LIBC_HOMEDIR` (system/utils).
 - `build/configs/qemu-armv7a/{Make.defs,scripts/dramboot.ld,ostest/defconfig}`.
 
 ## Next steps
@@ -136,6 +157,11 @@ git worktree add --detach $S/cformatter FETCH_HEAD
 - `adapt.py`: drops Kconfig `source` / makefile `include` lines of
   not-synced dirs in drivers, drivers/power, fs, libs/libc, adds the
   TizenRT-only driver hooks (from the old drivers/Kconfig and Makefile).
+- `ppnum.py [--fix] FILES`: lists (fixes) numbers split at the exponent
+  sign (`1e - 1`).
+- `build.sh <board>/<cfg> [make args]`: run inside docker
+  (`docker run --rm -v /home/user/TizenRT:/root/tizenrt -v $S/build.sh:/root/build.sh tizenrt/tizenrt:2.0.1-qemu bash /root/build.sh qemu-armv7a/ostest -j8`);
+  distclean, configure, make.
 - `kmerge.py OLD_KCONFIG KNOWN_SYMBOLS`: prints the entries of an old
   Kconfig that define symbols not in KNOWN_SYMBOLS (used for the TizenRT
   sections of os/Kconfig, Kconfig.debug, arch, arm, board Kconfig).
