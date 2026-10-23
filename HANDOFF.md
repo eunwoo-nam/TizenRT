@@ -57,6 +57,7 @@ library, drivers: per group).
 | c80d1840 8e5f6d3e | os/board: boardctl.c move, qemu-armv7a + mps2-an521 + Board.mk/Makefile |
 | 422cae36 | Kconfig integration (os/Kconfig, Kconfig.debug, arch, arm, board, adapted NuttX Kconfigs, apps_entry) |
 | 0f89d2cf | re-format the 9 files with exponent numbers after the cformatter fix 51e698d9 |
+| 0d962fae | apps/system: `CONFIG_LIB_HOMEDIR` → `CONFIG_LIBC_HOMEDIR`, system_file.c includes `<tinyara/crc32.h>` |
 | 3af7c335 | apps/examples/testcase/ostest ← nuttx-apps 12.13.0 testing/ostest (entry point stays `ostest_main`, TizenRT Make.defs with the nuttx-apps conditions, fork.c/multiuser.c kept but not built) |
 | 1612c7b6 | build system: tools/Config.mk, mkdeps/mkconfig/cfgdefine, *.defs, Makefile.unix, Directories/FlatLibs/LibTargets.mk, arch/arm/src/Makefile, drivers/fs makefiles, include guards for not-synced headers, include/queue.h, libc/mm bin dirs removed |
 
@@ -72,9 +73,14 @@ the formatter (`1e - 1`); `ppnum.py` (see Tools) scans for that.
   34 test groups, `ostest_main: Exiting with status 0`, then poweroff.
 - Not committed yet: `build/configs/qemu-armv7a/{Make.defs,
   scripts/dramboot.ld, ostest/defconfig}` (seed adds
-  `CONFIG_SCHED_WAITPID=y` for TESTING_OSTEST_WAITRESULT/POWEROFF),
-  apps/system/utils `CONFIG_LIB_HOMEDIR` → `CONFIG_LIBC_HOMEDIR`,
-  apps/system/system_file/system_file.c includes `<tinyara/crc32.h>`.
+  `CONFIG_SCHED_WAITPID=y` for TESTING_OSTEST_WAITRESULT/POWEROFF).
+- Known gap (not in the QEMU builds, rule 3): TizenRT code of other
+  boards/drivers still includes headers NuttX 12.13.0 moved or removed:
+  `tinyara/i2c.h` (48 files, now `tinyara/i2c/i2c_master.h`),
+  `tinyara/fs/mtd.h` (41, now `tinyara/mtd/mtd.h`), `tinyara/time.h` (12),
+  `tinyara/math.h` (11), `crc32.h`/`crc16.h`/`crc8.h` (15, now
+  `tinyara/crc*.h`), `tinyara/fs/dirent.h` (7), `tinyara/configdata.h` (7),
+  `tinyara/float.h` (3).  Only `queue.h` got a compat header (99 files).
 
 ## Next steps
 
