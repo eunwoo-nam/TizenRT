@@ -31,61 +31,50 @@ CSRCS = drivers_initialize.c
 include analog/Make.defs
 include audio/Make.defs
 include bch/Make.defs
-include can/Make.defs
-include clk/Make.defs
 include crypto/Make.defs
-include devicetree/Make.defs
-include dma/Make.defs
-include math/Make.defs
-include motor/Make.defs
 include i2c/Make.defs
 include i2s/Make.defs
-include i3c/Make.defs
-include ipcc/Make.defs
 include input/Make.defs
 include ioexpander/Make.defs
 include lcd/Make.defs
-include leds/Make.defs
 include loop/Make.defs
 include misc/Make.defs
-include mmcsd/Make.defs
-include modem/Make.defs
 include mtd/Make.defs
-include eeprom/Make.defs
-include efuse/Make.defs
 include net/Make.defs
 include note/Make.defs
-include pinctrl/Make.defs
 include pipes/Make.defs
 include power/Make.defs
-include regmap/Make.defs
-include rmt/Make.defs
-include rpmsg/Make.defs
-include rptun/Make.defs
 include sensors/Make.defs
 include serial/Make.defs
 include spi/Make.defs
 include syslog/Make.defs
-include thermal/Make.defs
 include timers/Make.defs
 include usbdev/Make.defs
 include usbhost/Make.defs
-include usbmisc/Make.defs
-include usbmonitor/Make.defs
-include vhost/Make.defs
 include video/Make.defs
-include virtio/Make.defs
 include wireless/Make.defs
-include contactless/Make.defs
-include 1wire/Make.defs
-include rf/Make.defs
-include rc/Make.defs
-include segger/Make.defs
-include usrsock/Make.defs
-include reset/Make.defs
-include pci/Make.defs
-include coresight/Make.defs
-include aie/Make.defs
+
+# TizenRT drivers that NuttX does not have
+
+include bluetooth/Make.defs
+include compression/Make.defs
+include cpuload/Make.defs
+include iotdev/Make.defs
+include lwnl/Make.defs
+include memory/Make.defs
+include mipidsi/Make.defs
+include os_api_test/Make.defs
+include otp/Make.defs
+include pm/Make.defs
+include prodconfig/Make.defs
+include seclink/Make.defs
+include silent_reboot/Make.defs
+include task_manager/Make.defs
+include wifi_csi/Make.defs
+
+ifeq ($(CONFIG_VIRTKEY),y)
+  CSRCS += virtkey.c
+endif
 
 ifeq ($(CONFIG_SPECIFIC_DRIVERS),y)
 -include platform/Make.defs

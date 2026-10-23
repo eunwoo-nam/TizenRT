@@ -20,7 +20,7 @@
 #
 ############################################################################
 
-include $(TOPDIR)/tools/Make.defs
+include $(TOPDIR)/Make.defs
 include chip/Make.defs
 
 ifeq ($(CONFIG_ARCH_ARMV7A),y)          # ARMv7-A
@@ -51,7 +51,10 @@ CFLAGS += $(INCLUDES)
 CXXFLAGS += $(INCLUDES)
 AFLAGS += $(INCLUDES)
 
-NUTTX = $(call CONVERT_PATH,$(TOPDIR)$(DELIM)nuttx$(EXEEXT))
+# TizenRT: the image is linked to $(OUTBIN_DIR)/tinyara and the libraries
+# are installed in $(LIBRARIES_DIR) (see os/Makefile.unix and LibTargets.mk)
+
+NUTTX = $(call CONVERT_PATH,$(TOPDIR)$(DELIM)$(OUTBIN_DIR)$(DELIM)tinyara$(EXEEXT))
 
 # Additional rules for system call wrapper
 
@@ -136,7 +139,7 @@ endif
 
 ARCHSCRIPT := $(call CONVERT_PATH,$(ARCHSCRIPT))
 LDFLAGS += $(addprefix $(SCRIPT_OPT),$(addsuffix .tmp,$(ARCHSCRIPT))) $(EXTRALINKCMDS)
-LIBPATHS += $(LIBPATH_OPT) $(call CONVERT_PATH,$(TOPDIR)$(DELIM)staging)
+LIBPATHS += $(LIBPATH_OPT) $(call CONVERT_PATH,$(TOPDIR)$(DELIM)$(LIBRARIES_DIR))
 
 BOARDMAKE = $(if $(wildcard board$(DELIM)Makefile),y,)
 ifeq ($(BOARDMAKE),y)
@@ -212,8 +215,8 @@ endef
 $(addsuffix .tmp,$(ARCHSCRIPT)): $(ARCHSCRIPT)
 	$(call PREPROCESS, $(patsubst %.tmp,%,$@), $@)
 
-nuttx$(EXEEXT): $(HEAD_OBJ) board$(DELIM)libboard$(LIBEXT) $(addsuffix .tmp,$(ARCHSCRIPT))
-	$(Q) echo "LD: nuttx"
+$(OUTBIN_DIR)$(DELIM)tinyara$(EXEEXT): $(HEAD_OBJ) board$(DELIM)libboard$(LIBEXT) $(addsuffix .tmp,$(ARCHSCRIPT))
+	$(Q) echo "LD: tinyara"
 ifeq ($(CONFIG_ALLSYMS)$(CONFIG_MM_KASAN_GLOBAL),)
 	$(Q) $(LD) $(LDFLAGS) $(LIBPATHS) $(EXTRA_LIBPATHS) \
 		-o $(NUTTX) $(HEAD_OBJ) $(EXTRA_OBJS) \
@@ -231,7 +234,7 @@ endif
 ifneq ($(CONFIG_WINDOWS_NATIVE),y)
 	$(Q) $(NM) $(NUTTX) | \
 	grep -v '\(compiled\)\|\(\$(OBJEXT)$$\)\|\( [aUw] \)\|\(\.\.ng$$\)\|\(LASH[RL]DI\)' | \
-	sort > $(TOPDIR)$(DELIM)System.map
+	sort > $(TOPDIR)$(DELIM)$(OUTBIN_DIR)$(DELIM)System.map
 endif
 	$(Q) $(call DELFILE, $(addsuffix .tmp,$(ARCHSCRIPT)))
 

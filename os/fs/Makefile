@@ -39,7 +39,6 @@ include mmap/Make.defs
 include semaphore/Make.defs
 include mqueue/Make.defs
 include shm/Make.defs
-include socket/Make.defs
 include event/Make.defs
 
 # Additional files required is mount-able file systems are supported
@@ -53,7 +52,6 @@ include romfs/Make.defs
 include cromfs/Make.defs
 include tmpfs/Make.defs
 include nxffs/Make.defs
-include nfs/Make.defs
 include smartfs/Make.defs
 include binfs/Make.defs
 include procfs/Make.defs
@@ -62,7 +60,6 @@ include unionfs/Make.defs
 include userfs/Make.defs
 include hostfs/Make.defs
 include littlefs/Make.defs
-include rpmsgfs/Make.defs
 include zipfs/Make.defs
 include mnemofs/Make.defs
 include v9fs/Make.defs

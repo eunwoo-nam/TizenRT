@@ -30,7 +30,9 @@
 
 #include <tinyara/syslog/ramlog.h>
 #include <tinyara/syslog/syslog.h>
-#include <tinyara/syslog/syslog_rpmsg.h>
+#if defined(CONFIG_SYSLOG_RPMSG) || defined(CONFIG_SYSLOG_RPMSG_SERVER)
+#  include <tinyara/syslog/syslog_rpmsg.h>
+#endif
 
 #include "syslog.h"
 
