@@ -43,7 +43,7 @@ double sinh(double x)
 	double y;
 	double z;
 
-	if (fabs(x) < 1E - 5) {
+	if (fabs(x) < 1E-5) {
 		/* x + 1/3! * x^3 + 1/5! * x^5 + 1/7! * x^7 + ... */
 
 		z = x * x;

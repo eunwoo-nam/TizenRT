@@ -39,7 +39,7 @@ double asinh(double x)
 	double y;
 	double z = x * x;
 
-	if (z < 1E - 9) {
+	if (z < 1E-9) {
 		/* x - 1/6 * x^3 + 3/40 * x^5 - 5/112 * x^7 + ... */
 
 		y = x * (1 - z / 6.0);

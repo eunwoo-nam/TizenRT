@@ -93,12 +93,12 @@
  * Private Data
  ****************************************************************************/
 
-static const double g_c1 = 4.16666666666666019037e - 02; /* 0x3fa55555, 0x5555554c */
-static const double g_c2 = -1.38888888888741095749e - 03; /* 0xbf56C16c, 0x16c15177 */
-static const double g_c3 = 2.48015872894767294178e - 05; /* 0x3efa01a0, 0x19cb1590 */
-static const double g_c4 = -2.75573143513906633035e - 07; /* 0xbe927e4e, 0x809c52ad */
-static const double g_c5 = 2.08757232129817482790e - 09; /* 0x3e21ee9E, 0xbdb4b1c4 */
-static const double g_c6 = -1.13596475577881948265e - 11; /* 0xbda8fae9, 0xbe8838d4 */
+static const double g_c1 = 4.16666666666666019037e-02; /* 0x3fa55555, 0x5555554c */
+static const double g_c2 = -1.38888888888741095749e-03; /* 0xbf56C16c, 0x16c15177 */
+static const double g_c3 = 2.48015872894767294178e-05; /* 0x3efa01a0, 0x19cb1590 */
+static const double g_c4 = -2.75573143513906633035e-07; /* 0xbe927e4e, 0x809c52ad */
+static const double g_c5 = 2.08757232129817482790e-09; /* 0x3e21ee9E, 0xbdb4b1c4 */
+static const double g_c6 = -1.13596475577881948265e-11; /* 0xbda8fae9, 0xbe8838d4 */
 
 /****************************************************************************
  * Public Functions
