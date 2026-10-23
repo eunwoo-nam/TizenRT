@@ -57,6 +57,7 @@ library, drivers: per group).
 | c80d1840 8e5f6d3e | os/board: boardctl.c move, qemu-armv7a + mps2-an521 + Board.mk/Makefile |
 | 422cae36 | Kconfig integration (os/Kconfig, Kconfig.debug, arch, arm, board, adapted NuttX Kconfigs, apps_entry) |
 | 0f89d2cf | re-format the 9 files with exponent numbers after the cformatter fix 51e698d9 |
+| a989f610 | build/configs/mps2-an521: Make.defs, scripts/flash.ld, ostest, tash, qemu_run.sh, README.md. **Both pass on QEMU** (32 groups; no FPU/prio-inherit as in NuttX nsh; no board_power_off so QEMU keeps running) |
 | 98ff0124 | build/configs/qemu-armv7a/tash (+README): TASH via `preapp_start`, `ostest` from TASH passes |
 | 52b06bd1 | apps: TASH/FS_CMDS no longer depend on NFILE_DESCRIPTORS (removed in NuttX), fscmd.c guard dropped, local mount point handler type (foreach_mountpoint_t is OS internal now) |
 | f4e15eed | build/configs/qemu-armv7a: Make.defs, scripts/dramboot.ld, ostest/defconfig, qemu_run.sh, README.md. **ostest passes on QEMU** (34 groups, `ostest_main: Exiting with status 0`, poweroff) |
@@ -82,7 +83,11 @@ the formatter (`1e - 1`); `ppnum.py` (see Tools) scans for that.
   nx_bringup only starts INIT_ENTRYPOINT), `CONFIG_SECURITY_LEVEL_CMDS`
   off.  To change a defconfig: use the committed defconfig as the seed
   of `kc_test.sh` (olddefconfig) and copy os/.config back.
-- Next: mps2-an521.
+- mps2-an521 is done (a989f610).  Seeds: NuttX nsh defconfig OS values +
+  `CONFIG_SCHED_WAITPID=y` + the TizenRT `# ... is not set` lines of the
+  qemu-armv7a seed.  CMSDK UART0 TX 48 / RX 49 work with QEMU 8.2 (input
+  checked with TASH).
+- Next: docs/NuttX-12.13.0-Migration.md and the final codesim report.
 - Note: the apps preconfig regenerates apps/examples/SoundPlayer/Kconfig
   and Kconfig_ENTRY (pre-existing TizenRT behavior); `git checkout` them.
 - Known gap (not in the QEMU builds, rule 3): TizenRT code of other
@@ -97,11 +102,10 @@ the formatter (`1e - 1`); `ppnum.py` (see Tools) scans for that.
 
 ## Next steps
 
-1. mps2-an521: build/configs/mps2-an521 (Make.defs, flash.ld, ostest,
-   tash), run with `qemu-system-arm -M mps2-an521 -nographic ... -kernel`.
-   QEMU 8.2 → default CMSDK IRQs (swap only for QEMU >= 9.2).
-2. Docs: build/configs/mps2-an521/README.md, docs/NuttX-12.13.0-Migration.md.
-3. Final codesim report over all synced files.
+1. docs/NuttX-12.13.0-Migration.md: mapping, excluded areas and why,
+   intentional changes to synced files, codesim summary, known gaps.
+2. Final codesim report over all synced files (`nxsync.py verify` per
+   unit) and the `ppnum.py` scan.
 
 ## Environment (recreate after a new session)
 
