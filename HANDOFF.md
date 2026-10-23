@@ -57,6 +57,7 @@ library, drivers: per group).
 | c80d1840 8e5f6d3e | os/board: boardctl.c move, qemu-armv7a + mps2-an521 + Board.mk/Makefile |
 | 422cae36 | Kconfig integration (os/Kconfig, Kconfig.debug, arch, arm, board, adapted NuttX Kconfigs, apps_entry) |
 | 0f89d2cf | re-format the 9 files with exponent numbers after the cformatter fix 51e698d9 |
+| 52b06bd1 | apps: TASH/FS_CMDS no longer depend on NFILE_DESCRIPTORS (removed in NuttX), fscmd.c guard dropped, local mount point handler type (foreach_mountpoint_t is OS internal now) |
 | f4e15eed | build/configs/qemu-armv7a: Make.defs, scripts/dramboot.ld, ostest/defconfig, qemu_run.sh, README.md. **ostest passes on QEMU** (34 groups, `ostest_main: Exiting with status 0`, poweroff) |
 | 0d962fae | apps/system: `CONFIG_LIB_HOMEDIR` → `CONFIG_LIBC_HOMEDIR`, system_file.c includes `<tinyara/crc32.h>` |
 | 3af7c335 | apps/examples/testcase/ostest ← nuttx-apps 12.13.0 testing/ostest (entry point stays `ostest_main`, TizenRT Make.defs with the nuttx-apps conditions, fork.c/multiuser.c kept but not built) |
@@ -75,7 +76,14 @@ the formatter (`1e - 1`); `ppnum.py` (see Tools) scans for that.
   `kc_test.sh` from `seed.config` (nuttx nsh defconfig values + ostest
   entry point + `CONFIG_SCHED_WAITPID=y` for WAITRESULT/POWEROFF + the
   TizenRT apps switched off); copy os/.config to the defconfig.
-- Next: qemu-armv7a `tash` config.
+- qemu-armv7a `tash`: builds and passes (TASH `help` lists `ostest`,
+  `ostest` → `ostest_main: Exiting with status 0`).  Not committed yet:
+  `build/configs/qemu-armv7a/tash/defconfig` (seed_tash.config = ostest
+  seed with `CONFIG_INIT_ENTRYPOINT="preapp_start"` (apps/system/init
+  starts TASH and registers the builtin commands; NuttX nx_bringup only
+  starts INIT_ENTRYPOINT), `CONFIG_TASH=y`, `CONFIG_SYSTEM_PREAPP_INIT=y`,
+  `CONFIG_BUILTIN_APPS=y`, no TESTING_OSTEST_POWEROFF,
+  `# CONFIG_SECURITY_LEVEL_CMDS is not set` (Samsung security level)).
 - Note: the apps preconfig regenerates apps/examples/SoundPlayer/Kconfig
   and Kconfig_ENTRY (pre-existing TizenRT behavior); `git checkout` them.
 - Known gap (not in the QEMU builds, rule 3): TizenRT code of other
@@ -85,6 +93,8 @@ the formatter (`1e - 1`); `ppnum.py` (see Tools) scans for that.
   `tinyara/math.h` (11), `crc32.h`/`crc16.h`/`crc8.h` (15, now
   `tinyara/crc*.h`), `tinyara/fs/dirent.h` (7), `tinyara/configdata.h` (7),
   `tinyara/float.h` (3).  Only `queue.h` got a compat header (99 files).
+  `CONFIG_NFILE_DESCRIPTORS`/`CONFIG_NFILE_STREAMS` (removed in NuttX) are
+  still used by le_tc, ftpc, libcoap, lwm2m examples and the vi Kconfig.
 
 ## Next steps
 
