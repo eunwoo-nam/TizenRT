@@ -9,60 +9,149 @@ config SPECIFIC_DRIVERS
 
 source "drivers/crypto/Kconfig"
 source "drivers/loop/Kconfig"
-source "drivers/can/Kconfig"
-source "drivers/clk/Kconfig"
 source "drivers/i2c/Kconfig"
-source "drivers/i3c/Kconfig"
 source "drivers/spi/Kconfig"
 source "drivers/i2s/Kconfig"
-source "drivers/ipcc/Kconfig"
 source "drivers/timers/Kconfig"
 source "drivers/analog/Kconfig"
 source "drivers/audio/Kconfig"
-source "drivers/vhost/Kconfig"
 source "drivers/video/Kconfig"
-source "drivers/virtio/Kconfig"
 source "drivers/bch/Kconfig"
 source "drivers/input/Kconfig"
 source "drivers/ioexpander/Kconfig"
 source "drivers/lcd/Kconfig"
-source "drivers/leds/Kconfig"
 source "drivers/misc/Kconfig"
-source "drivers/mmcsd/Kconfig"
-source "drivers/modem/Kconfig"
 source "drivers/mtd/Kconfig"
-source "drivers/eeprom/Kconfig"
-source "drivers/efuse/Kconfig"
-source "drivers/net/Kconfig"
+menuconfig NETDEVICES
+	bool "Network Device/PHY Support"
+	default n if !ARCH_HAVE_PHY
+	default y if ARCH_HAVE_PHY
+	depends on NET
+	---help---
+		Network interface driver and PHY selections.  This options enables
+		selection of drivers for external Ethernet MAC chips.  The majority
+		of MCUs, however, have built-in, internal Ethernet MAC peripherals
+		and that Ethernet support is selected in the MCU-specific
+		configuration menus.
+
+		Most Ethernet MAC drivers, whether internal or external, will
+		require configuration of an external PHY device.  That external PHY
+		device is also selected via this menu.
+
+if NETDEVICES
+source drivers/net/Kconfig
+endif # NETDEVICES
 source "drivers/note/Kconfig"
-source "drivers/pinctrl/Kconfig"
 source "drivers/pipes/Kconfig"
 source "drivers/power/Kconfig"
-source "drivers/regmap/Kconfig"
-source "drivers/rmt/Kconfig"
-source "drivers/rpmsg/Kconfig"
-source "drivers/rptun/Kconfig"
 source "drivers/sensors/Kconfig"
 source "drivers/serial/Kconfig"
-source "drivers/thermal/Kconfig"
 source "drivers/usbdev/Kconfig"
 source "drivers/usbhost/Kconfig"
-source "drivers/usbmisc/Kconfig"
-source "drivers/usbmonitor/Kconfig"
-source "drivers/wireless/Kconfig"
-source "drivers/contactless/Kconfig"
-source "drivers/1wire/Kconfig"
+menuconfig DRIVERS_WIRELESS
+	bool "Wireless Device Support"
+	default n
+	---help---
+		Drivers for various wireless devices.
+
+source drivers/wireless/Kconfig
 source "drivers/syslog/Kconfig"
 source "$BINDIR/drivers/platform/Kconfig"
-source "drivers/rf/Kconfig"
-source "drivers/rc/Kconfig"
-source "drivers/motor/Kconfig"
-source "drivers/math/Kconfig"
-source "drivers/segger/Kconfig"
-source "drivers/usrsock/Kconfig"
-source "drivers/dma/Kconfig"
-source "drivers/devicetree/Kconfig"
-source "drivers/reset/Kconfig"
-source "drivers/pci/Kconfig"
-source "drivers/coresight/Kconfig"
-source "drivers/aie/Kconfig"
+
+#
+# TizenRT drivers that NuttX does not have
+#
+
+config VIRTKEY
+	bool "Enable virtual key driver"
+	default n
+	depends on NFILE_DESCRIPTORS != 0
+
+if VIRTKEY
+config VIRTKEY_QUEUE_LEN
+	int "Virtual key event queue length"
+	default 1024
+	---help---
+		Use this to specify length of event queue for virtual keyboard driver,
+		Event generator will write to the queue and receiver will read from it.
+endif
+
+menuconfig MIPI_DSI
+        bool "MIPI Driver Support"
+        default n
+        ---help---
+                This selection enables selection of MIPI upper half driver.  This option
+                should be enabled by all platforms that support MIPI interfaces.
+                See include/tinyara/mipidsi/mipi_dsi.h for further MIPI driver information.
+
+if MIPI_DSI
+source drivers/mipidsi/Kconfig
+endif
+
+config GPIO
+	bool "GPIO Driver Support"
+	default n
+	depends on NFILE_DESCRIPTORS != 0
+	---help---
+		This selection enables building of the "upper-half" GPIO
+		driver. See include/tinyara/gpio.h for further GPIO driver
+		information.
+
+source drivers/wifi_csi/Kconfig
+
+config MMINFO
+	bool "Memory info Driver Support"
+	default n
+	---help---
+		This selection enables building of the "upper-half" mminfo
+		driver.
+
+config PRODCONFIG
+	bool "Product config Driver Support"
+	default n
+	---help---
+		This selection enables building of the "upper-half" prodconfig
+		driver.
+
+source drivers/os_api_test/Kconfig
+source drivers/iotdev/Kconfig
+
+menuconfig DRIVERS_BLUETOOTH
+	bool "Bluetooth Device Support"
+	default n
+	---help---
+		Drivers for various bluetooth devices.
+
+if DRIVERS_BLUETOOTH
+config DRIVERS_BR_EDR
+	bool "Enable BR/EDR"
+	---help---
+		Enable Bluetooth Basic Rate/Enhanced Data Rate(BR/EDR)
+
+config DRIVERS_BLE
+	bool "Enable BLE"
+	---help---
+		Enable Bluetooth with low energy(BLE)
+
+source drivers/bluetooth/Kconfig
+
+endif # DRIVERS_BLUETOOTH
+
+config OTP
+	bool "OTP Driver Support"
+	default n
+	depends on NFILE_DESCRIPTORS != 0
+	---help---
+		This selection enables building of the "upper-half" OTP
+		driver. See include/tinyara/otp.h for further OTP driver
+		information.
+
+if OTP
+config OTP_NULL
+	bool "OTP Null device"
+	default n
+	---help---
+		Virtual OTP device
+endif
+
+source drivers/seclink/Kconfig
