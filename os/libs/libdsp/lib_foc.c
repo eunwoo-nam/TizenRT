@@ -237,8 +237,8 @@ void foc_vbase_update(FAR struct foc_data_f32_s *foc, float vbase)
 
 	/* Prevent division by zero */
 
-	if (vbase < 1e - 10f) {
-		vbase = 1e - 10f;
+	if (vbase < 1e-10f) {
+		vbase = 1e-10f;
 	}
 
 	/* NOTE: this is base voltage for FOC, not bus voltage! */

@@ -437,10 +437,10 @@ int bh1749nuc_register_uorb(int devno, FAR struct bh1749nuc_config_s *config)
 
 	/* Return data in lux unit for RGB and IR */
 
-	dev->scale_r  = (20.0f / 71.0f) * (1e - 6 / 1.46e - 7);
-	dev->scale_g  = (20.0f / 99.0f) * (1e - 6 / 1.46e - 7);
-	dev->scale_b  = (20.0f / 70.0f) * (1e - 6 / 1.46e - 7);
-	dev->scale_ir = (20.0f / 25.0f) * (1e - 6 / 1.46e - 7);
+	dev->scale_r  = (20.0f / 71.0f) * (1e-6 / 1.46e-7);
+	dev->scale_g  = (20.0f / 99.0f) * (1e-6 / 1.46e-7);
+	dev->scale_b  = (20.0f / 70.0f) * (1e-6 / 1.46e-7);
+	dev->scale_ir = (20.0f / 25.0f) * (1e-6 / 1.46e-7);
 
 	/*  Register sensor */
 

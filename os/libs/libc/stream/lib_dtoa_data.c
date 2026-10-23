@@ -126,55 +126,55 @@ const double g_dtoa_scale_up[] =
 const double g_dtoa_scale_down[] =
 {
 #if DBL_MIN_10_EXP <= -1
-  1e - 1,
+  1e-1,
 #endif
 #if DBL_MIN_10_EXP <= -2
-  1e - 2,
+  1e-2,
 #endif
 #if DBL_MIN_10_EXP <= -4
-  1e - 4,
+  1e-4,
 #endif
 #if DBL_MIN_10_EXP <= -8
-  1e - 8,
+  1e-8,
 #endif
 #if DBL_MIN_10_EXP <= -16
-  1e - 16,
+  1e-16,
 #endif
 #if DBL_MIN_10_EXP <= -32
-  1e - 32,
+  1e-32,
 #endif
 #if DBL_MIN_10_EXP <= -64
-  1e - 64,
+  1e-64,
 #endif
 #if DBL_MIN_10_EXP <= -128
-  1e - 128,
+  1e-128,
 #endif
 #if DBL_MIN_10_EXP <= -256
-  1e - 256,
+  1e-256,
 #endif
 #if DBL_MIN_10_EXP <= -512
-  1e - 512,
+  1e-512,
 #endif
 #if DBL_MIN_10_EXP <= -1024
-  1e - 1024,
+  1e-1024,
 #endif
 #if DBL_MIN_10_EXP <= -2048
-  1e - 2048,
+  1e-2048,
 #endif
 #if DBL_MIN_10_EXP <= -4096
-  1e - 4096,
+  1e-4096,
 #endif
 #if DBL_MIN_10_EXP <= -8192
-  1e - 8192,
+  1e-8192,
 #endif
 #if DBL_MIN_10_EXP <= -16384
-  1e - 16384,
+  1e-16384,
 #endif
 #if DBL_MIN_10_EXP <= -32768
-  1e - 32768,
+  1e-32768,
 #endif
 #if DBL_MIN_10_EXP <= -65536
-  1e - 65536,
+  1e-65536,
 #endif
 };
 
