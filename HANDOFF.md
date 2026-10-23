@@ -57,6 +57,7 @@ library, drivers: per group).
 | c80d1840 8e5f6d3e | os/board: boardctl.c move, qemu-armv7a + mps2-an521 + Board.mk/Makefile |
 | 422cae36 | Kconfig integration (os/Kconfig, Kconfig.debug, arch, arm, board, adapted NuttX Kconfigs, apps_entry) |
 | 0f89d2cf | re-format the 9 files with exponent numbers after the cformatter fix 51e698d9 |
+| 98ff0124 | build/configs/qemu-armv7a/tash (+README): TASH via `preapp_start`, `ostest` from TASH passes |
 | 52b06bd1 | apps: TASH/FS_CMDS no longer depend on NFILE_DESCRIPTORS (removed in NuttX), fscmd.c guard dropped, local mount point handler type (foreach_mountpoint_t is OS internal now) |
 | f4e15eed | build/configs/qemu-armv7a: Make.defs, scripts/dramboot.ld, ostest/defconfig, qemu_run.sh, README.md. **ostest passes on QEMU** (34 groups, `ostest_main: Exiting with status 0`, poweroff) |
 | 0d962fae | apps/system: `CONFIG_LIB_HOMEDIR` → `CONFIG_LIBC_HOMEDIR`, system_file.c includes `<tinyara/crc32.h>` |
@@ -76,14 +77,12 @@ the formatter (`1e - 1`); `ppnum.py` (see Tools) scans for that.
   `kc_test.sh` from `seed.config` (nuttx nsh defconfig values + ostest
   entry point + `CONFIG_SCHED_WAITPID=y` for WAITRESULT/POWEROFF + the
   TizenRT apps switched off); copy os/.config to the defconfig.
-- qemu-armv7a `tash`: builds and passes (TASH `help` lists `ostest`,
-  `ostest` → `ostest_main: Exiting with status 0`).  Not committed yet:
-  `build/configs/qemu-armv7a/tash/defconfig` (seed_tash.config = ostest
-  seed with `CONFIG_INIT_ENTRYPOINT="preapp_start"` (apps/system/init
-  starts TASH and registers the builtin commands; NuttX nx_bringup only
-  starts INIT_ENTRYPOINT), `CONFIG_TASH=y`, `CONFIG_SYSTEM_PREAPP_INIT=y`,
-  `CONFIG_BUILTIN_APPS=y`, no TESTING_OSTEST_POWEROFF,
-  `# CONFIG_SECURITY_LEVEL_CMDS is not set` (Samsung security level)).
+- qemu-armv7a `tash` is done (98ff0124): entry point `preapp_start`
+  (apps/system/init starts TASH and registers the builtin commands; NuttX
+  nx_bringup only starts INIT_ENTRYPOINT), `CONFIG_SECURITY_LEVEL_CMDS`
+  off.  To change a defconfig: use the committed defconfig as the seed
+  of `kc_test.sh` (olddefconfig) and copy os/.config back.
+- Next: mps2-an521.
 - Note: the apps preconfig regenerates apps/examples/SoundPlayer/Kconfig
   and Kconfig_ENTRY (pre-existing TizenRT behavior); `git checkout` them.
 - Known gap (not in the QEMU builds, rule 3): TizenRT code of other
@@ -98,14 +97,11 @@ the formatter (`1e - 1`); `ppnum.py` (see Tools) scans for that.
 
 ## Next steps
 
-1. qemu-armv7a `tash` config (TASH + `ostest` command); run with
-   `build/configs/qemu-armv7a/qemu_run.sh`, type `ostest`, check
-   `ostest_main: Exiting with status 0`.
-2. mps2-an521: build/configs/mps2-an521 (Make.defs, flash.ld, ostest,
+1. mps2-an521: build/configs/mps2-an521 (Make.defs, flash.ld, ostest,
    tash), run with `qemu-system-arm -M mps2-an521 -nographic ... -kernel`.
    QEMU 8.2 → default CMSDK IRQs (swap only for QEMU >= 9.2).
-3. Docs: build/configs/mps2-an521/README.md, docs/NuttX-12.13.0-Migration.md.
-4. Final codesim report over all synced files.
+2. Docs: build/configs/mps2-an521/README.md, docs/NuttX-12.13.0-Migration.md.
+3. Final codesim report over all synced files.
 
 ## Environment (recreate after a new session)
 
