@@ -57,6 +57,7 @@ library, drivers: per group).
 | c80d1840 8e5f6d3e | os/board: boardctl.c move, qemu-armv7a + mps2-an521 + Board.mk/Makefile |
 | 422cae36 | Kconfig integration (os/Kconfig, Kconfig.debug, arch, arm, board, adapted NuttX Kconfigs, apps_entry) |
 | 0f89d2cf | re-format the 9 files with exponent numbers after the cformatter fix 51e698d9 |
+| 90ad849c | license ①: Samsung headers of 1122 existing files restored from master (same text/year, 665 same path + 457 moved) |
 | ceb8595e | docs/NuttX-12.13.0-Migration-Report.md: final report in Korean (results rebuilt and run from 28d774bd, user decisions, own decisions with reasons, deviations); test group counts corrected to 33/31 (34/32 counted the argv[0] line) |
 | 1268b92d | docs/NuttX-12.13.0-Migration.md (mapping, rules, exclusions, intentional differences, known gaps) |
 | a989f610 | build/configs/mps2-an521: Make.defs, scripts/flash.ld, ostest, tash, qemu_run.sh, README.md. **Both pass on QEMU** (31 groups; no FPU/prio-inherit as in NuttX nsh; no board_power_off so QEMU keeps running) |
@@ -110,6 +111,42 @@ the formatter (`1e - 1`); `ppnum.py` (see Tools) scans for that.
   `tinyara/float.h` (3).  Only `queue.h` got a compat header (85 files include `<queue.h>`).
   `CONFIG_NFILE_DESCRIPTORS`/`CONFIG_NFILE_STREAMS` (removed in NuttX) are
   still used by le_tc, ftpc, libcoap, lwm2m examples and the vi Kconfig.
+
+## License step (in progress)
+
+User decisions (license):
+- Tool: `tools/license/license_manager.py` of branch
+  `agent/261021_license-manager` (12777249), used from a worktree
+  ($S/license), not merged.
+- Existing TizenRT files follow the license they had on master (Samsung
+  header restored with its year). Existing files without a Samsung header
+  but with a NuttX license get a 2026 header; Kconfig/.gitignore stay.
+- New files: 2026 header with the tool; also for types the tool does not
+  support if they have a NuttX license; third-party licensed files too.
+  Files without a license: Kconfig stays, the 9 data .h get a header.
+- Non-NuttX-Apache files and files without a license are listed as
+  warnings in a separate .md.  Never run `fix` (see W4 below).
+- Two work commits (① restore, ② add), each followed by a HANDOFF commit.
+
+How the tool handles moved/renamed files: `get_creation_year()` uses
+`git log --diff-filter=A` on the current path without `--follow`, so a
+moved or renamed file gets the year of the move commit (2026 for the 457
+files moved by this migration).  `check` reports such files as
+YEAR_MISMATCH and `fix` would rewrite their year.  The clone was shallow;
+`git fetch --unshallow --filter=blob:none origin` gives the full history
+the tool needs.
+
+State: ① done (90ad849c).  Next ②: `lic.py add` (tool `add --year 2026`
+for supported types, tool functions for the others), warnings doc
+docs/NuttX-12.13.0-License-Warnings.md, doc updates, verification (lic.py
+verify, tool check with and without --year, nxsync verify, cformatter,
+4 QEMU configs).
+
+`$S/nxsync/lic.py classify|restore|add|verify` (not committed): groups
+A (restore, 1122), B (existing + NuttX license, 13), C1 (new NuttX
+Apache, 2408), C2 (new third-party, 131), C3 (new data .h, 9), skip 280;
+report in $S/nxsync/reports/lic.json; LIC_PRE=<commit before the license
+commits> (9951064d) when re-run after a commit.
 
 ## Next steps
 
