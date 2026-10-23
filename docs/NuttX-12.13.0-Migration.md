@@ -11,8 +11,8 @@ The result is verified on two QEMU boards, FLAT build only:
 
 | Board | CPU | Configs | Result on QEMU 8.2 |
 |---|---|---|---|
-| [qemu-armv7a](../build/configs/qemu-armv7a/README.md) | Cortex-A7, `virt`, GICv2, PL011 | `ostest`, `tash` | 34 test groups pass, `ostest_main: Exiting with status 0` |
-| [mps2-an521](../build/configs/mps2-an521/README.md) | Cortex-M33, MPS2 AN521, CMSDK UART | `ostest`, `tash` | 32 test groups pass, `ostest_main: Exiting with status 0` |
+| [qemu-armv7a](../build/configs/qemu-armv7a/README.md) | Cortex-A7, `virt`, GICv2, PL011 | `ostest`, `tash` | 33 test groups pass, `ostest_main: Exiting with status 0` |
+| [mps2-an521](../build/configs/mps2-an521/README.md) | Cortex-M33, MPS2 AN521, CMSDK UART | `ostest`, `tash` | 31 test groups pass, `ostest_main: Exiting with status 0` |
 
 ## Layout
 
