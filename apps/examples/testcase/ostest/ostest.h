@@ -1,23 +1,5 @@
 /****************************************************************************
- *
- * Copyright 2026 Samsung Electronics All Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
- * either express or implied. See the License for the specific
- * language governing permissions and limitations under the License.
- *
- ****************************************************************************/
-
-/****************************************************************************
- * apps/examples/testcase/ostest/ostest.h
+ * apps/testing/ostest/ostest.h
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -125,12 +107,6 @@ int setvbuf_test(void);
 
 #ifdef CONFIG_DEV_NULL
 int dev_null_test(void);
-#endif
-
-/* multiuser.c **************************************************************/
-
-#if defined(CONFIG_TESTING_OSTEST_MULTIUSER) && defined(CONFIG_SCHED_USER_IDENTITY)
-int multiuser_test(void);
 #endif
 
 /* fpu.c ********************************************************************/
@@ -302,14 +278,8 @@ void sched_lock_test(void);
 
 /* vfork.c ******************************************************************/
 
-#ifdef CONFIG_ARCH_HAVE_VFORK
+#if defined(CONFIG_ARCH_HAVE_FORK) && defined(CONFIG_SCHED_WAITPID)
 int vfork_test(void);
-#endif
-
-/* fork.c *******************************************************************/
-
-#ifdef CONFIG_ARCH_HAVE_FORK
-int fork_test(void);
 #endif
 
 /* setjmp.c *****************************************************************/
@@ -328,7 +298,7 @@ void spinlock_test(void);
 
 /* perf_gettime.c ***********************************************************/
 
-#if defined(CONFIG_ARCH_HAVE_PERF_EVENTS) && defined(CONFIG_BUILD_FLAT)
+#ifdef CONFIG_ARCH_HAVE_PERF_EVENTS
 void perf_gettime_test(void);
 #endif
 
