@@ -25,22 +25,36 @@
  ****************************************************************************/
 
 #include <tinyara/clk/clk_provider.h>
-#include <tinyara/crypto/crypto.h>
+#if defined(CONFIG_CRYPTO)
+#  include <tinyara/crypto/crypto.h>
+#endif
 #include <tinyara/drivers/drivers.h>
-#include <tinyara/drivers/rpmsgdev.h>
-#include <tinyara/drivers/rpmsgblk.h>
+#if defined(CONFIG_DEV_RPMSG_SERVER)
+#  include <tinyara/drivers/rpmsgdev.h>
+#endif
+#if defined(CONFIG_BLK_RPMSG_SERVER)
+#  include <tinyara/drivers/rpmsgblk.h>
+#endif
 #include <tinyara/fs/loop.h>
 #include <tinyara/fs/smart.h>
 #include <tinyara/fs/loopmtd.h>
 #include <tinyara/input/uinput.h>
 #include <tinyara/mtd/mtd.h>
-#include <tinyara/net/loopback.h>
-#include <tinyara/net/rpmsgdrv.h>
-#include <tinyara/net/tun.h>
+#if defined(CONFIG_NET_LOOPBACK)
+#  include <tinyara/net/loopback.h>
+#endif
+#if defined(CONFIG_NET_RPMSG_DRV_SERVER)
+#  include <tinyara/net/rpmsgdrv.h>
+#endif
+#if defined(CONFIG_NET_TUN)
+#  include <tinyara/net/tun.h>
+#endif
 #include <tinyara/net/telnet.h>
 #include <tinyara/note/note_driver.h>
 #include <tinyara/pci/pci.h>
-#include <tinyara/power/pm.h>
+#if defined(CONFIG_PM)
+#  include <tinyara/power/pm.h>
+#endif
 #include <tinyara/power/regulator.h>
 #include <tinyara/reset/reset-controller.h>
 #include <tinyara/segger/rtt.h>
@@ -54,7 +68,9 @@
 #include <tinyara/timers/ptp_clock_dummy.h>
 #include <tinyara/timers/capture.h>
 #include <tinyara/trace.h>
-#include <tinyara/usrsock/usrsock_rpmsg.h>
+#if defined(CONFIG_NET_USRSOCK_RPMSG_SERVER)
+#  include <tinyara/usrsock/usrsock_rpmsg.h>
+#endif
 #include <tinyara/vhost/vhost.h>
 #include <tinyara/virtio/virtio.h>
 #include <tinyara/drivers/optee.h>

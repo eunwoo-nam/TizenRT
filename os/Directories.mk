@@ -140,15 +140,29 @@ endif
 #   be cleaned to prevent garbage from collecting in them when changing
 #   configurations.
 
-NONFSDIRS = kernel $(ARCH_SRC) $(TINYARA_ADDONS)
-FSDIRS = fs drivers
-ifeq ($(CONFIG_BINFMT_ENABLE),y)
-FSDIRS += binfmt
-endif
+NONFSDIRS = kernel $(ARCH_SRC) board $(TINYARA_ADDONS)
+FSDIRS = fs drivers binfmt
 CONTEXTDIRS = $(APPDIR)
 CONTEXTDIRS += $(TOOLSDIR)
 CONTEXTDIRS += mm
-CONTEXTDIRS += wqueue
+CONTEXTDIRS += board
+
+# NuttX directories with context targets (output directories of the
+# libraries, generated sources)
+
+CONTEXTDIRS += drivers fs $(ARCH_SRC)
+CONTEXTDIRS += $(LIB_DIR)$(DELIM)libc $(LIB_DIR)$(DELIM)libbuiltin
+ifeq ($(CONFIG_LIBM_TOOLCHAIN)$(CONFIG_LIBM_NONE),)
+CONTEXTDIRS += $(LIB_DIR)$(DELIM)libm
+endif
+ifeq ($(CONFIG_HAVE_CXX),y)
+CONTEXTDIRS += $(LIB_DIR)$(DELIM)libxx
+endif
+ifeq ($(CONFIG_NX),y)
+CONTEXTDIRS += graphics $(LIB_DIR)$(DELIM)libnx
+else ifeq ($(CONFIG_NXFONTS),y)
+CONTEXTDIRS += $(LIB_DIR)$(DELIM)libnx
+endif
 #ifeq ($(CONFIG_ENABLE_IOTIVITY),y)
 #CONTEXTDIRS += $(EXTDIR)$(DELIM)iotivity
 #endif
@@ -160,7 +174,7 @@ OTHERDIRS = $(LIBRARIES_DIR)
 
 ifeq ($(CONFIG_BUILD_PROTECTED),y)
 
-USERDIRS += $(LIB_DIR)$(DELIM)libc mm wqueue$(USER_ADDONS)
+USERDIRS += $(LIB_DIR)$(DELIM)libc mm $(USER_ADDONS)
 ifeq ($(CONFIG_HAVE_CXX),y)
 USERDIRS += $(LIB_DIR)$(DELIM)libxx
 endif
@@ -168,14 +182,14 @@ endif
 else
 ifeq ($(CONFIG_BUILD_KERNEL),y)
 
-USERDIRS += $(LIB_DIR)$(DELIM)libc mm wqueue
+USERDIRS += $(LIB_DIR)$(DELIM)libc mm
 ifeq ($(CONFIG_HAVE_CXX),y)
 USERDIRS += $(LIB_DIR)$(DELIM)libxx
 endif
 
 else
 
-NONFSDIRS += $(LIB_DIR)$(DELIM)libc mm wqueue
+NONFSDIRS += $(LIB_DIR)$(DELIM)libc mm
 OTHERDIRS += $(USER_ADDONS)
 ifeq ($(CONFIG_HAVE_CXX),y)
 NONFSDIRS += $(LIB_DIR)$(DELIM)libxx
@@ -185,6 +199,21 @@ endif
 
 endif
 endif
+
+# NuttX libraries
+
+ifeq ($(CONFIG_LIBM_TOOLCHAIN)$(CONFIG_LIBM_NONE),)
+NONFSDIRS += $(LIB_DIR)$(DELIM)libm
+else
+OTHERDIRS += $(LIB_DIR)$(DELIM)libm
+endif
+
+ifeq ($(CONFIG_LIB_BUILTIN),y)
+NONFSDIRS += $(LIB_DIR)$(DELIM)libbuiltin
+else
+OTHERDIRS += $(LIB_DIR)$(DELIM)libbuiltin
+endif
+
 
 ifeq ($(CONFIG_LIB_SYSCALL),y)
 NONFSDIRS += syscall
@@ -275,3 +304,22 @@ endif
 CLEANDIRS += se
 
 CLEANDIRS += userspace
+
+# NuttX graphics, video and DSP libraries
+
+ifeq ($(CONFIG_NX),y)
+KERNDEPDIRS += graphics $(LIB_DIR)$(DELIM)libnx
+else ifeq ($(CONFIG_NXFONTS),y)
+KERNDEPDIRS += $(LIB_DIR)$(DELIM)libnx
+endif
+CLEANDIRS += graphics $(LIB_DIR)$(DELIM)libnx
+
+ifeq ($(CONFIG_VIDEO),y)
+KERNDEPDIRS += video
+endif
+CLEANDIRS += video
+
+ifeq ($(CONFIG_LIBDSP),y)
+KERNDEPDIRS += $(LIB_DIR)$(DELIM)libdsp
+endif
+CLEANDIRS += $(LIB_DIR)$(DELIM)libdsp

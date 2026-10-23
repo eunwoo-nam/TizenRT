@@ -35,7 +35,9 @@
 #include <tinyara/list.h>
 #include <tinyara/mutex.h>
 #include <tinyara/wqueue.h>
-#include <tinyara/power/pm.h>
+#if defined(CONFIG_PM)
+#  include <tinyara/power/pm.h>
+#endif
 
 /****************************************************************************
  * Pre-processor Definitions

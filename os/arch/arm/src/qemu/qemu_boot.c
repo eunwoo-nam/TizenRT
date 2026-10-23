@@ -52,7 +52,9 @@
 #  include <tinyara/init.h>
 #endif
 
-#include <tinyara/syslog/syslog_rpmsg.h>
+#if defined(CONFIG_SYSLOG_RPMSG)
+#  include <tinyara/syslog/syslog_rpmsg.h>
+#endif
 
 /****************************************************************************
  * Private Data

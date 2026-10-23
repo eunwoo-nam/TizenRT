@@ -31,7 +31,9 @@
 
 #include <tinyara/fs/fs.h>
 #include <tinyara/fdt.h>
-#include <tinyara/rpmsg/rpmsg_port.h>
+#if defined(CONFIG_RPMSG_PORT_UART)
+#  include <tinyara/rpmsg/rpmsg_port.h>
+#endif
 
 #ifdef CONFIG_LIBC_FDT
 #  include <libfdt.h>

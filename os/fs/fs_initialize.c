@@ -28,7 +28,9 @@
 #include <tinyara/reboot_notifier.h>
 #include <tinyara/trace.h>
 
-#include "rpmsgfs/rpmsgfs.h"
+#if defined(CONFIG_FS_RPMSGFS_SERVER)
+#  include "rpmsgfs/rpmsgfs.h"
+#endif
 #include "inode/inode.h"
 #include "aio/aio.h"
 #include "vfs/vfs.h"
