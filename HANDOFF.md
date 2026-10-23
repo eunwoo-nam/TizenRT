@@ -57,6 +57,7 @@ library, drivers: per group).
 | c80d1840 8e5f6d3e | os/board: boardctl.c move, qemu-armv7a + mps2-an521 + Board.mk/Makefile |
 | 422cae36 | Kconfig integration (os/Kconfig, Kconfig.debug, arch, arm, board, adapted NuttX Kconfigs, apps_entry) |
 | 0f89d2cf | re-format the 9 files with exponent numbers after the cformatter fix 51e698d9 |
+| 1612c7b6 | build system: tools/Config.mk, mkdeps/mkconfig/cfgdefine, *.defs, Makefile.unix, Directories/FlatLibs/LibTargets.mk, arch/arm/src/Makefile, drivers/fs makefiles, include guards for not-synced headers, include/queue.h, libc/mm bin dirs removed |
 
 Every sync commit was verified with tizenrt-nuttx-similarity core: all
 copied C files are token-identical to NuttX 12.13.0 (renames
@@ -66,51 +67,19 @@ the formatter (`1e - 1`); `ppnum.py` (see Tools) scans for that.
 
 ## In progress
 
-Build system integration (Phase 3), not committed yet:
-- `os/tools/Config.mk` ← NuttX 12.13.0 Config.mk with TizenRT changes
-  (BOARD_DIR = os/board/<board>, no board common dir, drivers/dummy as
-  platform dir, fixed GCC prefixes `-D`/`-I`/`-isystem `, flock in ARCHIVE,
-  MOVEOBJ).
-- `os/tools/mkconfig.c`: NuttX 12.13.0 sanity section (CONFIG_y/m,
-  RAM_END/RAM_VEND/FLASH_END with #ifndef) + TizenRT board block
-  (crash dump, FLASH_START_ADDR, KMM_REGIONS, FLASH_END_ADDR, MPU guard).
-  The old NuttX-7.x derived macros are removed.
-- `os/Makefile.unix`: LIB_DIR=libs, headers copied from
-  include/tinyara/lib (math/float/stdarg/setjmp/stdbit), drivers/platform
-  link, BINDIR for kconfig.
-- `os/Directories.mk`, `FlatLibs.mk`, `LibTargets.mk`: libsched (kernel),
-  libboards, libm, libbuiltin, libxx, libnx, libgraphics, libvideo,
-  libdsp; libwque removed; binfmt always built.
-- `os/arch/arm/src/Makefile` (NuttX) adapted: includes $(TOPDIR)/Make.defs,
-  links $(OUTBIN_DIR)/tinyara, libraries from $(LIBRARIES_DIR),
-  System.map in $(OUTBIN_DIR).
-- `os/drivers/Makefile`, `os/drivers/power/Make.defs`, `os/fs/Makefile`:
-  drop includes of not-synced dirs, add TizenRT-only drivers.
-  `os/drivers/pm/Make.defs` (TizenRT /dev/pm) only with CONFIG_PM.
-- Include guards for headers that are not synced (user decision: guard
-  every such include, do not add the header): crypto, rpmsg*, net/tun,
-  net/loopback, usrsock_rpmsg, power/pm.h (drivers_initialize.c,
-  serial.c, watchdog.c, sched_cpuload_*.c, power/regulator.h),
-  syslog_rpmsg.h, rpmsg_port.h, fs_initialize.c rpmsgfs.h. Form:
-  `#if defined(CONFIG_X)\n#  include <h>\n#endif` (`adapt.py guards`).
-- `os/libs/libc/misc/Make.defs`: lib_tea_* dropped (crypto/tea.h not
-  synced, no users).
-- `os/include/queue.h`: TizenRT compat header → `<tinyara/queue.h>`
-  (NuttX removed it; 85 TizenRT files include it).
-- `os/tools/mkdeps.c` = NuttX 12.13.0 (the old one could not handle
-  `clock/clock.c` style sources), `os/tools/{D,Rust,Swift,Zig}.defs` from
-  NuttX (included by arch Toolchain.defs), `cfgdefine.c` dequotes
-  INIT_ENTRYPOINT etc.
-- `os/libs/libc/{bin,kbin,ubin}`, `os/mm/{bin,kbin,ubin}` removed: the
-  NuttX Makefiles create and clean them.
-- apps: `CONFIG_LIB_HOMEDIR` → `CONFIG_LIBC_HOMEDIR` (system/utils).
-- `build/configs/qemu-armv7a/{Make.defs,scripts/dramboot.ld,ostest/defconfig}`.
+- `qemu-armv7a/ostest`: every OS library builds
+  (build/output/libraries: libarch libbinfmt libboards libc libdrivers
+  libfs libmm libsched + framework/external).  The link stops at
+  apps/examples/testcase/ostest (old sighelper.c compares sigset_t
+  with `==`): next step syncs ostest with nuttx-apps 12.13.0.
+- Not committed yet: `build/configs/qemu-armv7a/{Make.defs,
+  scripts/dramboot.ld, ostest/defconfig}` and apps/system/utils
+  `CONFIG_LIB_HOMEDIR` → `CONFIG_LIBC_HOMEDIR`.
 
 ## Next steps
 
-1. Commit the build system step, then build `qemu-armv7a/ostest` in docker:
-   `cd os && ./tools/configure.sh qemu-armv7a/ostest && make` (inside
-   `tizenrt/tizenrt:2.0.1-qemu`) and fix the errors per area.
+1. Build `qemu-armv7a/ostest` in docker (`build.sh`, see Tools) and fix
+   the errors per area until build/output/bin/tinyara links.
 2. Run QEMU:
    `qemu-system-arm -cpu cortex-a7 -nographic -machine virt,virtualization=off,gic-version=2 -net none -chardev stdio,id=con,mux=on -serial chardev:con -mon chardev=con,mode=readline -kernel build/output/bin/tinyara`
    Pass: `ostest_main: Exiting with status 0`.
