@@ -10,6 +10,7 @@ PL011 UART console.  The board comes from
 | Config | What it does |
 |---|---|
 | `ostest` | Runs the NuttX OS test (`apps/examples/testcase/ostest`) as the entry point (`CONFIG_INIT_ENTRYPOINT="ostest_main"`) and powers QEMU off with the test result. |
+| `tash` | Starts TASH (`CONFIG_INIT_ENTRYPOINT="preapp_start"`, `apps/system/init`) with the FS commands and the `ostest` command. |
 
 ## Build
 
@@ -20,7 +21,7 @@ makes `dbuild.sh` use it.
 ```bash
 docker build -t tizenrt/tizenrt:2.0.1-qemu tools/docker
 cd os
-./tools/configure.sh qemu-armv7a/ostest
+./tools/configure.sh qemu-armv7a/ostest    # or qemu-armv7a/tash
 ./dbuild.sh build
 ```
 
@@ -47,5 +48,7 @@ user_main: Exiting
 ostest_main: Exiting with status 0
 ```
 
-and QEMU exits (`boardctl(BOARDIOC_POWEROFF)`).  Quit QEMU by hand with
-`Ctrl-a x`.
+and QEMU exits (`boardctl(BOARDIOC_POWEROFF)`).
+
+With the `tash` configuration, type `ostest` at the `TASH>>` prompt; the
+same lines show the result.  Quit QEMU with `Ctrl-a x`.
