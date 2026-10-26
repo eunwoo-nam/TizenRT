@@ -1,3 +1,0 @@
-config ENTRY_DUMP4CH
-	bool "4-channel audio dump example"
-	depends on DUMP4CH_SUPPORT

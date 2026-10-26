@@ -1,8 +1,0 @@
-build
-build*
-install
-__pycache__/
-*.py[cod]
-*$py.class
-tags
-*.py.swp
