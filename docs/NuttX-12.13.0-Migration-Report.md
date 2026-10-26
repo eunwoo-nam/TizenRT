@@ -23,13 +23,13 @@ NuttX 12.13.0 코드를 TizenRT에 가져왔습니다. TizenRT 빌드시스템, 
 
 | 지표 | 값 |
 |---|---|
-| NuttX와 동일한 싱크 파일 (tizenrt-nuttx-similarity core) | **3858 / 3882** (나머지 24개는 의도적 수정, 6.1절) |
+| NuttX와 동일한 싱크 파일 (tizenrt-nuttx-similarity core) | **3867 / 3887** (나머지 20개는 의도적 수정, 6.1절) |
 | cformatter | 싱크한 C 파일에 적용(실제로 바뀐 파일 2964개), 에러 0, [M07] 경고 274개(수동 수정 안 함) |
 | 지수 숫자 분리 검사(`1e - 1`) | 0건 |
 | 커밋 | 작업 커밋 42개(이 리포트 포함), 그 뒤마다 HANDOFF 커밋. 모두 브랜치에 푸쉬했고 master 푸쉬는 없음 |
 | 변경 규모 (master 대비, `1268b92d` 기준) | 4633개 파일: 추가 2963, 수정 737, 삭제 668, 이동 265 |
 | cformatter 툴 브랜치 수정 | `3463f629`, `51e698d9` (`agent/261022_improve-cformatter-tool`) |
-| 삼성 라이선스 | 기존 파일 1122개 master 헤더 복원, 기존 NuttX 라이선스 파일 13개와 신규 파일 2548개에 추가 (9절) |
+| 삼성 라이선스 | 기존 파일 1122개 master 헤더 복원, 기존 NuttX 라이선스 파일 13개와 신규 파일 2553개에 추가 (9절) |
 
 ## 2. 검증 결과
 
@@ -66,13 +66,14 @@ NuttX 12.13.0 코드를 TizenRT에 가져왔습니다. TizenRT 빌드시스템, 
 | libs/libm, libxx, libbuiltin, libdsp, libnx | 181, 35, 10, 19, 164 | 0 |
 | kernel (sched) | 313 | 2 |
 | mm | 134 | 0 |
-| fs | 267 | 3 |
+| fs | 268 | 2 |
 | binfmt, audio, syscall, graphics, video | 32, 5, 13, 86, 10 | 0 |
-| drivers (core, mtd, serial+timers, bus, media, usb, power) | 93, 51, 51, 78, 293, 57, 26 | 4, 0, 2, 0, 0, 0, 2 |
-| arch | 207 | 2 |
-| board | 15 | 1 |
+| drivers (core, mtd, serial+timers, bus, media, usb, power) | 94, 51, 51, 78, 293, 57, 26 | 3, 0, 2, 0, 0, 0, 2 |
+| arch | 208 | 1 |
+| board | 16 | 0 |
 | apps ostest | 51 | 1 |
-| **합계** | **3858** | **24** |
+| rpmsg 헤더 (5개) | 5 | 0 |
+| **합계** | **3867** | **20** |
 
 토큰 비교는 공백을 보지 않습니다. 그래서 숫자가 지수 부호에서 쪼개진 경우(`1e - 1`)는 이 비교로 잡히지 않습니다. 이 경우만 `ppnum.py`로 따로 검사했고 0건입니다.
 
@@ -124,7 +125,7 @@ NuttX에서 가져온 코드는 경고 없이 빌드됩니다. 남은 경고는 
 | ostest 실행 방식 | config 2개: 진입점으로 실행 후 poweroff(`ostest`), TASH에서 실행(`tash`) |
 | 호스트 툴 | TizenRT `os/tools`를 유지하고 최소한만 바꿉니다. |
 | 빌드 모드 | FLAT만 |
-| 핵심 드라이버 | note와 QEMU 최소 부팅에 필요한 것만 가져옵니다. openamp는 전혀 가져오지 않습니다. |
+| 핵심 드라이버 | note와 QEMU 최소 부팅에 필요한 것만 가져옵니다. openamp는 전혀 가져오지 않습니다(나중에 rpmsg 헤더 5개만 예외로 결정, 아래 행). |
 | net | 관련된 것을 모두 제외합니다(net/, drivers/net·wireless, net 헤더, libc/net·netdb, fs/socket). |
 | pm | 제외합니다(TizenRT `os/pm` 유지). |
 | wireless/ | 가져오지 않습니다. |
@@ -133,6 +134,7 @@ NuttX에서 가져온 코드는 경고 없이 빌드됩니다. 남은 경고는 
 | 싱크 스크립트 | 커밋하지 않습니다. |
 | Docker | `tizenrt/tizenrt` 최신(2.0.1)을 기준으로 필요한 것만 추가합니다. |
 | 제외 영역 헤더를 무조건 include하는 NuttX 코드 | 헤더를 가져오지 않고 include를 모두 config로 가드합니다. |
+| rpmsg 헤더 (나중 결정) | 의존성 없이 쓸 수 있는 rpmsg 헤더 5개(`rpmsgdev.h`, `rpmsgblk.h`, `syslog_rpmsg.h`, `rpmsg_port.h`, `fs/rpmsgfs/rpmsgfs.h`)는 가져오고 해당 가드를 없앱니다. 이 헤더를 include하던 `syslog_initialize.c`, `qemu_boot.c`, `qemu_bringup.c`, `fs_initialize.c`는 NuttX 원본과 같아집니다. net 헤더가 필요한 `net/rpmsgdrv.h`, `usrsock/usrsock_rpmsg.h`는 가져오지 않습니다. |
 
 ### 3.3 커밋·푸시 규칙
 
@@ -182,7 +184,7 @@ NuttX에서 가져온 코드는 경고 없이 빌드됩니다. 남은 경고는 
 | `libs/libc/{bin,kbin,ubin}`, `mm/{bin,kbin,ubin}`을 삭제했습니다. | NuttX Makefile이 `context`에서 만들고 `distclean`에서 지웁니다. 추적 파일로 두면 distclean 후 트리가 바뀝니다. |
 | Kconfig: NuttX 최상위·arch·board Kconfig를 기준으로 하고 TizenRT에만 있는 심볼을 병합했습니다. `DEBUG`/`DEBUG_VERBOSE`/`LIB_BOARDCTL`은 별칭으로 남기고, `APP_BINARY_SEPARATION`은 `BUILD_PROTECTED` 옵션으로 옮겼습니다. | 싱크한 NuttX Kconfig가 NuttX 상위 옵션에 의존합니다. 별칭을 두면 기존 TizenRT 코드와 defconfig가 그대로 동작합니다. |
 | `INIT_ENTRYPOINT`는 NuttX(문자열)를 따르고 `apps/apps_entry/Kconfig`는 `if INIT_ENTRY`로만 바꿨습니다. | 진입점을 실제로 시작하는 `nx_bringup.c`가 NuttX 코드입니다. apps 쪽은 최소 수정으로 맞췄습니다. |
-| include 가드의 조건은 헤더별로 정했습니다: `power/pm.h`→`CONFIG_PM`, `syslog_rpmsg.h`→`CONFIG_SYSLOG_RPMSG(_SERVER)`, `net/tun.h`→`CONFIG_NET_TUN` 등. | 가드는 사용자 결정이고, 조건은 그 헤더를 쓰는 기능의 NuttX 옵션으로 정했습니다. 그 기능이 켜질 때만 헤더가 필요합니다. |
+| include 가드의 조건은 헤더별로 정했습니다: `power/pm.h`→`CONFIG_PM`, `net/loopback.h`→`CONFIG_NET_LOOPBACK`, `net/tun.h`→`CONFIG_NET_TUN` 등. | 가드는 사용자 결정이고, 조건은 그 헤더를 쓰는 기능의 NuttX 옵션으로 정했습니다. 그 기능이 켜질 때만 헤더가 필요합니다. |
 | libc의 TEA 암호 함수(`lib_tea_*`)를 빌드에서 뺐습니다. | `crypto/tea.h`가 싱크 대상이 아니고(crypto 제외), 이 함수를 쓰는 코드가 없습니다. |
 | `os/include/queue.h` 호환 헤더(`<tinyara/queue.h>`로 연결)를 추가했습니다. | NuttX는 `<queue.h>`를 없앴지만 TizenRT 파일 85개가 이 헤더를 include합니다. QEMU 빌드에 들어가는 TizenRT 헤더도 그중 하나입니다. 85개 파일을 고치는 대신 1개 헤더로 해결했습니다. |
 | 나머지 옮겨진 헤더(`tinyara/i2c.h`, `tinyara/fs/mtd.h`, `crc32.h` 등)는 호환 헤더를 만들지 않았습니다. 다른 보드용 코드에서만 쓰여 7절에 기록만 했습니다. | 원칙 3(두 보드 범위)에 따라 QEMU 빌드에 들어가지 않는 코드는 고치지 않았습니다. |
@@ -224,17 +226,14 @@ NuttX에서 가져온 코드는 경고 없이 빌드됩니다. 남은 경고는 
 
 ## 6. 결과물
 
-### 6.1 NuttX와 의도적으로 다른 파일 24개
+### 6.1 NuttX와 의도적으로 다른 파일 20개
 
 | 파일 | 변경 |
 |---|---|
 | `os/include/debug.h` | 끝에 TizenRT 매크로 블록 |
 | `os/include/.gitignore` | 생성되는 `apps` 링크 무시 |
 | `os/include/tinyara/power/regulator.h`, `os/kernel/sched/sched_cpuload_{oneshot,period}.c`, `os/drivers/serial/serial.c`, `os/drivers/timers/watchdog.c` | `power/pm.h` include 가드 |
-| `os/drivers/drivers_initialize.c` | crypto, rpmsg, net, pm, usrsock include 가드 |
-| `os/drivers/syslog/syslog_initialize.c`, `os/arch/arm/src/qemu/qemu_boot.c` | `syslog_rpmsg.h` include 가드 |
-| `os/fs/fs_initialize.c` | `rpmsgfs.h` include 가드 |
-| `os/board/qemu-armv7a/src/qemu_bringup.c` | `rpmsg_port.h` include 가드 |
+| `os/drivers/drivers_initialize.c` | crypto, net, pm, usrsock include 가드 |
 | `os/drivers/{Kconfig,Makefile}`, `os/drivers/power/{Kconfig,Make.defs}`, `os/fs/{Kconfig,Makefile}`, `os/libs/libc/Kconfig`, `os/libs/libc/machine/Kconfig`, `os/libs/libc/machine/arm/Kconfig` | 싱크하지 않은 디렉터리 제외, TizenRT 전용 드라이버 추가 |
 | `os/libs/libc/misc/Make.defs` | TEA 제외 |
 | `os/arch/arm/src/Makefile` | `build/output/bin/tinyara`로 링크 |
@@ -316,7 +315,7 @@ docker run --rm -it -v $PWD:/root/tizenrt tizenrt/tizenrt:2.0.1-qemu \
 |---|---|---|
 | master에 삼성 헤더가 있던 파일 | 1122 (같은 경로 665, 이번 이동 457) | master 헤더 그대로. 연도 2016: 774, 2017: 62, 2018: 71, 2019: 69, 2020: 3, 2023: 71, 2024: 6, 2025: 15, 2026: 51 |
 | 있던 파일, NuttX 라이선스만 | 13 | git 최초 추가 연도(2023: 10, 2016: 1, 2026: 2) |
-| 신규, NuttX Apache | 2408 | 2026 |
+| 신규, NuttX Apache | 2413 (rpmsg 헤더 5개 포함) | 2026 |
 | 신규, 제3자 라이선스 | 131 | 2026 |
 | 신규, 라이선스 없는 데이터 헤더 | 9 | 2026 |
 
@@ -325,7 +324,7 @@ docker run --rm -it -v $PWD:/root/tizenrt tizenrt/tizenrt:2.0.1-qemu \
 - 복원한 블록은 master 블록과 같습니다. master에서 CRLF였던 2개는 싱크한 파일에 맞춰 LF로 복원했습니다.
 - `license_manager.py check --year 2026`(신규 2501개): 모두 OK입니다.
 - `license_manager.py check`(연도 지정 없음, 전체 히스토리, 툴 지원 확장자 3615개): Missing 0, YEAR_MISMATCH 501입니다(9.3절).
-- tizenrt-nuttx-similarity core는 3858 / 24 그대로입니다. 빌드 파일은 맨 앞 삼성 블록을 빼고 비교했습니다.
+- tizenrt-nuttx-similarity core는 라이선스 적용 전후 3858 / 24로 같았습니다(rpmsg 헤더를 넣은 뒤에는 3867 / 20). 빌드 파일은 맨 앞 삼성 블록을 빼고 비교했습니다.
 - cformatter를 다시 돌려도 변경이 없습니다.
 - 헤더를 모두 넣은 뒤 4개 구성을 다시 빌드하고 QEMU로 실행해 모두 `Exiting with status 0`이었습니다(33/31 그룹). 기존 파일 11개의 연도를 git 연도로 바꾼 뒤에는 qemu-armv7a/ostest만 한 번 더 확인했습니다(주석만 바뀜).
 

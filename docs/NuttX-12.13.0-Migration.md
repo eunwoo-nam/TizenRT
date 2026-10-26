@@ -62,14 +62,25 @@ so `git log --follow` shows their TizenRT history.
 | pm: `drivers/power/pm`, pm headers | TizenRT keeps `os/pm` |
 | `wireless/` | not used |
 | `fs/nfs` | NFSv3 client on the NuttX network stack |
-| openamp: `openamp/`, `drivers/rpmsg`, `drivers/rptun`, `fs/rpmsgfs`, every `*rpmsg*`/`*rptun*` file | not used |
+| openamp: `openamp/`, `drivers/rpmsg`, `drivers/rptun`, `fs/rpmsgfs`, every `*rpmsg*`/`*rptun*` file, except 5 headers (below) | not used |
 | `crypto/`, `cmake/` | out of scope |
 | `tools/`, `dummy/`, `pass1/` | NuttX build system; TizenRT `os/tools` is kept |
 | drivers TizenRT does not have | not added, except `note` and what the QEMU boards need (`serial/uart_pl011`, `serial/serial_cmsdk`, `timers`) |
 | other arch and board directories | only the two QEMU boards are ported |
 
-NuttX files that include a header of a not-synced area unconditionally
-get an include guard with the option of that area, for example:
+Five rpmsg headers that synced files include unconditionally are synced
+although openamp is not: `include/nuttx/drivers/rpmsgdev.h`,
+`rpmsgblk.h`, `include/nuttx/syslog/syslog_rpmsg.h`,
+`include/nuttx/rpmsg/rpmsg_port.h` and `fs/rpmsgfs/rpmsgfs.h`.  They only
+declare APIs under `CONFIG_` options and include headers that are synced,
+so `syslog_initialize.c`, `qemu_boot.c`, `qemu_bringup.c` and
+`fs_initialize.c` stay as in NuttX.  `net/rpmsgdrv.h` and
+`usrsock/usrsock_rpmsg.h` need the NuttX network headers and are not
+synced.
+
+The other NuttX files that include a header of a not-synced area
+unconditionally get an include guard with the option of that area, for
+example:
 
 ```c
 #if defined(CONFIG_PM)
@@ -115,7 +126,7 @@ commands.  `CONFIG_USER_ENTRYPOINT` is no longer used by the OS.
 
 `tizenrt-nuttx-similarity` core compares every synced file with its
 NuttX file (renames tinyara=nuttx, TinyAra=NuttX, TINYARA=NUTTX):
-**3858 of 3882 files are identical**.  The 24 others are:
+**3867 of 3887 files are identical**.  The 20 others are:
 
 | File | Change |
 |---|---|
@@ -123,12 +134,8 @@ NuttX file (renames tinyara=nuttx, TinyAra=NuttX, TINYARA=NUTTX):
 | `os/include/.gitignore` | ignores the generated `apps` link |
 | `os/include/tinyara/power/regulator.h` | `power/pm.h` include guard |
 | `os/kernel/sched/sched_cpuload_{oneshot,period}.c` | `power/pm.h` include guard |
-| `os/drivers/drivers_initialize.c` | include guards (crypto, rpmsg, net, pm, usrsock) |
-| `os/drivers/syslog/syslog_initialize.c` | `syslog_rpmsg.h` include guard |
+| `os/drivers/drivers_initialize.c` | include guards (crypto, net, pm, usrsock) |
 | `os/drivers/serial/serial.c`, `os/drivers/timers/watchdog.c` | `power/pm.h` include guard |
-| `os/fs/fs_initialize.c` | `rpmsgfs.h` include guard |
-| `os/arch/arm/src/qemu/qemu_boot.c` | `syslog_rpmsg.h` include guard |
-| `os/board/qemu-armv7a/src/qemu_bringup.c` | `rpmsg_port.h` include guard |
 | `os/drivers/Kconfig`, `os/drivers/Makefile` | not-synced drivers dropped, TizenRT drivers added |
 | `os/drivers/power/{Kconfig,Make.defs}` | `pm` dropped |
 | `os/fs/{Kconfig,Makefile}` | `nfs`, `rpmsgfs` (and `socket` in the Makefile) dropped |
@@ -167,7 +174,7 @@ checkout as the formatter:
 |---|---|---|
 | TizenRT files that had a Samsung header on master | 1122 | the master header, same text and year, on top of the NuttX header |
 | TizenRT files without a Samsung header but with a NuttX license | 13 | `license_manager.py add` (year of the first git add: 2023 ×10, 2016 ×1, 2026 ×2) |
-| New files with a NuttX Apache or a third-party license, and 9 data headers without a license | 2548 | `license_manager.py add --year 2026`; for types the tool does not know (.S, .ld, .defs, Makefile.*, C++ headers without extension) the tool's own functions |
+| New files with a NuttX Apache or a third-party license, and 9 data headers without a license | 2553 | `license_manager.py add --year 2026`; for types the tool does not know (.S, .ld, .defs, Makefile.*, C++ headers without extension) the tool's own functions |
 | Kconfig, .gitignore, .csv, .patch, docs, defconfig | - | unchanged |
 
 Only the header is added: each file is the previous file with the header
