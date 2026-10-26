@@ -159,6 +159,20 @@ tool's YEAR_MISMATCH list ($S/lic_mismatch.txt) and `lic_doc.py` writes
 the warnings doc.  dockerd dies with the worker: restart it with
 `(dockerd > $S/dockerd.log 2>&1 &)` before building.
 
+## Review branches (for review only, not for merging)
+
+Each is d8488305 + one commit that removes files (author eunwoo-nam):
+
+| Branch | Commit | Content |
+|---|---|---|
+| `claude/nuttx-tizenrt-migration-nqry9a-review-nodoc` | b2b4b77a | without the 7 documents written for the migration (HANDOFF.md, docs/NuttX-*.md x3, board README x2, tools/docker/README.md); NuttX documents kept |
+| `claude/nuttx-tizenrt-migration-nqry9a-review-no-nuttx` | 966fd483 | without the 3886 files copied from NuttX/nuttx-apps (3879 sync files + mkdeps.c, D/Rust/Swift/Zig.defs, dramboot.ld, flash.ld); 30007 files left |
+| `claude/nuttx-tizenrt-migration-nqry9a-review-changed-only` | 6624b32e | only the 3960 files added/modified vs master (no migration documents); 29933 untouched files removed |
+
+Recreate: `$S/review/mkbranch.sh <branch> <list>` builds the commit with a
+temporary index (no checkout); lists rm1/rm2/rm3.txt come from the nxsync
+units, `git diff --no-renames --name-status master HEAD` and the doc list.
+
 ## Next steps
 
 None planned.  Possible follow-ups (ask the user first): port another
