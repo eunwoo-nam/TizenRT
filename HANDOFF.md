@@ -176,13 +176,15 @@ Samsung 2026 header (license_manager.py add --year 2026).
 
 ## Review branches (for review only, not for merging)
 
+Regenerated after the rpmsg headers from f2d5264d:
+
 | Branch | Commit | Content |
 |---|---|---|
-| `claude/nuttx-tizenrt-migration-nqry9a-review-nodoc` | 739198c3 | the migration history without the documentation commits: 42 work commits replayed on master, 16 HANDOFF/docs commits dropped, the 7 migration documents stripped from the 5 mixed commits (tools/docker, board configs, license ②); author/dates kept |
-| `claude/nuttx-tizenrt-migration-nqry9a-review-no-nuttx` | 966fd483 | d8488305 + 1 commit: without the 3886 files copied from NuttX/nuttx-apps; 30007 files left |
-| `claude/nuttx-tizenrt-migration-nqry9a-review-changed-only` | fd1d4263 | d46ece4e + 1 commit: only the 3886 files copied from NuttX/nuttx-apps (3879 sync files + mkdeps.c, D/Rust/Swift/Zig.defs, dramboot.ld, flash.ld) |
-| `claude/nuttx-tizenrt-migration-nqry9a-review-tizenrt-changes` | 85bb171a | d46ece4e + 1 commit: only the 31 TizenRT files changed/added for NuttX (build system, Kconfig, apps, queue.h, board configs, Dockerfile) |
-| `claude/nuttx-tizenrt-migration-nqry9a-review-nuttx-adapted` | b932ee85 | d46ece4e + 1 commit: only the 24 NuttX files adapted for TizenRT (codesim "modified" list) |
+| `claude/nuttx-tizenrt-migration-nqry9a-review-nodoc` | daf399e5 | the migration history without the documentation commits: 43 work commits replayed on master, 19 HANDOFF/docs commits dropped, the 7 migration documents stripped from the 5 mixed commits; author/dates kept |
+| `claude/nuttx-tizenrt-migration-nqry9a-review-no-nuttx` | cd64f731 | f2d5264d + 1 commit: without the 3891 files copied from NuttX/nuttx-apps; 30007 files left |
+| `claude/nuttx-tizenrt-migration-nqry9a-review-changed-only` | 7c939e75 | f2d5264d + 1 commit: only the 3891 files copied from NuttX/nuttx-apps (3884 sync files incl. the 5 rpmsg headers + mkdeps.c, D/Rust/Swift/Zig.defs, dramboot.ld, flash.ld) |
+| `claude/nuttx-tizenrt-migration-nqry9a-review-tizenrt-changes` | b20f5816 | f2d5264d + 1 commit: only the 31 TizenRT files changed/added for NuttX |
+| `claude/nuttx-tizenrt-migration-nqry9a-review-nuttx-adapted` | e10652fa | f2d5264d + 1 commit: only the 20 NuttX files adapted for TizenRT |
 
 Not in any of the last three: the 46 TizenRT files only moved to the
 NuttX layout (dhara, libelf_cache.c, libc net/netdb, libm j0..jn, ...).
