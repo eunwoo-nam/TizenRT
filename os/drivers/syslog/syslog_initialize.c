@@ -47,9 +47,7 @@
 
 #include <tinyara/syslog/ramlog.h>
 #include <tinyara/syslog/syslog.h>
-#if defined(CONFIG_SYSLOG_RPMSG) || defined(CONFIG_SYSLOG_RPMSG_SERVER)
-#  include <tinyara/syslog/syslog_rpmsg.h>
-#endif
+#include <tinyara/syslog/syslog_rpmsg.h>
 
 #include "syslog.h"
 
