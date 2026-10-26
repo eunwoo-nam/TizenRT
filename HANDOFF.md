@@ -21,7 +21,7 @@ Done means: `qemu-armv7a` (Cortex-A7, QEMU virt, PL011) and `mps2-an521`
 | libs | NuttX layout `os/libs/{libc,libm,libxx,libbuiltin,libdsp,libnx}`. `lib/` is gone. |
 | Rename | Only include paths: `#include <nuttx/..>` → `<tinyara/..>`, and makefile/Kconfig paths `sched` → `kernel`, `boards` → `board`. Header guards, `__NUTTX__` and comments stay. |
 | Folders kept | `os/kernel` (= NuttX sched), `os/include/tinyara` (= include/nuttx) |
-| Not synced | net (everything network: net/, drivers/net, drivers/wireless, include/{net,netinet,arpa,netpacket}, sys/socket.h, sys/sockio.h, sys/un.h, netdb.h, ifaddrs.h, nuttx/net, nuttx/usrsock, libc/net, libc/netdb, fs/socket), pm (drivers/power/pm, pm headers), wireless/, fs/nfs, crypto/, cmake/, openamp (openamp/, drivers/rpmsg, rptun, fs/rpmsgfs and every `*rpmsg*`/`*rptun*` file), tools/, dummy/, pass1/ |
+| Not synced | net (everything network: net/, drivers/net, drivers/wireless, include/{net,netinet,arpa,netpacket}, sys/socket.h, sys/sockio.h, sys/un.h, netdb.h, ifaddrs.h, nuttx/net, nuttx/usrsock, libc/net, libc/netdb, fs/socket), pm (drivers/power/pm, pm headers), wireless/, fs/nfs, crypto/, cmake/, openamp (openamp/, drivers/rpmsg, rptun, fs/rpmsgfs and every `*rpmsg*`/`*rptun*` file, except the 5 rpmsg headers below), tools/, dummy/, pass1/ |
 | Drivers | Same-name dirs and dirs at other TizenRT paths are synced (moved to the NuttX layout first). Drivers TizenRT does not have are not added, except `note` and what QEMU needs (serial/pl011, serial_cmsdk, timers). |
 | Old files | TizenRT files of NuttX origin that 12.13.0 dropped/renamed are deleted. Samsung files are kept and disabled by config. Headers/files of not-synced areas (bluetooth, pm, mipidsi, ...) are kept. |
 | Samsung hooks | Overwritten (task manager, binary manager, heapinfo, ...). |
@@ -57,6 +57,7 @@ library, drivers: per group).
 | c80d1840 8e5f6d3e | os/board: boardctl.c move, qemu-armv7a + mps2-an521 + Board.mk/Makefile |
 | 422cae36 | Kconfig integration (os/Kconfig, Kconfig.debug, arch, arm, board, adapted NuttX Kconfigs, apps_entry) |
 | 0f89d2cf | re-format the 9 files with exponent numbers after the cformatter fix 51e698d9 |
+| 002d1e26 | 5 rpmsg headers synced (rpmsgdev.h, rpmsgblk.h, syslog_rpmsg.h, rpmsg_port.h, fs/rpmsgfs/rpmsgfs.h), their include guards dropped; codesim 3867/20 of 3887; 4 QEMU configs pass |
 | 90a584b6 | license ②: Samsung header added to 2548 new NuttX files (2026) and 13 existing NuttX-licensed files (git add year); docs/NuttX-12.13.0-License-Warnings.md; license sections in the migration notes and the report |
 | 90ad849c | license ①: Samsung headers of 1122 existing files restored from master (same text/year, 665 same path + 457 moved) |
 | ceb8595e | docs/NuttX-12.13.0-Migration-Report.md: final report in Korean (results rebuilt and run from 28d774bd, user decisions, own decisions with reasons, deviations); test group counts corrected to 33/31 (34/32 counted the argv[0] line) |
@@ -158,6 +159,20 @@ commits> (9951064d) when re-run after a commit.  `lic_w4.py` explains the
 tool's YEAR_MISMATCH list ($S/lic_mismatch.txt) and `lic_doc.py` writes
 the warnings doc.  dockerd dies with the worker: restart it with
 `(dockerd > $S/dockerd.log 2>&1 &)` before building.
+
+## rpmsg headers (user decision, after the license step)
+
+The 5 rpmsg headers that synced files included unconditionally are synced
+(nxsync unit `rpmsg-headers`): include/nuttx/drivers/rpmsgdev.h,
+rpmsgblk.h, include/nuttx/syslog/syslog_rpmsg.h,
+include/nuttx/rpmsg/rpmsg_port.h, fs/rpmsgfs/rpmsgfs.h (only CONFIG_
+guarded declarations, only synced headers included).  Their include
+guards are gone: syslog_initialize.c, qemu_boot.c, qemu_bringup.c and
+fs_initialize.c are identical to NuttX again; drivers_initialize.c keeps
+the crypto/net/pm/usrsock guards (net/rpmsgdrv.h and
+usrsock/usrsock_rpmsg.h need the NuttX net headers, not synced).
+codesim: 3867 identical / 20 modified of 3887.  New headers have the
+Samsung 2026 header (license_manager.py add --year 2026).
 
 ## Review branches (for review only, not for merging)
 
