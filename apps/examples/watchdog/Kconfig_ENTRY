@@ -1,3 +1,0 @@
-config ENTRY_WATCHDOG
-	bool "\"Watchdog Timer\" example"
-	depends on EXAMPLES_WATCHDOG
