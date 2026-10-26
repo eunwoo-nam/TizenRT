@@ -1,3 +1,0 @@
-config ENTRY_TICK
-	bool "tick compensation example"
-	depends on EXAMPLES_TICK

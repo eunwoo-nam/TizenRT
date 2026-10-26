@@ -1,3 +1,0 @@
-config ENTRY_LED
-	bool "LED example"
-	depends on EXAMPLES_LED

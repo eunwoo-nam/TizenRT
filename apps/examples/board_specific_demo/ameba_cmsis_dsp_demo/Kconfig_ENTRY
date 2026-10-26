@@ -1,3 +1,0 @@
-config ENTRY_CMSIS_DSP
-	bool "CMSIS DSP example"
-	depends on EXAMPLES_CMSIS_DSP
