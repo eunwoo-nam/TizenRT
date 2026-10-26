@@ -46,12 +46,8 @@
 #  include <tinyara/crypto/crypto.h>
 #endif
 #include <tinyara/drivers/drivers.h>
-#if defined(CONFIG_DEV_RPMSG_SERVER)
-#  include <tinyara/drivers/rpmsgdev.h>
-#endif
-#if defined(CONFIG_BLK_RPMSG_SERVER)
-#  include <tinyara/drivers/rpmsgblk.h>
-#endif
+#include <tinyara/drivers/rpmsgdev.h>
+#include <tinyara/drivers/rpmsgblk.h>
 #include <tinyara/fs/loop.h>
 #include <tinyara/fs/smart.h>
 #include <tinyara/fs/loopmtd.h>
