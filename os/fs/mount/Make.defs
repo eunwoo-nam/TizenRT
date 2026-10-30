@@ -52,14 +52,23 @@
 
 # Don't build anything if there are no file descriptors
 
-ifneq ($(CONFIG_NFILE_DESCRIPTORS),0)
 ifneq ($(CONFIG_DISABLE_MOUNTPOINT),y)
 
-CSRCS += fs_mount.c fs_umount.c fs_foreachmountpoint.c
+CSRCS += fs_mount.c fs_umount2.c fs_foreachmountpoint.c
+
+ifeq ($(CONFIG_FS_AUTOMOUNTER),y)
+CSRCS += fs_automount.c
+endif
+
+ifeq  ($(CONFIG_FS_PROCFS),y)
+ifneq ($(CONFIG_FS_PROCFS_EXCLUDE_MOUNT),y)
+CSRCS += fs_procfs_mount.c fs_gettype.c
+endif
+endif
 
 # Include mount build support
 
 DEPPATH += --dep-path mount
 VPATH += :mount
-endif
+
 endif
