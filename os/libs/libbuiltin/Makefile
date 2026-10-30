@@ -1,6 +1,6 @@
 ###########################################################################
 #
-# Copyright 2016 Samsung Electronics All Rights Reserved.
+# Copyright 2026 Samsung Electronics All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,9 +16,9 @@
 #
 ###########################################################################
 ############################################################################
-# kernel/errno/Make.defs
+# libs/libbuiltin/Makefile
 #
-#   Copyright (C) 2014 Gregory Nutt. All rights reserved.
+#   Copyright (C) 2007-2014 Gregory Nutt. All rights reserved.
 #   Author: Gregory Nutt <gnutt@nuttx.org>
 #
 # Redistribution and use in source and binary forms, with or without
@@ -50,13 +50,55 @@
 #
 ############################################################################
 
-CSRCS += errno_getptr.c
+-include $(TOPDIR)/Make.defs
+ASRCS =
+CSRCS =
+DEPPATH = --dep-path .
+VPATH = .
 
-ifeq ($(CONFIG_LIB_SYSCALL),y)
-CSRCS += errno_get.c errno_set.c
-endif
+BIN ?= libbuiltin$(LIBEXT)
+BINDIR ?= bin
 
-# Include errno build support
+KBIN = libkbuiltin$(LIBEXT)
+KBINDIR = kbin
 
-DEPPATH += --dep-path errno
-VPATH += :errno
+include compiler-rt/Make.defs
+include libgcc/Make.defs
+
+AOBJS = $(ASRCS:.S=$(OBJEXT))
+COBJS = $(CSRCS:.c=$(OBJEXT))
+
+SRCS = $(ASRCS) $(CSRCS)
+OBJS = $(AOBJS) $(COBJS)
+
+BIN = libbuiltin$(LIBEXT)
+
+all: $(BIN)
+.PHONY: context depend clean distclean
+
+$(AOBJS): %$(OBJEXT): %.S
+	$(call ASSEMBLE, $<, $@)
+
+$(COBJS): %$(OBJEXT): %.c
+	$(call COMPILE, $<, $@)
+
+$(BIN): $(OBJS)
+	$(call ARCHIVE, $@, $(OBJS))
+
+.depend: Makefile $(SRCS)
+	$(Q) $(MKDEP) $(DEPPATH) "$(CC)" -- $(CFLAGS) -- $(SRCS) >Make.dep
+	$(Q) touch $@
+
+depend: .depend
+
+clean:
+	$(call DELFILE, $(BIN))
+	$(call CLEAN)
+
+distclean: clean
+	$(call DELFILE, Make.dep)
+	$(call DELFILE, .depend)
+
+-include Make.dep
+
+context:

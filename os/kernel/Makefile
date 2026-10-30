@@ -54,31 +54,34 @@
 
 ASRCS =
 CSRCS =
-
-VPATH =
 DEPPATH = --dep-path .
+VPATH = .
 
-include init/Make.defs
-include irq/Make.defs
-include paging/Make.defs
-include group/Make.defs
-include sched/Make.defs
-include task/Make.defs
-include errno/Make.defs
-include wdog/Make.defs
-include semaphore/Make.defs
-include binary_manager/Make.defs
-include signal/Make.defs
-include pthread/Make.defs
-include messaging/Make.defs
-include mqueue/Make.defs
+include addrenv/Make.defs
 include clock/Make.defs
-include timer/Make.defs
 include environ/Make.defs
-include debug/Make.defs
-include preference/Make.defs
-include log_dump/Make.defs
-include silent_reboot/Make.defs
+include event/Make.defs
+include group/Make.defs
+include init/Make.defs
+include instrument/Make.defs
+include irq/Make.defs
+include misc/Make.defs
+include mqueue/Make.defs
+include module/Make.defs
+include paging/Make.defs
+include pthread/Make.defs
+include sched/Make.defs
+include semaphore/Make.defs
+include signal/Make.defs
+include task/Make.defs
+include timer/Make.defs
+include tls/Make.defs
+include wdog/Make.defs
+include wqueue/Make.defs
+include hrtimer/Make.defs
+
+CFLAGS += ${INCDIR_PREFIX}$(TOPDIR)$(DELIM)kernel
+
 
 AOBJS = $(ASRCS:.S=$(OBJEXT))
 COBJS = $(CSRCS:.c=$(OBJEXT))
@@ -115,3 +118,6 @@ distclean: clean
 	$(call DELFILE, .depend)
 
 -include Make.dep
+
+# Context hook used by the TizenRT top-level build.
+context:

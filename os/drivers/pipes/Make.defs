@@ -50,14 +50,9 @@
 #
 ############################################################################
 
-ifeq ($(CONFIG_PIPES),y)
-
-# Include pipe driver
-
 CSRCS += pipe.c fifo.c pipe_common.c
 
 # Include pipe build support
 
 DEPPATH += --dep-path pipes
 VPATH += :pipes
-endif

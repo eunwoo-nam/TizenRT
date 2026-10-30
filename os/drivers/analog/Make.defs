@@ -55,15 +55,110 @@
 # Check for DAC devices
 
 ifeq ($(CONFIG_DAC),y)
+
 # Include the common DAC character driver
+
 CSRCS += dac.c
+
+# Include DAC device drivers
+
+ifeq ($(CONFIG_DAC_AD5410),y)
+  CSRCS += ad5410.c
+endif
+
+ifeq ($(CONFIG_DAC7571),y)
+  CSRCS += dac7571.c
+endif
+
+ifeq ($(CONFIG_DAC7554),y)
+  CSRCS += dac7554.c
+endif
+
+ifeq ($(CONFIG_MCP47X6),y)
+  CSRCS += mcp47x6.c
+endif
+
+ifeq ($(CONFIG_MCP48XX),y)
+  CSRCS += mcp48xx.c
+endif
+
+endif
+
+# Check for COMP devices
+
+ifeq ($(CONFIG_COMP),y)
+
+# Include the common COMP character driver
+
+CSRCS += comp.c
+
+endif
+
+# Check for OPAMP devices
+
+ifeq ($(CONFIG_OPAMP),y)
+
+# Include the common OPAMP character driver
+
+CSRCS += opamp.c
+
 endif
 
 # Check for ADC devices
 
 ifeq ($(CONFIG_ADC),y)
+
 # Include the common ADC character driver
+
 CSRCS += adc.c
+
+# Amplifiers/multiplexers
+
+ifeq ($(CONFIG_ADC_PGA11X),y)
+  CSRCS += pga11x.c
+endif
+
+# Include ADC device drivers
+
+ifeq ($(CONFIG_ADC_ADS1242),y)
+  CSRCS += ads1242.c
+endif
+
+ifeq ($(CONFIG_ADC_ADS125X),y)
+  CSRCS += ads1255.c
+endif
+
+ifeq ($(CONFIG_ADC_ADS7828),y)
+  CSRCS += ads7828.c
+endif
+
+ifeq ($(CONFIG_ADC_MAX1161X),y)
+  CSRCS += max1161x.c
+endif
+
+ifeq ($(CONFIG_ADC_LTC1867L),y)
+  CSRCS += ltc1867l.c
+endif
+
+ifeq ($(CONFIG_ADC_HX711),y)
+  CSRCS += hx711.c
+endif
+
+ifeq ($(CONFIG_ADC_MCP3008),y)
+  CSRCS += mcp3008.c
+endif
+
+ifeq ($(CONFIG_ADC_ADS1115),y)
+  CSRCS += ads1115.c 
+endif
+
+ifeq ($(CONFIG_ADC_ADS7046),y)
+  CSRCS += ads7046.c
+endif
+endif
+
+ifeq ($(CONFIG_LMP92001),y)
+  CSRCS += lmp92001.c
 endif
 
 # Add analog driver build support (the nested if-then-else implements an OR)
@@ -71,12 +166,23 @@ endif
 ifeq ($(CONFIG_DAC),y)
   DEPPATH += --dep-path analog
   VPATH += :analog
-  CFLAGS += ${shell $(INCDIR) $(INCDIROPT) "$(CC)" $(TOPDIR)$(DELIM)drivers$(DELIM)analog}
+  CFLAGS += ${INCDIR_PREFIX}$(TOPDIR)$(DELIM)drivers$(DELIM)analog
 else
 ifeq ($(CONFIG_ADC),y)
   DEPPATH += --dep-path analog
   VPATH += :analog
-  CFLAGS += ${shell $(INCDIR) $(INCDIROPT) "$(CC)" $(TOPDIR)$(DELIM)drivers$(DELIM)analog}
+  CFLAGS += ${INCDIR_PREFIX}$(TOPDIR)$(DELIM)drivers$(DELIM)analog
+else
+ifeq ($(CONFIG_COMP),y)
+  DEPPATH += --dep-path analog
+  VPATH += :analog
+  CFLAGS += ${INCDIR_PREFIX}$(TOPDIR)$(DELIM)drivers$(DELIM)analog
+else
+ifeq ($(CONFIG_OPAMP),y)
+  DEPPATH += --dep-path analog
+  VPATH += :analog
+  CFLAGS += ${INCDIR_PREFIX}$(TOPDIR)$(DELIM)drivers$(DELIM)analog
 endif
 endif
-
+endif
+endif
