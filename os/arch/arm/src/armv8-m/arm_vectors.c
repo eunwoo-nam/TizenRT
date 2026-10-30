@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- * Copyright 2019 Samsung Electronics All Rights Reserved.
+ * Copyright 2026 Samsung Electronics All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,8 +16,10 @@
  *
  ****************************************************************************/
 /****************************************************************************
+ * arch/arm/src/armv8-m/arm_vectors.c
  *
- *   Copyright (c) 2013, 2014 PX4 Development Team. All rights reserved.
+ * SPDX-License-Identifier: BSD-3-Clause
+ * SPDX-FileCopyrightText: 2012 Michael Smith. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,7 +31,7 @@
  *    notice, this list of conditions and the following disclaimer in
  *    the documentation and/or other materials provided with the
  *    distribution.
- * 3. Neither the name PX4 nor the names of its contributors may be
+ * 3. Neither the name NuttX nor the names of its contributors may be
  *    used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -54,77 +56,73 @@
 
 #include <tinyara/config.h>
 
-#ifdef CONFIG_ARMV8M_STACKCHECK
-
-/* Support per function call stack checking.
- * This code uses R10 to check for a stack overflow within function calls.
- * This has a performance impact, but will be able to catch hard to find
- * stack overflows.
- */
-
-#include <stdint.h>
-
-#include "up_arch.h"
+#include "chip.h"
+#include "arm_internal.h"
+#include "ram_vectors.h"
 #include "nvic.h"
+
+/****************************************************************************
+ * Pre-processor Definitions
+ ****************************************************************************/
+
+#define IDLE_STACK      (_ebss + CONFIG_IDLETHREAD_STACKSIZE)
+
+#ifndef ARMV8M_PERIPHERAL_INTERRUPTS
+#  error ARMV8M_PERIPHERAL_INTERRUPTS must be defined to the number of I/O interrupts to be supported
+#endif
 
 /****************************************************************************
  * Private Functions
  ****************************************************************************/
 
-void __cyg_profile_func_enter(void *func, void *caller) __attribute__((naked, no_instrument_function));
-void __cyg_profile_func_exit(void *func, void *caller) __attribute__((naked, no_instrument_function));
-void __stack_overflow_trap(void) __attribute__((naked, no_instrument_function));
+/* Chip-specific entrypoint */
 
-/****************************************************************************
- * Name: __stack_overflow_trap
- ****************************************************************************/
+extern void __start(void);
 
-void __stack_overflow_trap(void)
+static void start(void)
 {
-	/* if we get here, the stack has overflowed */
+	/* Zero lr to mark the end of backtrace */
 
-	uint32_t regval;
-
-	/* force hard fault */
-	regval = getreg32(NVIC_INTCTRL);
-	regval |= NVIC_INTCTRL_NMIPENDSET;
-	putreg32(regval, NVIC_INTCTRL);
-
-	/* XXX no need to trap it here, the fault handler gets to it */
+	asm volatile ("mov lr, #0\n\t"
+	              "b  __start\n\t");
 }
 
 /****************************************************************************
- * Name: __cyg_profile_func_enter
+ * Public Functions
  ****************************************************************************/
 
-void __cyg_profile_func_enter(void *func, void *caller)
-{
-	asm volatile
-	(
-		"   mrs r2, ipsr        \n"	/* Check whether we are in interrupt mode */
-		"   cmp r2, #0          \n"	/* since we don't switch r10 on interrupt entry, we */
-		"   bne 2f              \n"	/* can't detect overflow of the interrupt stack. */
-		"                       \n"
-		"   sub r2, sp, #68     \n"	/* compute stack pointer as though we just stacked a full frame */
-		"   mrs r1, control     \n"	/* Test CONTROL.FPCA to see whether we also need room for the FP */
-		"   tst r1, #4          \n"	/* context. */
-		"   beq 1f              \n"
-		"   sub r2, r2, #136    \n"	/* subtract FP context frame size */
-		"1:                     \n"
-		"   cmp r2, r10         \n"	/* compare stack with limit */
-		"   bgt 2f              \n"	/* stack is above limit and thus OK */
-		"   b __stack_overflow_trap\n"
-		"2:                     \n"
-		"   bx lr               \n"
-	);
-}
+/* Common exception entrypoint */
+
+extern void exception_common(void);
+extern void exception_direct(void);
 
 /****************************************************************************
- * Name: __cyg_profile_func_exit
+ * Public data
  ****************************************************************************/
 
-void __cyg_profile_func_exit(void *func, void *caller)
+/* The v8m vector table consists of an array of function pointers, with the
+ * first slot (vector zero) used to hold the initial stack pointer.
+ *
+ * As all exceptions (interrupts) are routed via exception_common, we just
+ * need to fill this array with pointers to it.
+ *
+ * Note that the [ ... ] designated initializer is a GCC extension.
+ */
+
+const void *const _vectors[] locate_data(".vectors")
+                              aligned_data(VECTAB_ALIGN) =
 {
-	asm volatile("bx lr");
-}
-#endif
+  /* Initial stack */
+
+  IDLE_STACK,
+
+  /* Reset exception handler */
+
+  start,
+
+  /* Vectors 2 - n point directly at the generic handler */
+
+  [2 ... NVIC_IRQ_PENDSV] = &exception_common,
+  [(NVIC_IRQ_PENDSV + 1) ... (15 + ARMV8M_PERIPHERAL_INTERRUPTS)]
+                          = &exception_direct
+};
