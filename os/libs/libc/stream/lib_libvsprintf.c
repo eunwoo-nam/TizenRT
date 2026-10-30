@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- * Copyright 2016 Samsung Electronics All Rights Reserved.
+ * Copyright 2026 Samsung Electronics All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,13 +16,13 @@
  *
  ****************************************************************************/
 /****************************************************************************
- * lib/libc/stdio/lib_libvsprintf.c
+ * libs/libc/stream/lib_libvsprintf.c
  *
- *   Copyright (c) 2002, Alexander Popov (sasho@vip.bg)
- *   Copyright (c) 2002,2004,2005 Joerg Wunsch
- *   Copyright (c) 2005, Helmut Wallner
- *   Copyright (c) 2007, Dmitry Xmelkov
- *   All rights reserved.
+ * SPDX-License-Identifier: BSD-3-Clause
+ * SPDX-FileCopyrightText: 2002, Alexander Popov (sasho@vip.bg)
+ * SPDX-FileCopyrightText: 2002,2004,2005 Joerg Wunsch
+ * SPDX-FileCopyrightText: 2005, Helmut Wallner
+ * SPDX-FileCopyrightText: 2007, Dmitry Xmelkov
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -57,17 +57,15 @@
  * Included Files
  ****************************************************************************/
 
-#include <tinyara/config.h>
-
-#include <sys/types.h>
-#include <stdarg.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <limits.h>
-
-#include <tinyara/compiler.h>
 #include <tinyara/streams.h>
+#ifdef CONFIG_ALLSYMS
+#include <tinyara/allsyms.h>
+#include <tinyara/symtab.h>
+#endif
+
+#include <assert.h>
+#include <string.h>
+#include <sys/param.h>
 
 #include "lib_dtoa_engine.h"
 #include "lib_ultoa_invert.h"
@@ -81,16 +79,12 @@
  */
 
 #ifndef CONFIG_HAVE_LONG_LONG
-#undef CONFIG_LIBC_LONG_LONG
+#  undef CONFIG_LIBC_LONG_LONG
 #endif
 
-/* [Re]define putc() */
-
-#ifdef putc
-#undef putc
-#endif
-
-#define putc(c, stream)	(total_len++, (stream)->put(stream, c))
+#define stream_putc(c,stream)  (total_len++, lib_stream_putc(stream, c))
+#define stream_puts(buf, len, stream) \
+        (total_len += len, lib_stream_puts(stream, buf, len))
 
 /* Order is relevant here and matches order in format string */
 
@@ -130,26 +124,31 @@
 /* Support special access to CODE-space strings for Harvard architectures */
 
 #ifdef CONFIG_ARCH_ROMGETC
-#define fmt_char(fmt)	up_romgetc((fmt)++)
+#  define fmt_char(fmt)   up_romgetc((fmt)++)
 #else
-#define fmt_char(fmt)	(*(fmt)++)
+#  define fmt_char(fmt)   (*(fmt)++)
 #endif
+
+#define fmt_ungetc(fmt)   ((fmt)--)
 
 /****************************************************************************
  * Private Types
  ****************************************************************************/
 
-struct arg {
-	unsigned char type;
-	union {
-		unsigned int u;
-		unsigned long ul;
-#ifdef CONFIG_LIBC_LONG_LONG
-		unsigned long long ull;
+union arg_u {
+	unsigned int u;
+	unsigned long ul;
+#ifdef CONFIG_HAVE_LONG_LONG
+	unsigned long long ull;
 #endif
-		double_t d;
-		FAR char *cp;
-	} value;
+	double d;
+	FAR char *cp;
+};
+struct arg_s {
+#ifdef CONFIG_LIBC_NUMBERED_ARGS
+	unsigned char type[NL_ARGMAX];
+#endif
+	FAR union arg_u *value;
 };
 
 /****************************************************************************
@@ -159,28 +158,39 @@ struct arg {
 static const char g_nullstring[] = "(null)";
 
 /****************************************************************************
- * Public Functions
+ * Private Function Prototypes
  ****************************************************************************/
 
-static int vsprintf_internal(FAR struct lib_outstream_s *stream, FAR struct arg *arglist, int numargs, FAR const char *fmt, va_list ap)
+static int vsprintf_internal(FAR struct lib_outstream_s *stream,
+                             FAR struct arg_s *arglist, int numargs,
+                             FAR const IPTR char *fmt, va_list ap)
+           printf_like(4, 0);
+
+/****************************************************************************
+ * Private Functions
+ ****************************************************************************/
+
+static int vsprintf_internal(FAR struct lib_outstream_s *stream,
+                             FAR struct arg_s *arglist, int numargs,
+                             FAR const IPTR char *fmt, va_list ap)
 {
-	unsigned char c;			/* Holds a char from the format string */
+	unsigned char c; /* Holds a char from the format string */
 	uint16_t flags;
 	int width;
 	int prec;
 	union {
-#if defined(CONFIG_LIBC_LONG_LONG) || (ULONG_MAX > 4294967295UL)
-		unsigned char __buf[22];	/* Size for -1 in octal, without '\0' */
+#if defined (CONFIG_LIBC_LONG_LONG) || (ULONG_MAX > 4294967295UL)
+		char __buf[22]; /* Size for -1 in octal, without '\0' */
 #else
-		unsigned char __buf[11];	/* Size for -1 in octal, without '\0' */
+		char __buf[11]; /* Size for -1 in octal, without '\0' */
 #endif
 #ifdef CONFIG_LIBC_FLOATINGPOINT
 		struct dtoa_s __dtoa;
 #endif
 	} u;
 
-#define buf	(u.__buf)
-#define _dtoa	(u.__dtoa)
+#define buf     (u.__buf)
+#define _dtoa   (u.__dtoa)
 
 	FAR const char *pnt;
 	size_t size;
@@ -188,9 +198,10 @@ static int vsprintf_internal(FAR struct lib_outstream_s *stream, FAR struct arg 
 	int total_len = 0;
 
 #ifdef CONFIG_LIBC_NUMBERED_ARGS
-
-	int argnumber;
-
+	int argnumber = 0;
+#else
+	UNUSED(arglist);
+	UNUSED(numargs);
 #endif
 
 	for (;;) {
@@ -206,18 +217,19 @@ static int vsprintf_internal(FAR struct lib_outstream_s *stream, FAR struct arg 
 					break;
 				}
 			}
+
 #ifdef CONFIG_LIBC_NUMBERED_ARGS
 			if (stream != NULL) {
-				putc(c, stream);
+				stream_putc(c, stream);
 			}
 #else
-			putc(c, stream);
+			stream_putc(c, stream);
 #endif
 		}
 
 		flags = 0;
 		width = 0;
-		prec = 0;
+		prec  = 0;
 
 		do {
 			if (flags < FL_ASTERISK) {
@@ -229,7 +241,7 @@ static int vsprintf_internal(FAR struct lib_outstream_s *stream, FAR struct arg 
 				case '+':
 					flags |= FL_PLUS;
 
-					/* FALLTHROUGH */
+				/* FALLTHROUGH */
 
 				case ' ':
 					flags |= FL_SPACE;
@@ -249,41 +261,41 @@ static int vsprintf_internal(FAR struct lib_outstream_s *stream, FAR struct arg 
 #ifdef CONFIG_LIBC_NUMBERED_ARGS
 				if (c == '$') {
 					if ((flags & FL_ARGNUMBER) == 0) {
-
 						/* No other flag except FL_WIDTH or FL_ZFILL (leading
 						 * zeros) and argument number must be at least 1
 						 */
 
-						if ((flags & ~(FL_WIDTH | FL_ZFILL)) != 0 || width == 0) {
+						if ((flags & ~(FL_WIDTH | FL_ZFILL)) != 0 ||
+						    width == 0) {
 							goto ret;
 						}
 
 						/* It had been the argument number. */
 
 						argnumber = width;
-						width = 0;
-						flags = FL_ARGNUMBER;
+						width     = 0;
+						flags     = FL_ARGNUMBER;
 					} else if ((flags & FL_ASTERISK) != 0) {
 						int index;
 
 						flags &= ~FL_ASTERISK;
-
 						if ((flags & FL_PREC) == 0) {
 							index = width;
 						} else {
 							index = prec;
 						}
+
 						if (index > 0 && index <= numargs) {
 							if (stream == NULL) {
-								arglist[index - 1].type = TYPE_INT;
+								arglist->type[index - 1] = TYPE_INT;
 								if (index > total_len) {
 									total_len = index;
 								}
 							} else {
 								if ((flags & FL_PREC) == 0) {
-									width = (int)arglist[index - 1].value.u;
+									width = (int)arglist->value[index - 1].u;
 								} else {
-									prec = (int)arglist[index - 1].value.u;
+									prec = (int)arglist->value[index - 1].u;
 								}
 							}
 						} else {
@@ -314,6 +326,8 @@ static int vsprintf_internal(FAR struct lib_outstream_s *stream, FAR struct arg 
 					if ((flags & FL_ARGNUMBER) != 0) {
 						flags |= FL_ASTERISK;
 						continue;
+					} else if (stream == NULL) {
+						continue; /* We do only parsing */
 					}
 #endif
 
@@ -345,43 +359,54 @@ static int vsprintf_internal(FAR struct lib_outstream_s *stream, FAR struct arg 
 				}
 			}
 
-			if (c == 'z') {
-				switch (sizeof(size_t)) {
-					/* The only known cases that the default will be hit are
-					 * (1) the eZ80 which has sizeof(size_t) = 3 which is the
-					 * same as the sizeof(int).  And (2) if CONFIG_LIBC_LONG_LONG
-					 * is not enabled and sizeof(size_t) is equal to
-					 * sizeof(unsigned long long).  This latter case is an
-					 * error.
-					 */
+			/* Note: On NuttX, ptrdiff_t == intptr_t == ssize_t. */
 
-				default:
-					continue;	/* Treat as integer with no size qualifier. */
-
-				case sizeof(unsigned short):
+			if (c == 'z' || c == 't') {
+				if (sizeof(size_t) == sizeof(unsigned short)) {
 					c = 'h';
-					break;
-
-				case sizeof(unsigned long):
+				} else if (sizeof(size_t) == sizeof(unsigned long)) {
 					c = 'l';
-					break;
-
-#if defined(CONFIG_LIBC_LONG_LONG) && ULLONG_MAX != ULONG_MAX
-				case sizeof(unsigned long long):
+				}
+#if defined(CONFIG_HAVE_LONG_LONG) && ULLONG_MAX != ULONG_MAX
+				else if (sizeof(size_t) == sizeof(unsigned long long)) {
 					c = 'l';
 					flags |= FL_LONG;
 					flags &= ~FL_SHORT;
-					break;
+				}
 #endif
+				else {
+					/* The only known cases that the default will be hit are
+					 * (1) the eZ80 which has sizeof(size_t) = 3 which is the
+					 * same as the sizeof(int).  And (2) if
+					 * CONFIG_HAVE_LONG_LONG
+					 * is not enabled and sizeof(size_t) is equal to
+					 * sizeof(unsigned long long).  This latter case is an
+					 * error.
+					 * Treat as integer with no size qualifier.
+					 */
+
+					continue;
 				}
 			}
 
-			if (c == 'l') {
+			if (c == 'j') {
+				/* Same as long long if available. Otherwise, long. */
+
+#ifdef CONFIG_HAVE_LONG_LONG
+				flags |= FL_REPD_TYPE;
+#endif
+				flags |= FL_LONG;
+				flags &= ~FL_SHORT;
+				continue;
+			}
+
+			if (c == 'l' || c == 'L') {
 				if ((flags & FL_LONG) != 0) {
 					flags |= FL_REPD_TYPE;
+				} else {
+					flags |= FL_LONG;
 				}
 
-				flags |= FL_LONG;
 				flags &= ~FL_SHORT;
 				continue;
 			}
@@ -389,9 +414,10 @@ static int vsprintf_internal(FAR struct lib_outstream_s *stream, FAR struct arg 
 			if (c == 'h') {
 				if ((flags & FL_SHORT) != 0) {
 					flags |= FL_REPD_TYPE;
+				} else {
+					flags |= FL_SHORT;
 				}
 
-				flags |= FL_SHORT;
 				flags &= ~FL_LONG;
 				continue;
 			}
@@ -402,7 +428,7 @@ static int vsprintf_internal(FAR struct lib_outstream_s *stream, FAR struct arg 
 		/* Only a format character is valid.  */
 
 #if 'F' != 'E'+1  ||  'G' != 'F'+1  ||  'f' != 'e'+1  ||  'g' != 'f'+1
-#error
+#  error
 #endif
 
 		if (c == 'p') {
@@ -410,47 +436,48 @@ static int vsprintf_internal(FAR struct lib_outstream_s *stream, FAR struct arg 
 
 			flags &= ~(FL_LONG | FL_REPD_TYPE);
 
-#ifdef CONFIG_LIBC_LONG_LONG
-			if (sizeof(void *) == sizeof(unsigned long long)) {
+#ifdef CONFIG_HAVE_LONG_LONG
+			if (sizeof(FAR void *) == sizeof(unsigned long long)) {
 				flags |= (FL_LONG | FL_REPD_TYPE);
 			} else
 #endif
-				if (sizeof(void *) == sizeof(unsigned long)) {
-					flags |= FL_LONG;
-				}
+			if (sizeof(FAR void *) == sizeof(unsigned long)) {
+				flags |= FL_LONG;
+			}
 		}
-#ifdef CONFIG_LIBC_NUMBERED_ARGS
 
+#ifdef CONFIG_LIBC_NUMBERED_ARGS
 		if ((flags & FL_ARGNUMBER) != 0) {
 			if (argnumber > 0 && argnumber <= numargs) {
 				if (stream == NULL) {
 					if ((c >= 'E' && c <= 'G')
-						|| (c >= 'e' && c <= 'g')) {
-						arglist[argnumber - 1].type = TYPE_DOUBLE;
+					    || (c >= 'e' && c <= 'g')) {
+						arglist->type[argnumber - 1] = TYPE_DOUBLE;
 					} else if (c == 'i' || c == 'd' || c == 'u' || c == 'p') {
 						if ((flags & FL_LONG) == 0) {
-							arglist[argnumber - 1].type = TYPE_INT;
+							arglist->type[argnumber - 1] = TYPE_INT;
 						} else if ((flags & FL_REPD_TYPE) == 0) {
-							arglist[argnumber - 1].type = TYPE_LONG;
+							arglist->type[argnumber - 1] = TYPE_LONG;
 						} else {
-							arglist[argnumber - 1].type = TYPE_LONG_LONG;
+							arglist->type[argnumber - 1] = TYPE_LONG_LONG;
 						}
 					} else if (c == 'c') {
-						arglist[argnumber - 1].type = TYPE_INT;
+						arglist->type[argnumber - 1] = TYPE_INT;
 					} else if (c == 's') {
-						arglist[argnumber - 1].type = TYPE_CHAR_POINTER;
+						arglist->type[argnumber - 1] = TYPE_CHAR_POINTER;
 					}
 
 					if (argnumber > total_len) {
 						total_len = argnumber;
 					}
-					continue;	/* We do only parsing */
+
+					continue; /* We do only parsing */
 				}
 			} else {
 				goto ret;
 			}
 		} else if (stream == NULL) {
-			continue;			/* We do only parsing */
+			continue; /* We do only parsing */
 		}
 #endif
 
@@ -460,13 +487,13 @@ static int vsprintf_internal(FAR struct lib_outstream_s *stream, FAR struct arg 
 			c += 'e' - 'E';
 			goto flt_oper;
 		} else if (c >= 'e' && c <= 'g') {
-			double_t value;
-			int exp;			/* Exponent of master decimal digit */
+			double value;
+			int exp;              /* Exponent of master decimal digit */
 			int n;
-			uint8_t sign;		/* Sign character (or 0) */
-			uint8_t ndigs;		/* Number of digits to convert */
-			uint8_t ndecimal;	/* Digits after decimal (for 'f' format), 0 if
-								 * no limit */
+			uint8_t sign;         /* Sign character (or 0) */
+			uint8_t ndigs;        /* Number of digits to convert */
+			uint8_t ndecimal;     /* Digits after decimal (for 'f' format), 0 if
+                                 * no limit */
 
 			flags &= ~FL_FLTUPP;
 
@@ -494,21 +521,23 @@ flt_oper:
 			if (ndigs > DTOA_MAX_DIG) {
 				ndigs = DTOA_MAX_DIG;
 			}
+
 #ifdef CONFIG_LIBC_NUMBERED_ARGS
 			if ((flags & FL_ARGNUMBER) != 0) {
-				value = arglist[argnumber - 1].value.d;
+				value = arglist->value[argnumber - 1].d;
 			} else {
-				value = va_arg(ap, double_t);
+				value = va_arg(ap, double);
 			}
 #else
-			value = va_arg(ap, double_t);
+			value = va_arg(ap, double);
 #endif
 
-			ndigs = __dtoa_engine(value, &_dtoa, ndigs, ndecimal);
+			ndigs = __dtoa_engine(value, &_dtoa, ndigs,
+			                      ndecimal);
 			exp = _dtoa.exp;
 
 			sign = 0;
-			if ((_dtoa.flags & DTOA_MINUS) && !(_dtoa.flags & DTOA_NAN)) {
+			if (_dtoa.flags & DTOA_MINUS) {
 				sign = '-';
 			} else if ((flags & FL_PLUS) != 0) {
 				sign = '+';
@@ -524,7 +553,7 @@ flt_oper:
 					width -= ndigs;
 					if ((flags & FL_LPAD) == 0) {
 						do {
-							putc(' ', stream);
+							stream_putc(' ', stream);
 						} while (--width);
 					}
 				} else {
@@ -532,22 +561,23 @@ flt_oper:
 				}
 
 				if (sign) {
-					putc(sign, stream);
+					stream_putc(sign, stream);
 				}
 
 				p = "inf";
 				if (_dtoa.flags & DTOA_NAN) {
 					p = "nan";
 				}
-#if ('I'-'i' != 'N'-'n') || ('I'-'i' != 'F'-'f') || ('I'-'i' != 'A'-'a')
-#error
-#endif
+
+#  if ('I'-'i' != 'N'-'n') || ('I'-'i' != 'F'-'f') || ('I'-'i' != 'A'-'a')
+#    error
+#  endif
 				while ((ndigs = *p) != 0) {
 					if ((flags & FL_FLTUPP) != 0) {
 						ndigs += 'I' - 'i';
 					}
 
-					putc(ndigs, stream);
+					stream_putc(ndigs, stream);
 					p++;
 				}
 
@@ -585,7 +615,7 @@ flt_oper:
 			if ((flags & FL_FLTFIX) != 0) {
 				n = (exp > 0 ? exp + 1 : 1);
 			} else {
-				n = 5;			/* 1e+00 */
+				n = 5;              /* 1e+00 */
 			}
 
 			if (sign != 0) {
@@ -604,18 +634,18 @@ flt_oper:
 
 			if ((flags & (FL_LPAD | FL_ZFILL)) == 0) {
 				while (width) {
-					putc(' ', stream);
+					stream_putc(' ', stream);
 					width--;
 				}
 			}
 
 			if (sign != 0) {
-				putc(sign, stream);
+				stream_putc(sign, stream);
 			}
 
 			if ((flags & FL_LPAD) == 0) {
 				while (width) {
-					putc('0', stream);
+					stream_putc('0', stream);
 					width--;
 				}
 			}
@@ -631,13 +661,12 @@ flt_oper:
 				 * the exponent value
 				 */
 
-				n = exp > 0 ? exp : 0;	/* Exponent of left digit */
+				n = exp > 0 ? exp : 0;    /* Exponent of left digit */
 				do {
-
 					/* Insert decimal point at correct place */
 
 					if (n == -1) {
-						putc('.', stream);
+						stream_putc('.', stream);
 					}
 
 					/* Pull digits from buffer when in-range, otherwise use 0 */
@@ -649,21 +678,22 @@ flt_oper:
 					}
 
 					if (--n < -prec) {
-						if ((flags & FL_ALT) != 0 && n == -1) {
-							putc('.', stream);
-						}
-
 						break;
 					}
 
-					putc(out, stream);
+					stream_putc(out, stream);
 				} while (1);
 
-				if (n == exp && (_dtoa.digits[0] > '5' || (_dtoa.digits[0] == '5' && !(_dtoa.flags & DTOA_CARRY)))) {
+				if (n == exp && (_dtoa.digits[0] > '5' ||
+				    (_dtoa.digits[0] == '5' && !(_dtoa.flags & DTOA_CARRY)))) {
 					out = '1';
 				}
 
-				putc(out, stream);
+				stream_putc(out, stream);
+
+				if ((flags & FL_ALT) != 0 && n == -1) {
+					stream_putc('.', stream);
+				}
 			} else {
 				/* 'e(E)' format
 				 *
@@ -674,60 +704,67 @@ flt_oper:
 					_dtoa.flags &= ~DTOA_CARRY;
 				}
 
-				putc(_dtoa.digits[0], stream);
+				stream_putc(_dtoa.digits[0], stream);
 				if (prec > 0) {
 					uint8_t pos;
 
-					putc('.', stream);
+					stream_putc('.', stream);
 					for (pos = 1; pos < 1 + prec; pos++) {
-						putc(pos < ndigs ? _dtoa.digits[pos] : '0', stream);
+						stream_putc(pos < ndigs ? _dtoa.digits[pos] : '0',
+						            stream);
 					}
 				} else if ((flags & FL_ALT) != 0) {
-					putc('.', stream);
+					stream_putc('.', stream);
 				}
 
 				/* Exponent */
 
-				putc(flags & FL_FLTUPP ? 'E' : 'e', stream);
+				stream_putc(flags & FL_FLTUPP ? 'E' : 'e', stream);
 				ndigs = '+';
 				if (exp < 0 || (exp == 0 && (_dtoa.flags & DTOA_CARRY) != 0)) {
 					exp = -exp;
 					ndigs = '-';
 				}
 
-				putc(ndigs, stream);
-				for (ndigs = '0'; exp >= 10; exp -= 10) {
-					ndigs += 1;
+				stream_putc(ndigs, stream);
+				c = __ultoa_invert(exp, buf, 10) - buf;
+
+				if (exp >= 0 && exp <= 9) {
+					stream_putc('0', stream);
 				}
 
-				putc(ndigs, stream);
-				putc('0' + exp, stream);
+				while (c > 0) {
+					stream_putc(buf[c - 1], stream);
+					c--;
+				}
 			}
 
 			goto tail;
 		}
-#else							/* !CONFIG_LIBC_FLOATINGPOINT */
+
+#else /* !CONFIG_LIBC_FLOATINGPOINT */
 		if ((c >= 'E' && c <= 'G') || (c >= 'e' && c <= 'g')) {
-			va_arg(ap, double_t);
-			pnt = "*float*";
+#  ifndef CONFIG_LIBC_NUMBERED_ARGS
+			va_arg(ap, double);
+#  endif
+			pnt  = "*float*";
 			size = sizeof("*float*") - 1;
 			goto str_lpad;
 		}
 #endif
 
 		switch (c) {
-
 		case 'c':
 #ifdef CONFIG_LIBC_NUMBERED_ARGS
 			if ((flags & FL_ARGNUMBER) != 0) {
-				buf[0] = (int)arglist[argnumber - 1].value.u;
+				buf[0] = (int)arglist->value[argnumber - 1].u;
 			} else {
 				buf[0] = va_arg(ap, int);
 			}
 #else
 			buf[0] = va_arg(ap, int);
 #endif
-			pnt = (FAR char *)buf;
+			pnt = buf;
 			size = 1;
 			goto str_lpad;
 
@@ -735,7 +772,7 @@ flt_oper:
 		case 'S':
 #ifdef CONFIG_LIBC_NUMBERED_ARGS
 			if ((flags & FL_ARGNUMBER) != 0) {
-				pnt = (FAR char *)arglist[argnumber - 1].value.cp;
+				pnt = arglist->value[argnumber - 1].cp;
 			} else {
 				pnt = va_arg(ap, FAR char *);
 			}
@@ -751,25 +788,20 @@ flt_oper:
 str_lpad:
 			if ((flags & FL_LPAD) == 0) {
 				while (size < width) {
-					putc(' ', stream);
+					stream_putc(' ', stream);
 					width--;
 				}
 			}
 
-			while (size) {
-				putc(*pnt++, stream);
-				if (width != 0) {
-					width -= 1;
-				}
-
-				size -= 1;
-			}
+			stream_puts(pnt, size, stream);
+			width = width >= size ? width - size : 0;
+			size = 0;
 
 			goto tail;
 		}
 
 		if (c == 'd' || c == 'i') {
-#ifndef CONFIG_LIBC_LONG_LONG
+#ifndef CONFIG_HAVE_LONG_LONG
 			long x;
 #else
 			long long x;
@@ -777,7 +809,7 @@ str_lpad:
 			if ((flags & FL_LONG) != 0 && (flags & FL_REPD_TYPE) != 0) {
 #ifdef CONFIG_LIBC_NUMBERED_ARGS
 				if ((flags & FL_ARGNUMBER) != 0) {
-					x = (long long)arglist[argnumber - 1].value.ull;
+					x = (long long)arglist->value[argnumber - 1].ull;
 				} else {
 					x = va_arg(ap, long long);
 				}
@@ -789,7 +821,7 @@ str_lpad:
 			if ((flags & FL_LONG) != 0) {
 #ifdef CONFIG_LIBC_NUMBERED_ARGS
 				if ((flags & FL_ARGNUMBER) != 0) {
-					x = (long)arglist[argnumber - 1].value.ul;
+					x = (long)arglist->value[argnumber - 1].ul;
 				} else {
 					x = va_arg(ap, long);
 				}
@@ -799,7 +831,7 @@ str_lpad:
 			} else {
 #ifdef CONFIG_LIBC_NUMBERED_ARGS
 				if ((flags & FL_ARGNUMBER) != 0) {
-					x = (int)arglist[argnumber - 1].value.u;
+					x = (int)arglist->value[argnumber - 1].u;
 				} else {
 					x = va_arg(ap, int);
 				}
@@ -817,18 +849,25 @@ str_lpad:
 
 			flags &= ~(FL_NEGATIVE | FL_ALT);
 			if (x < 0) {
-				x = -x;
+#ifndef CONFIG_HAVE_LONG_LONG
+				x = -(unsigned long)x;
+#else
+				x = -(unsigned long long)x;
+#endif
 				flags |= FL_NEGATIVE;
 			}
 
 			if ((flags & FL_PREC) != 0 && prec == 0 && x == 0) {
 				c = 0;
 			} else {
-				c = __ultoa_invert(x, (FAR char *)buf, 10) - (FAR char *)buf;
+#if !defined(CONFIG_LIBC_LONG_LONG) && defined(CONFIG_HAVE_LONG_LONG)
+				DEBUGASSERT(x >= 0 && x <= ULONG_MAX);
+#endif
+				c = __ultoa_invert(x, buf, 10) - buf;
 			}
 		} else {
 			int base;
-#ifndef CONFIG_LIBC_LONG_LONG
+#ifndef CONFIG_HAVE_LONG_LONG
 			unsigned long x;
 #else
 			unsigned long long x;
@@ -836,7 +875,7 @@ str_lpad:
 			if ((flags & FL_LONG) != 0 && (flags & FL_REPD_TYPE) != 0) {
 #ifdef CONFIG_LIBC_NUMBERED_ARGS
 				if ((flags & FL_ARGNUMBER) != 0) {
-					x = arglist[argnumber - 1].value.ull;
+					x = arglist->value[argnumber - 1].ull;
 				} else {
 					x = va_arg(ap, unsigned long long);
 				}
@@ -848,7 +887,7 @@ str_lpad:
 			if ((flags & FL_LONG) != 0) {
 #ifdef CONFIG_LIBC_NUMBERED_ARGS
 				if ((flags & FL_ARGNUMBER) != 0) {
-					x = arglist[argnumber - 1].value.ul;
+					x = arglist->value[argnumber - 1].ul;
 				} else {
 					x = va_arg(ap, unsigned long);
 				}
@@ -858,7 +897,7 @@ str_lpad:
 			} else {
 #ifdef CONFIG_LIBC_NUMBERED_ARGS
 				if ((flags & FL_ARGNUMBER) != 0) {
-					x = (unsigned int)arglist[argnumber - 1].value.u;
+					x = (unsigned int)arglist->value[argnumber - 1].u;
 				} else {
 					x = va_arg(ap, unsigned int);
 				}
@@ -887,9 +926,70 @@ str_lpad:
 				break;
 
 			case 'p':
+#ifdef CONFIG_LIBC_PRINT_EXTENSION
+				c = fmt_char(fmt);
+				switch (c) {
+				case 'B':
+				{
+					FAR struct va_format *vaf = (FAR void *)(uintptr_t) x;
+
+					lib_bsprintf(stream, vaf->fmt, vaf->va);
+					continue;
+				}
+
+				case 'V':
+				{
+					FAR struct va_format *vaf = (FAR void *)(uintptr_t) x;
+#  ifdef va_copy
+					va_list copy;
+
+					va_copy(copy, *vaf->va);
+					lib_vsprintf(stream, vaf->fmt, copy);
+					va_end(copy);
+#  else
+					lib_vsprintf(stream, vaf->fmt, *vaf->va);
+#  endif
+					continue;
+				}
+
+				case 'S':
+				case 's':
+				{
+#  ifdef CONFIG_ALLSYMS
+					FAR const struct symtab_s *symbol;
+					FAR void *addr = (FAR void *)(uintptr_t) x;
+					size_t symbolsize;
+
+					symbol = allsyms_findbyvalue(addr, &symbolsize);
+					if (symbol != NULL) {
+						pnt = symbol->sym_name;
+						while (*pnt != '\0') {
+							stream_putc(*pnt++, stream);
+						}
+
+						if (c == 'S') {
+							total_len +=
+							lib_sprintf_internal(stream,
+							                     "+%#tx/%#zx",
+							                     addr - symbol->sym_value,
+							                     symbolsize);
+						}
+
+						continue;
+					}
+#  endif
+					break;
+				}
+
+				default:
+					fmt_ungetc(fmt);
+					break;
+				}
+#endif
+
 				flags |= FL_ALT;
 
-				/* no break */
+			/* no break */
 
 			case 'x':
 				if ((flags & FL_ALT) != 0) {
@@ -908,15 +1008,18 @@ str_lpad:
 				break;
 
 			default:
-				putc('%', stream);
-				putc(c, stream);
+				stream_putc('%', stream);
+				stream_putc(c, stream);
 				continue;
 			}
 
 			if ((flags & FL_PREC) != 0 && prec == 0 && x == 0) {
 				c = 0;
 			} else {
-				c = __ultoa_invert(x, (FAR char *)buf, base) - (FAR char *)buf;
+#if !defined(CONFIG_LIBC_LONG_LONG) && defined(CONFIG_HAVE_LONG_LONG)
+				DEBUGASSERT(x <= ULONG_MAX);
+#endif
+				c = __ultoa_invert(x, buf, base) - buf;
 			}
 
 			flags &= ~FL_NEGATIVE;
@@ -957,7 +1060,7 @@ str_lpad:
 			}
 
 			while (len < width) {
-				putc(' ', stream);
+				stream_putc(' ', stream);
 				len++;
 			}
 		}
@@ -965,9 +1068,9 @@ str_lpad:
 		width = (len < width) ? width - len : 0;
 
 		if ((flags & FL_ALT) != 0) {
-			putc('0', stream);
+			stream_putc('0', stream);
 			if ((flags & FL_ALTHEX) != 0) {
-				putc(flags & FL_ALTUPP ? 'X' : 'x', stream);
+				stream_putc(flags & FL_ALTUPP ? 'X' : 'x', stream);
 			}
 		} else if ((flags & (FL_NEGATIVE | FL_PLUS | FL_SPACE)) != 0) {
 			unsigned char z = ' ';
@@ -979,16 +1082,16 @@ str_lpad:
 				z = '-';
 			}
 
-			putc(z, stream);
+			stream_putc(z, stream);
 		}
 
 		while (prec > c) {
-			putc('0', stream);
+			stream_putc('0', stream);
 			prec--;
 		}
 
 		while (c) {
-			putc(buf[--c], stream);
+			stream_putc(buf[--c], stream);
 		}
 
 tail:
@@ -996,13 +1099,12 @@ tail:
 		/* Tail is possible.  */
 
 		while (width) {
-			putc(' ', stream);
+			stream_putc(' ', stream);
 			width--;
 		}
 	}
 
 ret:
-
 	return total_len;
 }
 
@@ -1010,47 +1112,106 @@ ret:
  * Public Functions
  ****************************************************************************/
 
-int lib_vsprintf(FAR struct lib_outstream_s *stream, FAR const char *fmt, va_list ap)
+int lib_vsprintf(FAR struct lib_outstream_s *stream,
+                 FAR const IPTR char *fmt, va_list ap)
 {
 #ifdef CONFIG_LIBC_NUMBERED_ARGS
-	int i;
-	struct arg arglist[NL_ARGMAX];
-	int numargs;
-
 	/* We do 2 passes of parsing and fill the arglist between the passes. */
 
-	numargs = vsprintf_internal(NULL, arglist, NL_ARGMAX, fmt, ap);
+	struct arg_s arglist;
+	int numargs = vsprintf_internal(NULL, &arglist, NL_ARGMAX, fmt, ap);
+	union arg_u argvalue[MAX(numargs, 1)];
+	int i;
+
+	arglist.value = argvalue;
 
 	for (i = 0; i < numargs; i++) {
-		switch (arglist[i].type) {
+		switch (arglist.type[i]) {
 		case TYPE_LONG_LONG:
-#ifdef CONFIG_LIBC_LONG_LONG
-			arglist[i].value.ull = va_arg(ap, unsigned long long);
+#ifdef CONFIG_HAVE_LONG_LONG
+			arglist.value[i].ull = va_arg(ap, unsigned long long);
 			break;
 #endif
+
 		case TYPE_LONG:
-			arglist[i].value.ul = va_arg(ap, unsigned long);
+			arglist.value[i].ul = va_arg(ap, unsigned long);
 			break;
 
 		case TYPE_INT:
-			arglist[i].value.u = va_arg(ap, unsigned int);
+			arglist.value[i].u = va_arg(ap, unsigned int);
 			break;
 
+#ifdef CONFIG_HAVE_DOUBLE
 		case TYPE_DOUBLE:
-			arglist[i].value.d = va_arg(ap, double_t);
+			arglist.value[i].d = va_arg(ap, double);
 			break;
+#endif
 
 		case TYPE_CHAR_POINTER:
-			arglist[i].value.cp = va_arg(ap, FAR char *);
+			arglist.value[i].cp = va_arg(ap, FAR char *);
 			break;
 		}
 	}
 
-	return vsprintf_internal(stream, arglist, numargs, fmt, ap);
-
+	return vsprintf_internal(stream, &arglist, numargs, fmt, ap);
 #else
-
 	return vsprintf_internal(stream, NULL, 0, fmt, ap);
-
 #endif
+}
+
+/****************************************************************************
+ * Name: lib_sprintf
+ ****************************************************************************/
+
+int lib_sprintf(FAR struct lib_outstream_s *stream, FAR const IPTR char *fmt,
+                ...)
+{
+	va_list ap;
+	int     n;
+
+	/* Let lib_vsprintf do the real work */
+
+	va_start(ap, fmt);
+	n = lib_vsprintf(stream, fmt, ap);
+	va_end(ap);
+	return n;
+}
+
+/****************************************************************************
+ * Name: lib_sprintf_internal
+ *
+ * Description:
+ *   This function does not take numbered arguments in printf.
+ *   Equivalent to lib_sprintf when CONFIG_LIBC_NUMBERED_ARGS is not enabled
+ *
+ ****************************************************************************/
+
+int lib_sprintf_internal(FAR struct lib_outstream_s *stream,
+                         FAR const IPTR char *fmt, ...)
+{
+	va_list ap;
+	int     n;
+
+	/* Then let vsprintf_internal do the real work */
+
+	va_start(ap, fmt);
+	n = vsprintf_internal(stream, NULL, 0, fmt, ap);
+	va_end(ap);
+
+	return n;
+}
+
+/****************************************************************************
+ * Name: lib_vsprintf_internal
+ *
+ * Description:
+ *   This function does not take numbered arguments in printf.
+ *   Equivalent to lib_sprintf when CONFIG_LIBC_NUMBERED_ARGS is not enabled
+ *
+ ****************************************************************************/
+
+int lib_vsprintf_internal(FAR struct lib_outstream_s *stream,
+                          FAR const IPTR char *fmt, va_list ap)
+{
+	return vsprintf_internal(stream, NULL, 0, fmt, ap);
 }
