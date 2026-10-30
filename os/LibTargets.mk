@@ -81,6 +81,12 @@ kernel$(DELIM)libkernel$(LIBEXT): context
 $(LIBRARIES_DIR)$(DELIM)libkernel$(LIBEXT): kernel$(DELIM)libkernel$(LIBEXT)
 	$(Q) install kernel$(DELIM)libkernel$(LIBEXT) $(LIBRARIES_DIR)$(DELIM)libkernel$(LIBEXT)
 
+board$(DELIM)libboards$(LIBEXT): context
+	$(Q) $(MAKE) $(JOBS) -C board TOPDIR="$(TOPDIR)" libboards$(LIBEXT) KERNEL=y EXTRADEFINES=$(KDEFINE)
+
+$(LIBRARIES_DIR)$(DELIM)libboards$(LIBEXT): board$(DELIM)libboards$(LIBEXT)
+	$(Q) install board$(DELIM)libboards$(LIBEXT) $(LIBRARIES_DIR)$(DELIM)libboards$(LIBEXT)
+
 net$(DELIM)libnet$(LIBEXT): context
 	$(Q) $(MAKE) $(JOBS) -C net TOPDIR="$(TOPDIR)" libnet$(LIBEXT) KERNEL=y EXTRADEFINES=$(KDEFINE)
 
