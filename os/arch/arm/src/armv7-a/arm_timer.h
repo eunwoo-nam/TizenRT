@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- * Copyright 2023 Samsung Electronics All Rights Reserved.
+ * Copyright 2026 Samsung Electronics All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,9 @@
  *
  ****************************************************************************/
 /****************************************************************************
- * arch/arm/src/armv7-a/arm_switchcontext.c
+ * arch/arm/src/armv7-a/arm_timer.h
+ *
+ * SPDX-License-Identifier: Apache-2.0
  *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -35,30 +37,62 @@
  *
  ****************************************************************************/
 
+#ifndef __ARCH_ARM_SRC_ARMV7_A_ARM_TIMER_H
+#define __ARCH_ARM_SRC_ARMV7_A_ARM_TIMER_H
+
 /****************************************************************************
  * Included Files
  ****************************************************************************/
-#include <stdint.h>
-#include <tinyara/config.h>
 
-#include <arch/syscall.h>
-#include "up_internal.h"
+#include <tinyara/config.h>
+#include <tinyara/timers/oneshot.h>
+
+#include <arch/armv7-a/cp15.h>
+
 /****************************************************************************
- * Public Functions
+ * Pre-processor Definitions
  ****************************************************************************/
 
+#define arm_timer_get_freq() CP15_GET(CNTFRQ)
+
 /****************************************************************************
- * Name: arm_switchcontext
+ * Public Function Prototypes
+ ****************************************************************************/
+
+#ifdef __cplusplus
+#define EXTERN extern "C"
+extern "C"
+{
+#else
+#define EXTERN extern
+#endif
+
+/****************************************************************************
+ * Name: arm_timer_initialize
  *
  * Description:
- *   Save the current thread context and restore the specified context.
+ *   This function initialize generic timer hardware module
+ *   and return an instance of a "lower half" timer interface.
+ *
+ * Input parameters:
+ *   freq - The clock frequency in Hz. If freq is zero, get the value
+ *     from CNTFRQ register.
  *
  * Returned Value:
- *   None
+ *   On success, a non-NULL oneshot_lowerhalf_s is returned to the caller.
+ *   In the event of any failure, a NULL value is returned.
  *
  ****************************************************************************/
 
-void arm_switchcontext(uint32_t **saveregs, uint32_t *restoreregs)
-{
-	sys_call2(SYS_switch_context, (uintptr_t)saveregs, (uintptr_t)restoreregs);
+#ifdef CONFIG_ARMV7A_HAVE_PTM
+struct oneshot_lowerhalf_s *arm_timer_initialize(unsigned int freq);
+#else
+#  define arm_timer_initialize(freq) NULL
+#endif
+
+#undef EXTERN
+#ifdef __cplusplus
 }
+#endif
+
+#endif /* __ARCH_ARM_SRC_ARMV7_A_ARM_TIMER_H */

@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- * Copyright 2023 Samsung Electronics All Rights Reserved.
+ * Copyright 2026 Samsung Electronics All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,9 @@
  *
  ****************************************************************************/
 /****************************************************************************
- * arch/arm/src/armv7-a/arm_signal_dispatch.c
+ * arch/arm/src/armv7-a/arm_saveusercontext.S
+ *
+ * SPDX-License-Identifier: Apache-2.0
  *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -40,77 +42,75 @@
  ****************************************************************************/
 
 #include <tinyara/config.h>
-#include <tinyara/arch.h>
+#include <tinyara/irq.h>
 
-#include <arch/syscall.h>
+	.file	"arm_saveusercontext.S"
 
-#include "up_internal.h"
-
-#if !defined(CONFIG_BUILD_FLAT) && defined(__KERNEL__)
+	.text
+	.syntax	unified
+	.arm
 
 /****************************************************************************
  * Public Functions
  ****************************************************************************/
 
 /****************************************************************************
- * Name: up_signal_dispatch
+ * Name: up_saveusercontext
  *
  * Description:
- *   In the kernel mode build, this function will be called to execute a
- *   a signal handler in user-space.  When the signal is delivered, a
- *   kernel-mode stub will first run to perform some housekeeping functions.
- *   This kernel-mode stub will then be called transfer control to the user
- *   mode signal handler by calling this function.
+ *   Save the current context.  Full prototype is:
  *
- *   Normally the user-mode signaling handling stub will also execute
- *   before the ultimate signal handler is called.  See
- *   arch/arm/src/armvx-y/arm_signal_handler.S.  This function is the
- *   user-space, signal handler trampoline function.  It is called from
- *   up_signal_dispatch() in user-mode.
+ *   int up_saveusercontext(void *saveregs);
  *
- * Input Parameters:
- *   sighand - The address user-space signal handling function
- *   signo, info, and ucontext - Standard arguments to be passed to the
- *     signal handling function.
+ *   R0 = saveregs = pinter saved array
  *
  * Returned Value:
- *   None.  This function does not return in the normal sense.  It returns
- *   via an architecture specific system call made by up_signal_handler().
- *   However, this will look like a normal return by the caller of
- *   up_signal_dispatch.
+ *   None
  *
  ****************************************************************************/
 
-#ifndef CONFIG_DISABLE_SIGNALS
-void up_signal_dispatch(_sa_sigaction_t sighand, int signo, siginfo_t *info, void *ucontext)
-{
-	uint32_t saved_sp;
+	.globl	up_saveusercontext
+	.globl	up_saveusercontext
+	.type	up_saveusercontext, %function
 
-	/* Save SP, force 8-byte alignment, call syscall4(), then restore SP */
+up_saveusercontext:
 
-	__asm__ __volatile__ (
-        "mov %0, sp\n"
-#ifdef CONFIG_ARCH_CORTEXA32
-		"bic sp, sp, #7\n"
+	/* Save r0, r1 */
+
+	str		r0, [r0, #(4*REG_R0)]
+	str		r1, [r0, #(4*REG_R1)]
+
+#ifdef CONFIG_ARCH_FPU
+	/* Save fpu */
+
+#  ifdef CONFIG_ARM_DPFPU32
+	vstmia.64	r0!, {d0-d15}
+	vstmia.64	r0!, {d16-d31}
+#  else
+	vstmia		r0!, {s0-s31}
+#  endif
+	/* Save fpscr, r13 and r14 */
+
+	vmrs		r1, fpscr
+	stmia		r0!, {r1, r13, r14}
 #else
-        "bic %0, %0, #7\n"
-		"mov sp, %0\n"
+	/* Save r13, r14 */
+
+	stmia		r0!, {r13, r14}
 #endif
-        : "=r"(saved_sp)
-        :
-        : "memory"
-    );
 
-	/* Let sys_call4() do all of the work */
+	/* Save r2~r12, and store the return address as PC */
 
-	sys_call4(SYS_signal_handler, (uintptr_t) sighand, (uintptr_t) signo, (uintptr_t) info, (uintptr_t) ucontext);
+	add		r0, r0, #8
+	stmia		r0!, {r2-r12, r14}
 
-	__asm__ __volatile__ (
-        "mov sp, %0\n"
-        :
-        : "r"(saved_sp)
-        : "memory"
-    );
-}
-#endif
-#endif							/* !CONFIG_BUILD_FLAT && __KERNEL__ */
+	/* Save cpsr */
+
+	mrs		r1, CPSR
+	str		r1, [r0]
+
+	mov		r0, #0
+	bx		lr
+
+	.size	up_saveusercontext, . - up_saveusercontext
+	.end

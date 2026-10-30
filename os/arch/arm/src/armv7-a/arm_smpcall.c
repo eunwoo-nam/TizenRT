@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- * Copyright 2023 Samsung Electronics All Rights Reserved.
+ * Copyright 2026 Samsung Electronics All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,9 @@
  *
  ****************************************************************************/
 /****************************************************************************
- * arch/arm/src/armv7-a/arm_saveusercontext.c
+ * arch/arm/src/armv7-a/arm_smpcall.c
+ *
+ * SPDX-License-Identifier: Apache-2.0
  *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -41,27 +43,97 @@
 
 #include <tinyara/config.h>
 
-#include <arch/syscall.h>
-#include "up_internal.h"
+#include <stdint.h>
+#include <assert.h>
+
+#include <tinyara/arch.h>
+#include <tinyara/sched.h>
+#include <tinyara/spinlock.h>
+#include <tinyara/sched_note.h>
+
+#include "arm_internal.h"
+#include "gic.h"
+#include "sched/sched.h"
+
+#ifdef CONFIG_SMP
+
+/****************************************************************************
+ * Private Data
+ ****************************************************************************/
+
 /****************************************************************************
  * Public Functions
  ****************************************************************************/
 
 /****************************************************************************
- * Name: up_saveusercontext
+ * Name: arm_smp_sched_handler
  *
  * Description:
- *   Save the current thread context.  Full prototype is:
+ *   This is the handler for sched.
  *
- *   int  up_saveusercontext(void *saveregs);
+ *   1. It saves the current task state at the head of the current assigned
+ *      task list.
+ *   2. It processes g_delivertasks
+ *   3. Returns from interrupt, restoring the state of the new task at the
+ *      head of the ready to run list.
+ *
+ * Input Parameters:
+ *   Standard interrupt handling
  *
  * Returned Value:
- *   0: Normal return
- *   1: Context switch return
+ *   Zero on success; a negated errno value on failure.
  *
  ****************************************************************************/
 
-int up_saveusercontext(uint32_t *saveregs)
+int arm_smp_sched_handler(int irq, void *context, void *arg)
 {
-	return sys_call1(SYS_save_context, (uintptr_t)saveregs);
+	nxsched_process_delivered(this_cpu());
+	return OK;
 }
+
+/****************************************************************************
+ * Name: up_send_smp_sched
+ *
+ * Description:
+ *   pause task execution on the CPU
+ *   check whether there are tasks delivered to specified cpu
+ *   and try to run them.
+ *
+ * Input Parameters:
+ *   cpu - The index of the CPU to be paused.
+ *
+ * Returned Value:
+ *   Zero on success; a negated errno value on failure.
+ *
+ * Assumptions:
+ *   Called from within a critical section;
+ *
+ ****************************************************************************/
+
+int up_send_smp_sched(int cpu)
+{
+	arm_cpu_sgi(GIC_SMP_SCHED, (1 << cpu));
+
+	return OK;
+}
+
+/****************************************************************************
+ * Name: up_send_smp_call
+ *
+ * Description:
+ *   Send smp call to target cpu.
+ *
+ * Input Parameters:
+ *   cpuset - The set of CPUs to receive the SGI.
+ *
+ * Returned Value:
+ *   None.
+ *
+ ****************************************************************************/
+
+void up_send_smp_call(cpu_set_t cpuset)
+{
+	up_trigger_irq(GIC_SMP_CALL, cpuset);
+}
+
+#endif /* CONFIG_SMP */
