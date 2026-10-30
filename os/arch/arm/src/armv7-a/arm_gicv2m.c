@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- * Copyright 2023 Samsung Electronics All Rights Reserved.
+ * Copyright 2026 Samsung Electronics All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,9 @@
  *
  ****************************************************************************/
 /****************************************************************************
- * arch/arm/src/armv7-a/cp15_cache_size.S
+ * arch/arm/src/armv7-a/arm_gicv2m.c
+ *
+ * SPDX-License-Identifier: Apache-2.0
  *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -33,70 +35,120 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  *
- *
  ****************************************************************************/
 
 /****************************************************************************
  * Included Files
  ****************************************************************************/
 
-#include "cp15.h"
+#include <errno.h>
 
-	.file	"cp15_cache_size.S"
+#include <tinyara/arch.h>
+#include <tinyara/bits.h>
+#include <tinyara/kmalloc.h>
+#include <tinyara/pci/pci.h>
+#include <tinyara/spinlock.h>
+
+#include "arm_internal.h"
+#include "gic.h"
 
 /****************************************************************************
  * Pre-processor Definitions
  ****************************************************************************/
 
 /****************************************************************************
- * Public Symbols
+ * Private Types
  ****************************************************************************/
 
-	.globl	cp15_cache_size
+struct gic_v2m_s {
+	spinlock_t lock;
+	uint32_t spi_start;
+	uint32_t spi_number;
+	unsigned long *spi_bitmap;
+};
+
+/****************************************************************************
+ * Private Data
+ ****************************************************************************/
+
+static struct gic_v2m_s g_v2m =
+{
+  SP_UNLOCKED
+};
+
+/****************************************************************************
+ * Private Functions
+ ****************************************************************************/
+
+static bool is_valid_spi(uint32_t base, uint32_t number)
+{
+	if (base < GIC_IRQ_SPI) {
+		return false;
+	}
+
+	if (number == 0 || base + number > NR_IRQS) {
+		return false;
+	}
+
+	return true;
+}
 
 /****************************************************************************
  * Public Functions
  ****************************************************************************/
 
-	.text
+int gic_v2m_initialize(void)
+{
+	uint32_t typer;
 
-/****************************************************************************
- * Name: cp15_cache_size
- *
- * Description:
- *   Get cp15 cache size in byte
- *
- * Input Parameters:
- *   None
- *
- * Returned Value:
- *   Cache size in byte
- *
- ****************************************************************************/
+	typer = getreg32(GIC_V2MTYPER);
+	g_v2m.spi_start = GIC_V2MTYPES_BASE(typer);
+	g_v2m.spi_number = GIC_V2MTYPES_NUMBER(typer);
 
-	.globl	cp15_cache_size
-	.type	cp15_cache_size, function
+	if (!is_valid_spi(g_v2m.spi_start, g_v2m.spi_number)) {
+		return -EINVAL;
+	}
 
-cp15_cache_size:
+	g_v2m.spi_bitmap = kmm_zalloc(BITS_TO_LONGS(g_v2m.spi_number));
+	if (g_v2m.spi_bitmap == NULL) {
+		return -ENOMEM;
+	}
 
-	mrc		CP15_CCSIDR(r0)			/* Read the Cache Size Identification Register */
+	return 0;
+}
 
-	ldr		r3, =0x7fff			/* Isolate the NumSets field (bits 13-27) */
-	and		r2, r3, r0, lsr #13		/* r2=NumSets (number of sets - 1) */
-	add		r2, #1
+int up_alloc_irq_msi(uint8_t busno, uint32_t devfn, int *pirq, int num)
+{
+	irqstate_t flags;
+	int offset;
+	int irq;
+	int i;
 
-	ldr		r3, =0x3ff			/* Isolate the way field (bits 3-12) */
-	and		r1, r3, r0, lsr #3		/* r1=(number of ways - 1) */
-	add		r1, #1
+	flags = spin_lock_irqsave(&g_v2m.lock);
+	offset = bitmap_find_free_region(g_v2m.spi_bitmap, g_v2m.spi_number, num);
+	spin_unlock_irqrestore(&g_v2m.lock, flags);
+	irq = g_v2m.spi_start + offset;
+	for (i = 0; i < num; i++) {
+		up_set_irq_type(i + irq, IRQ_RISING_EDGE);
+		pirq[i] = i + irq;
+	}
 
-	ldr		r3,=0x7				/* Isolate the LineSize field (bits 0-2) */
-	and		r0, r3				/* r0=(Log2LineSize - 2) in word */
-	add		r0, #4				/* r0=Log2lineSize in byte */
+	return num;
+}
 
-	mul		r2, r1, r2			/* r2=Sets*Ways */
-	lsl		r0, r2, r0			/* r0=Sets*Ways*LineSize */
+void up_release_irq_msi(int *irq, int num)
+{
+	irqstate_t flags;
 
-	bx		lr
+	flags = spin_lock_irqsave(&g_v2m.lock);
+	bitmap_release_region(g_v2m.spi_bitmap, *irq - g_v2m.spi_start, num);
+	spin_unlock_irqrestore(&g_v2m.lock, flags);
+}
 
-	.size cp15_cache_size, . - cp15_cache_size
-	.end
+int up_connect_irq(const int *irq, int num,
+                   uintptr_t *mar, uint32_t *mdr)
+{
+	*mar = GIC_V2MSETSPI;
+	*mdr = *irq;
+	return 0;
+}
