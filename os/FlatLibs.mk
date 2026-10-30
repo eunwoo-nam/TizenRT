@@ -121,16 +121,7 @@ endif
 
 # Add libraries for file system support
 
-ifeq ($(CONFIG_NFILE_DESCRIPTORS),0)
-ifneq ($(CONFIG_NSOCKET_DESCRIPTORS),0)
-TINYARALIBS += $(LIBRARIES_DIR)$(DELIM)libfs$(LIBEXT)
-endif
-ifeq ($(CONFIG_NET),y)
-TINYARALIBS += $(LIBRARIES_DIR)$(DELIM)libdrivers$(LIBEXT)
-endif
-else
 TINYARALIBS += $(LIBRARIES_DIR)$(DELIM)libfs$(LIBEXT) $(LIBRARIES_DIR)$(DELIM)libdrivers$(LIBEXT)
-endif
 
 ifeq ($(CONFIG_BINFMT_ENABLE),y)
 TINYARALIBS += $(LIBRARIES_DIR)$(DELIM)libbinfmt$(LIBEXT)
