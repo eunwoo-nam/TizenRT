@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- * Copyright 2023 Samsung Electronics All Rights Reserved.
+ * Copyright 2026 Samsung Electronics All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,9 @@
  *
  ****************************************************************************/
 /****************************************************************************
- * arch/arm/src/armv7-a/arm_tls.c
+ * arch/arm/src/armv7-a/arm_addrenv_pgmap.c
+ *
+ * SPDX-License-Identifier: Apache-2.0
  *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -40,66 +42,95 @@
  ****************************************************************************/
 
 #include <tinyara/config.h>
-#include <tinyara/arch.h>
-#include <tinyara/tls.h>
 
-#include "up_internal.h"
+#include <tinyara/arch.h>
+#include <tinyara/compiler.h>
+#include <tinyara/pgalloc.h>
+
+#include "pgalloc.h"
 
 /****************************************************************************
  * Public Functions
  ****************************************************************************/
 
 /****************************************************************************
- * Name: up_tls_size
+ * Name: up_addrenv_find_page
  *
  * Description:
- *   Get TLS (sizeof(struct tls_info_s) + tdata + tbss) section size.
- *
- * Returned Value:
- *   Size of (sizeof(struct tls_info_s) + tdata + tbss).
- *
- ****************************************************************************/
-
-int up_tls_size(void)
-{
-	/* Extra 8 bytes (2 pointer) according to GCC */
-
-	return sizeof(struct tls_info_s) + sizeof(void *) * 2 + sizeof(uint32_t) * (_END_TBSS - _START_TDATA);
-}
-
-/****************************************************************************
- * Name: up_tls_initialize
- *
- * Description:
- *   Initialize thread local region.
+ *   Find physical page mapped to user virtual address from the address
+ *   environment page directory.
  *
  * Input Parameters:
- *   info - The TLS structure to initialize.
+ *   addrenv - The user address environment.
+ *   vaddr   - The user virtual address
+ *
+ * Returned Value:
+ *   Page physical address on success; NULL on failure.
  *
  ****************************************************************************/
 
-void up_tls_initialize(struct tls_info_s *info)
+uintptr_t up_addrenv_find_page(arch_addrenv_t *addrenv, uintptr_t vaddr)
 {
-	uint8_t *tls_data = (uint8_t *)(info + 1);
+	/* Implement it later */
 
-	uint32_t tdata_len = sizeof(uint32_t) * (_END_TDATA - _START_TDATA);
-	uint32_t tbss_len = sizeof(uint32_t) * (_END_TBSS - _START_TBSS);
-
-	tls_data += sizeof(void *) * 2;
-
-	memcpy(tls_data, _START_TDATA, tdata_len);
-	memset(tls_data + tdata_len, 0, tbss_len);
+	return 0;
 }
 
 /****************************************************************************
- * Name: __aeabi_read_tp
+ * Name: up_addrenv_user_vaddr
  *
  * Description:
- *   Read thread local storage region pointer.
+ *   Check if a virtual address is in user virtual address space.
+ *
+ * Input Parameters:
+ *   vaddr - The virtual address.
+ *
+ * Returned Value:
+ *   True if it is; false if it's not
  *
  ****************************************************************************/
 
-void *__aeabi_read_tp(void)
+bool up_addrenv_user_vaddr(uintptr_t vaddr)
 {
-	return (void *)(tls_get_info() + 1);
+	return arm_uservaddr(vaddr);
+}
+
+/****************************************************************************
+ * Name: up_addrenv_page_vaddr
+ *
+ * Description:
+ *   Find the kernel virtual address associated with physical page.
+ *
+ * Input Parameters:
+ *   page - The page physical address.
+ *
+ * Returned Value:
+ *   Page kernel virtual address on success; NULL on failure.
+ *
+ ****************************************************************************/
+
+uintptr_t up_addrenv_page_vaddr(uintptr_t page)
+{
+	return arm_pgvaddr(page);
+}
+
+/****************************************************************************
+ * Name: up_addrenv_page_wipe
+ *
+ * Description:
+ *   Wipe a page of physical memory, first mapping it into kernel virtual
+ *   memory.
+ *
+ * Input Parameters:
+ *   page - The page physical address.
+ *
+ * Returned Value:
+ *   None.
+ *
+ ****************************************************************************/
+
+void up_addrenv_page_wipe(uintptr_t page)
+{
+	uintptr_t vaddr = arm_pgvaddr(page);
+	memset((void *)vaddr, 0, MM_PGSIZE);
 }
