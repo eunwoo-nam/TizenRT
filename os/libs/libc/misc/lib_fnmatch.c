@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- * Copyright 2016 Samsung Electronics All Rights Reserved.
+ * Copyright 2026 Samsung Electronics All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,16 +16,13 @@
  *
  ****************************************************************************/
 /****************************************************************************
- * libc/misc/lib_match.c - simple shell-style filename matcher
+ * libs/libc/misc/lib_fnmatch.c
  *
- * Simple shell-style filename pattern matcher written by Jef Poskanzer
- * This pattern matcher only handles '?', '*' and '**', and  multiple
- * patterns separated by '|'.
+ * SPDX-License-Identifier: BSD-2-Clause
+ * SPDX-FileCopyrightText: 1995, 2000 by Jef Poskanzer <jef@mail.acme.com>.
+ * SPDX-FileContributor: with extensions by Ken Pettit
  *
- *   Copyright © 1995, 2000 by Jef Poskanzer <jef@mail.acme.com>.
- *   All rights reserved.
- *
- * With extensions by Ken Pettit.
+ * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -55,27 +52,28 @@
  * Included Files
  ****************************************************************************/
 
+#include <fnmatch.h>
 #include <string.h>
-#include <tinyara/regex.h>
 
 /****************************************************************************
  * Private Functions
  ****************************************************************************/
 
 /****************************************************************************
- * Name: match_one
+ * Name: fnmatch_one
  *
  * Description:
  *   Does all of the work for one '|' delimited pattern
  *
  * Returned Value:
- *   Returns 1 (match) or 0 (no-match).
+ *   Returns 0 (match) or 1 (no-match).
  *
  ****************************************************************************/
 
-static int match_one(const char *pattern, int patlen, const char *string)
+static int fnmatch_one(FAR const char *pattern, int patlen,
+                       FAR const char *string, int flags)
 {
-	const char *p;
+	FAR const char *p;
 	char first;
 	int pl;
 	int i;
@@ -129,7 +127,7 @@ static int match_one(const char *pattern, int patlen, const char *string)
 				continue;
 			}
 
-			return 0;
+			return FNM_NOMATCH;
 		}
 
 		if (*p == '*') {
@@ -147,24 +145,24 @@ static int match_one(const char *pattern, int patlen, const char *string)
 
 			pl = patlen - (p - pattern);
 			for (; i >= 0; i--) {
-				if (match_one(p, pl, &(string[i]))) {
-					return 1;
+				if (fnmatch_one(p, pl, &string[i], flags) == 0) {
+					return 0;
 				}
 			}
 
-			return 0;
+			return FNM_NOMATCH;
 		}
 
 		if (*p != *string) {
-			return 0;
+			return FNM_NOMATCH;
 		}
 	}
 
 	if (*string == '\0') {
-		return 1;
+		return 0;
 	}
 
-	return 0;
+	return FNM_NOMATCH;
 }
 
 /****************************************************************************
@@ -172,7 +170,7 @@ static int match_one(const char *pattern, int patlen, const char *string)
  ****************************************************************************/
 
 /****************************************************************************
- * Name: match
+ * Name: fnmatch
  *
  * Description:
  *   Simple shell-style filename pattern matcher originally written by
@@ -181,22 +179,22 @@ static int match_one(const char *pattern, int patlen, const char *string)
  *   by '|'.
  *
  * Returned Value:
- *   Returns 1 (match) or 0 (no-match).
+ *   Returns 0 (match) or 1 (no-match).
  *
  ****************************************************************************/
 
-int match(const char *pattern, const char *string)
+int fnmatch(FAR const char *pattern, const char *string, int flags)
 {
-	const char *or;
+	FAR const char *or;
 
 	for (;;) {
 		or = strchr(pattern, '|');
-		if (or == (char *)0) {
-			return match_one(pattern, strlen(pattern), string);
+		if (or == NULL) {
+			return fnmatch_one(pattern, strlen(pattern), string, flags);
 		}
 
-		if (match_one(pattern, or - pattern, string)) {
-			return 1;
+		if (fnmatch_one(pattern, or - pattern, string, flags) == 0) {
+			return 0;
 		}
 
 		pattern = or + 1;
