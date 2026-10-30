@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- * Copyright 2016 Samsung Electronics All Rights Reserved.
+ * Copyright 2026 Samsung Electronics All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,9 +16,11 @@
  *
  ****************************************************************************/
 /****************************************************************************
+ * include/sys/epoll.h
  *
- *   Copyright (C) 2013 Ken Pettit. All rights reserved.
- *   Author: Ken Pettit <pettitkd@gmail.com>
+ * SPDX-License-Identifier: BSD-3-Clause
+ * SPDX-FileCopyrightText: 2015 Anton D. Kachalov. All rights reserved.
+ * SPDX-FileContributor: Anton D. Kachalov <mouse@mayc.ru>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -49,78 +51,113 @@
  *
  ****************************************************************************/
 
-#ifndef __INCLUDE_SMART_MKSMARTFS_H
-#define __INCLUDE_SMART_MKSMARTFS_H
+#ifndef __INCLUDE_SYS_EPOLL_H
+#define __INCLUDE_SYS_EPOLL_H
 
 /****************************************************************************
  * Included Files
  ****************************************************************************/
 
 #include <tinyara/config.h>
-#include <stdint.h>
+#include <tinyara/compiler.h>
+
+#include <poll.h>
+#include <fcntl.h>
 
 /****************************************************************************
  * Pre-processor Definitions
  ****************************************************************************/
 
+#define EPOLL_CTL_ADD 1 /* Add a file descriptor to the interface.  */
+#define EPOLL_CTL_DEL 2 /* Remove a file descriptor from the interface.  */
+#define EPOLL_CTL_MOD 3 /* Change file descriptor epoll_event structure.  */
+
 /****************************************************************************
  * Public Types
  ****************************************************************************/
 
-/****************************************************************************
- * Global Variables
- ****************************************************************************/
+enum EPOLL_EVENTS {
+	EPOLLIN = POLLIN,
+#define EPOLLIN EPOLLIN
+	EPOLLPRI = POLLPRI,
+#define EPOLLPRI EPOLLPRI
+	EPOLLOUT = POLLOUT,
+#define EPOLLOUT EPOLLOUT
+	EPOLLRDNORM = POLLRDNORM,
+#define EPOLLRDNORM EPOLLRDNORM
+	EPOLLRDBAND = POLLRDBAND,
+#define EPOLLRDBAND EPOLLRDBAND
+	EPOLLWRNORM = POLLWRNORM,
+#define EPOLLWRNORM EPOLLWRNORM
+	EPOLLWRBAND = POLLWRBAND,
+#define EPOLLWRBAND EPOLLWRBAND
+	EPOLLERR = POLLERR,
+#define EPOLLERR EPOLLERR
+	EPOLLHUP = POLLHUP,
+#define EPOLLHUP EPOLLHUP
+	EPOLLRDHUP = POLLRDHUP,
+#define EPOLLRDHUP EPOLLRDHUP
+	EPOLLWAKEUP = 1u << 29,
+#define EPOLLWAKEUP EPOLLWAKEUP
+	EPOLLONESHOT = 1u << 30,
+#define EPOLLONESHOT EPOLLONESHOT
+	EPOLLET = 1u << 31,
+#define EPOLLET EPOLLET
+};
+
+/* Flags to be passed to epoll_create1.  */
+
+enum {
+	EPOLL_CLOEXEC = O_CLOEXEC
+#define EPOLL_CLOEXEC EPOLL_CLOEXEC
+};
+
+union epoll_data {
+	FAR void    *ptr;
+	int          fd;
+	uint32_t     u32;
+#ifdef CONFIG_HAVE_LONG_LONG
+	uint64_t     u64;
+#endif
+};
+
+typedef union epoll_data epoll_data_t;
+
+struct epoll_event {
+	uint32_t     events;
+	epoll_data_t data;
+};
 
 /****************************************************************************
- * Public Function Prototypes
+ * Public Data
  ****************************************************************************/
 
 #undef EXTERN
 #if defined(__cplusplus)
 #define EXTERN extern "C"
-extern "C" {
+extern "C"
+{
 #else
 #define EXTERN extern
 #endif
 
 /****************************************************************************
- * Name: mksmartfs
- *
- * Description:
- *   Make a SMART (Sector Mapped Allocation for Really Tiny) Flash file
- *   system image on the specified block device (must be a SMART device).
- *
- * Inputs:
- *   pathname - the full path to a registered block driver
- *   nrootdirs - the number of Root Directory entries to support
- *               on this device (supports multiple mount points).
- *   format - format smartfs by force. Set true when LLFORMAT needed.
- *
- * Return:
- *   Zero (OK) on success; -1 (ERROR) on failure with errno set appropriately:
- *
- *   EINVAL - NULL block driver string
- *   ENOENT - 'pathname' does not refer to anything in the filesystem.
- *   ENOTBLK - 'pathname' does not refer to a block driver
- *   EACCESS - block driver does not support write or geometry methods or
- *             is not a SMART device
- *
- * Assumptions:
- *   - The caller must assure that the block driver is not mounted and not in
- *     use when this function is called.  The result of formatting a mounted
- *     device is indeterminate (but likely not good).
- *
+ * Public Function Prototypes
  ****************************************************************************/
 
-#ifdef CONFIG_SMARTFS_MULTI_ROOT_DIRS
-EXTERN int mksmartfs(FAR const char *pathname, uint8_t nrootdirs, bool format);
-#else
-EXTERN int mksmartfs(FAR const char *pathname, bool format);
-#endif
+int epoll_create(int size);
+int epoll_create1(int flags);
+int epoll_ctl(int epfd, int op, int fd, FAR struct epoll_event *ev);
+int epoll_wait(int epfd, FAR struct epoll_event *evs,
+               int maxevents, int timeout);
+int epoll_pwait(int epfd, FAR struct epoll_event *evs,
+                int maxevents, int timeout, FAR const sigset_t *sigmask);
+
+void epoll_close(int epfd);
 
 #undef EXTERN
 #if defined(__cplusplus)
 }
 #endif
 
-#endif							/* __INCLUDE_SMART_MKSMARTFS_H */
+#endif /* __INCLUDE_SYS_EPOLL_H */
