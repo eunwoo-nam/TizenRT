@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- * Copyright 2018 Samsung Electronics All Rights Reserved.
+ * Copyright 2026 Samsung Electronics All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,10 +16,11 @@
  *
  ****************************************************************************/
 /****************************************************************************
- * include/tinyara/xorshift128.h
+ * include/sys/utsname.h
  *
- *   Copyright (C) 2016 Gregory Nutt. All rights reserved.
- *   Author: David S. Alessio
+ * SPDX-License-Identifier: BSD-2-Clause
+ * SPDX-FileCopyrightText: 2015 Stavros Polymenis. All rights reserved.
+ * SPDX-FileContributor: Stavros Polymenis <sp@orbitalfox.com>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -50,76 +51,66 @@
  *
  ****************************************************************************/
 
-/* This random number generator is simple, fast and portable.
- *      Ref:  https://en.wikipedia.org/wiki/Xorshift
- */
-
-#ifndef __INCLUDE_TINYARA_LIB_XORSHIFT128_H
-#define __INCLUDE_TINYARA_LIB_XORSHIFT128_H
+#ifndef __INCLUDE_SYS_UTSNAME_H
+#define __INCLUDE_SYS_UTSNAME_H
 
 /****************************************************************************
  * Included Files
  ****************************************************************************/
 
-#include <tinyara/config.h>
+#include <unistd.h>
 
 /****************************************************************************
  * Pre-processor Definitions
  ****************************************************************************/
 
-/* Default XorShift128 state initializer */
-
-#define XORSHIFT128_INITIALIZER { 97, 101, 97 << 17, 101 << 25 }
+#define SYS_NAMELEN      21
+#define VERSION_NAMELEN  51
 
 /****************************************************************************
  * Public Types
  ****************************************************************************/
 
-/* Provides the state of the XorShift128 PRNG */
+/* These are the values returned by uname:
+ *
+ * FIELD       Default
+ * sysname     NuttX
+ * nodename    CONFIG_LIBC_HOSTNAME
+ * release     From version.h
+ * version     From version.h
+ * machine     CONFIG_ARCH
+ */
 
-struct xorshift128_state_s {
-	uint32_t x;
-	uint32_t y;
-	uint32_t z;
-	uint32_t w;
+struct utsname {
+	char sysname[SYS_NAMELEN];      /* Name of OS */
+	char nodename[HOST_NAME_MAX];   /* Name of this network node */
+	char release[SYS_NAMELEN];      /* Release level */
+	char version[VERSION_NAMELEN];  /* Version level */
+	char machine[SYS_NAMELEN];      /* Machine hardware */
 };
 
 /****************************************************************************
- * Public Function Prototypes
+ * Pre-processor Definitions
  ****************************************************************************/
 
-#ifdef __cplusplus
+#undef EXTERN
+#if defined(__cplusplus)
 #define EXTERN extern "C"
-extern "C" {
+extern "C"
+{
 #else
 #define EXTERN extern
 #endif
 
 /****************************************************************************
- * Name: xorshift128
- *
- * Description:
- *   Generate one 32-bit pseudo-random number.
- *
- *   NOTE: Because the PRNG state is passed as a parameter, this function is
- *   fully re-entrant and may be called from an interrupt handler.
- *
- *   The downside to this is that users of the PRNG might not get as much
- *   entropy as if it were a common state structure.
- *
- * Input Parameters:
- *   state - The current XorShift128 state.
- *
- * Returned Value:
- *   The generated pseudo-random number
- *
+ * Public Function Prototypes
  ****************************************************************************/
 
-uint32_t xorshift128(FAR struct xorshift128_state_s *state);
+int uname(FAR struct utsname *name);
 
 #undef EXTERN
-#ifdef __cplusplus
+#if defined(__cplusplus)
 }
 #endif
 
-#endif							/* __INCLUDE_TINYARA_LIB_XORSHIFT128_H */
+#endif /* __INCLUDE_SYS_UTSNAME_H */
