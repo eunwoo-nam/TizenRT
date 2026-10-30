@@ -1,0 +1,11 @@
+#
+# For a description of the syntax of this configuration file,
+# see kconfig-language at https://www.kernel.org/doc/Documentation/kbuild/kconfig-language.txt
+#
+
+config LIBM_LIBMCS_WANT_COMPLEX
+	bool "libmcs complex support"
+	default y
+	---help---
+		complex support, will use complex.h
+
