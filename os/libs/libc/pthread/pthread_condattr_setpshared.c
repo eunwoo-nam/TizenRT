@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- * Copyright 2016 Samsung Electronics All Rights Reserved.
+ * Copyright 2026 Samsung Electronics All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,37 +16,24 @@
  *
  ****************************************************************************/
 /****************************************************************************
- * libc/pthread/pthread_mutexattrsetpshared.c
+ * libs/libc/pthread/pthread_condattr_setpshared.c
  *
- *   Copyright (C) 2007-2009, 2011 Gregory Nutt. All rights reserved.
- *   Author: Gregory Nutt <gnutt@nuttx.org>
+ * SPDX-License-Identifier: Apache-2.0
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.  The
+ * ASF licenses this file to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance with the
+ * License.  You may obtain a copy of the License at
  *
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in
- *    the documentation and/or other materials provided with the
- *    distribution.
- * 3. Neither the name NuttX nor the names of its contributors may be
- *    used to endorse or promote products derived from this software
- *    without specific prior written permission.
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
- * COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
- * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
- * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
- * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
- * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
- * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the
+ * License for the specific language governing permissions and limitations
+ * under the License.
  *
  ****************************************************************************/
 
@@ -56,29 +43,28 @@
 
 #include <tinyara/config.h>
 
-#include <sys/types.h>
 #include <pthread.h>
 #include <errno.h>
 #include <debug.h>
 
 /****************************************************************************
- * Definitions
+ * Pre-processor Definitions
  ****************************************************************************/
 
 /****************************************************************************
- * Private Type Declarations
+ * Private Types
  ****************************************************************************/
 
 /****************************************************************************
- * Global Variables
+ * Public Data
  ****************************************************************************/
 
 /****************************************************************************
- * Private Variables
+ * Private Data
  ****************************************************************************/
 
 /****************************************************************************
- * Private Functions
+ * Private Function Prototypes
  ****************************************************************************/
 
 /****************************************************************************
@@ -86,34 +72,44 @@
  ****************************************************************************/
 
 /****************************************************************************
- * Function:  pthread_mutexattr_setpshared
+ * Name: pthread_condattr_setpshared
  *
  * Description:
- *    Set pshared  mutex attribute.
+ *   The process-shared attribute is set to PTHREAD_PROCESS_SHARED to permit
+ *   a cond to be operated upon by any thread that has access to the
+ *   memory where the cond is allocated. If the process-shared attribute
+ *   is PTHREAD_PROCESS_PRIVATE, the cond can only be operated upon by
+ *   threads created within the same process as the thread that initialized
+ *   the cond.
+ *   If threads of different processes attempt to operate on such a cond,
+ *   the behavior is undefined. The default value of the attribute is
+ *   PTHREAD_PROCESS_PRIVATE.
  *
- * Parameters:
- *    attr
- *    pshared
+ *   Both constants PTHREAD_PROCESS_SHARED and PTHREAD_PROCESS_PRIVATE are
+ *   defined in pthread.h.
  *
- * Return Value:
- *   0 if successful.  Otherwise, an error code.
+ * Input Parameters:
+ *   attr - cond attributes to be modified.
+ *   pshared - the new value of the pshared attribute.
+ *
+ * Returned Value:
+ *   0 (OK) on success or EINVAL if either attr is invalid or pshared is not
+ *   one of PTHREAD_PROCESS_SHARED or PTHREAD_PROCESS_PRIVATE.
  *
  * Assumptions:
  *
  ****************************************************************************/
 
-int pthread_mutexattr_setpshared(FAR pthread_mutexattr_t *attr, int pshared)
+int pthread_condattr_setpshared(FAR pthread_condattr_t *attr, int pshared)
 {
 	int ret = OK;
 
-	svdbg("attr=0x%p pshared=%d\n", attr, pshared);
-
-	if (!attr || (pshared != 0 && pshared != 1)) {
+	if (!attr || (pshared != PTHREAD_PROCESS_SHARED &&
+	     pshared != PTHREAD_PROCESS_PRIVATE)) {
 		ret = EINVAL;
 	} else {
 		attr->pshared = pshared;
 	}
 
-	svdbg("Returning %d\n", ret);
 	return ret;
 }

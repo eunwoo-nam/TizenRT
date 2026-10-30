@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- * Copyright 2016 Samsung Electronics All Rights Reserved.
+ * Copyright 2026 Samsung Electronics All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,10 +16,11 @@
  *
  ****************************************************************************/
 /****************************************************************************
- * libc/pthread/pthread_condattrdestroy.c
+ * libs/libc/pthread/pthread_get_stacksize_np.c
  *
- *   Copyright (C) 2007-2009, 2011 Gregory Nutt. All rights reserved.
- *   Author: Gregory Nutt <gnutt@nuttx.org>
+ * SPDX-License-Identifier: BSD-2-Clause
+ * SPDX-FileCopyrightText: 2018 Geoff Norton. All rights reserved.
+ * SPDX-FileContributor: Geoff Norton <grompf@gmail.com>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -58,39 +59,39 @@
 
 #include <sys/types.h>
 #include <pthread.h>
-#include <debug.h>
 #include <errno.h>
 
+#include "tinyara/sched.h"
+
 /****************************************************************************
- * Global Functions
+ * Public Functions
  ****************************************************************************/
 
 /****************************************************************************
- * Function:  pthread_condattr_destroy
+ * Name: pthread_get_stacksize_np
  *
  * Description:
- *   Operations on condition variable attributes
+ *   Get a pointer to the base of the pthread stack
  *
  * Parameters:
- *   None
+ *   pthread_t - The pthread being queried
  *
- * Return Value:
- *   None
- *
- * Assumptions:
+ * Returned Value:
+ *   A positive, non-zero pthread stack address is returned on success.  A
+ *   negative value is returned in the case that the 'thread' argument does
+ *   not refer to a valid thread.
  *
  ****************************************************************************/
 
-int pthread_condattr_destroy(FAR pthread_condattr_t *attr)
+ssize_t pthread_get_stacksize_np(pthread_t thread)
 {
-	int ret = OK;
+	struct stackinfo_s stackinfo;
+	int ret;
 
-	svdbg("attr=0x%p\n", attr);
-
-	if (!attr) {
-		ret = EINVAL;
+	ret = nxsched_get_stackinfo((pid_t)thread, &stackinfo);
+	if (ret < 0) {
+		return (ssize_t)ret;
 	}
 
-	svdbg("Returning %d\n", ret);
-	return ret;
+	return stackinfo.adj_stack_size;
 }

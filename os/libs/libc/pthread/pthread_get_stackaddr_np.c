@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- * Copyright 2016 Samsung Electronics All Rights Reserved.
+ * Copyright 2026 Samsung Electronics All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,10 +16,11 @@
  *
  ****************************************************************************/
 /****************************************************************************
- * wqueue/work_signal.c
+ * libs/libc/pthread/pthread_get_stackaddr_np.c
  *
- *   Copyright (C) 2014, 2016 Gregory Nutt. All rights reserved.
- *   Author: Gregory Nutt <gnutt@nuttx.org>
+ * SPDX-License-Identifier: BSD-3-Clause
+ * SPDX-FileCopyrightText: 2018 Geoff Norton. All rights reserved.
+ * SPDX-FileContributor: Geoff Norton <grompf@gmail.com>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -56,42 +57,39 @@
 
 #include <tinyara/config.h>
 
-#include <signal.h>
-#include <errno.h>
+#include <sys/types.h>
+#include <pthread.h>
 
-#include <tinyara/wqueue.h>
-
-#include "wqueue.h"
+#include "tinyara/sched.h"
 
 /****************************************************************************
  * Public Functions
  ****************************************************************************/
+
 /****************************************************************************
- * Name: work_qsignal
+ * Name: pthread_get_stackaddr_np
  *
  * Description:
- *   Signal the worker thread to process the work queue now.  This function
- *   is used internally by the work logic but could also be used by the
- *   user to force an immediate re-assessment of pending work.
+ *   Get a pointer to the base of the pthread stack
  *
- * Input parameters:
- *   pid    - The work queue pid
+ * Parameters:
+ *   pthread_t - The pthread being queried
  *
  * Returned Value:
- *   Zero on success, a negated errno on failure
+ *   The pthread stack address is returned on success.  NULL is returned
+ *   if the 'thread' argument does not refer to a valid pthread.
  *
  ****************************************************************************/
 
-int work_qsignal(pid_t pid)
+FAR void *pthread_get_stackaddr_np(pthread_t thread)
 {
+	struct stackinfo_s stackinfo;
 	int ret;
 
-	/* Signal the worker thread */
-	ret = kill(pid, SIGWORK);
+	ret = nxsched_get_stackinfo((pid_t)thread, &stackinfo);
 	if (ret < 0) {
-		int errcode = errno;
-		return -errcode;
+		return NULL;
 	}
 
-	return OK;
+	return stackinfo.stack_base_ptr;
 }
