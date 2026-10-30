@@ -1,5 +1,24 @@
 /****************************************************************************
- * kernel/sched/sched_thistask.c
+ *
+ * Copyright 2026 Samsung Electronics All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+ * either express or implied. See the License for the specific
+ * language governing permissions and limitations under the License.
+ *
+ ****************************************************************************/
+/****************************************************************************
+ * sched/event/event.h
+ *
+ * SPDX-License-Identifier: Apache-2.0
  *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -18,59 +37,24 @@
  *
  ****************************************************************************/
 
+#ifndef __SCHED_EVENT_EVENT_H
+#define __SCHED_EVENT_EVENT_H
+
 /****************************************************************************
  * Included Files
  ****************************************************************************/
 
 #include <tinyara/config.h>
 
-#include <sys/types.h>
-#include <arch/irq.h>
-
 #include <tinyara/irq.h>
-#include <tinyara/spinlock.h>
-
-#include "sched/sched.h"
-
-#ifdef CONFIG_SMP
+#include <tinyara/queue.h>
+#include <tinyara/event.h>
+#include <tinyara/sched.h>
 
 /****************************************************************************
- * Public Functions
+ * Public Function Definitions
  ****************************************************************************/
 
-/****************************************************************************
- * Name: this_task
- *
- * Description:
- *   The functions will safely obtain the TCB that is currently running
- *   on the current CPU. In SMP, this must be done by disabling local
- *   interrupts to avoid CPU switching during access to current_task()
- *
- * Returned Value:
- *   the TCB that is currently running on the current CPU.
- *
- ****************************************************************************/
+void nxevent_wait_irq(FAR struct tcb_s *wtcb, int errcode);
 
-FAR struct tcb_s *this_task(void)
-{
-	FAR struct tcb_s *tcb;
-	irqstate_t flags;
-
-	/* If the CPU supports suppression of interprocessor interrupts, then
-	 * simple disabling interrupts will provide sufficient protection for
-	 * the following operations.
-	 */
-
-	flags = irqsave();
-
-	/* Obtain the TCB which is currently running on this CPU */
-
-	tcb = current_task(this_cpu());
-
-	/* Enable local interrupts */
-
-	irqrestore(flags);
-	return tcb;
-}
-
-#endif /* CONFIG_SMP */
+#endif /* __SCHED_EVENT_EVENT_H */
