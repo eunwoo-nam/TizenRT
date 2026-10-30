@@ -147,12 +147,6 @@ $(LIBRARIES_DIR)$(DELIM)libstubs$(LIBEXT): syscall$(DELIM)libstubs$(LIBEXT)
 
 # Possible user-mode builds
 
-libc$(DELIM)libuc$(LIBEXT): context
-	$(Q) $(MAKE) $(JOBS) -C $(LIB_DIR)$(DELIM)libc TOPDIR="$(TOPDIR)" libuc$(LIBEXT) KERNEL=n BIN=libuc$(LIBEXT) BINDIR=ubin
-
-$(LIBRARIES_DIR)$(DELIM)libuc$(LIBEXT): libc$(DELIM)libuc$(LIBEXT)
-	$(Q) install $(LIB_DIR)$(DELIM)libc$(DELIM)libuc$(LIBEXT) $(LIBRARIES_DIR)$(DELIM)libuc$(LIBEXT)
-
 mm$(DELIM)libumm$(LIBEXT): context
 	$(Q) $(MAKE) $(JOBS) -C mm TOPDIR="$(TOPDIR)" libumm$(LIBEXT) KERNEL=n BIN=libumm$(LIBEXT) BINDIR=ubin
 

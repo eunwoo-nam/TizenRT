@@ -78,35 +78,56 @@ CSRCS =
 DEPPATH := --dep-path .
 VPATH := .
 
-include stdio/Make.defs
-include stdlib/Make.defs
-include unistd/Make.defs
-include sched/Make.defs
-include symtab/Make.defs
-include syslog/Make.defs
-include string/Make.defs
 include aio/Make.defs
-include pthread/Make.defs
-include semaphore/Make.defs
-include signal/Make.defs
-include machine/Make.defs
-include math/Make.defs
+include assert/Make.defs
+include audio/Make.defs
+include builtin/Make.defs
+include ctype/Make.defs
+include dirent/Make.defs
+include dlfcn/Make.defs
+include errno/Make.defs
+include eventfd/Make.defs
 include fixedmath/Make.defs
-include net/Make.defs
-include netdb/Make.defs
-include time/Make.defs
+include gdbstub/Make.defs
+include grp/Make.defs
+include gnssutils/Make.defs
+include hex2bin/Make.defs
 include inttypes/Make.defs
 include libgen/Make.defs
 include locale/Make.defs
-include dirent/Make.defs
-include termios/Make.defs
+include lzf/Make.defs
+include machine/Make.defs
+include misc/Make.defs
+include elf/Make.defs
+include net/Make.defs
+include netdb/Make.defs
+include obstack/Make.defs
+include pthread/Make.defs
+include pwd/Make.defs
 include queue/Make.defs
+include regex/Make.defs
+include sched/Make.defs
+include search/Make.defs
+include semaphore/Make.defs
+include signal/Make.defs
+include spawn/Make.defs
+include stdio/Make.defs
+include stdlib/Make.defs
+include stream/Make.defs
+include string/Make.defs
+include symtab/Make.defs
+include syslog/Make.defs
+include termios/Make.defs
+include time/Make.defs
+include tls/Make.defs
+include uio/Make.defs
+include unistd/Make.defs
+include userfs/Make.defs
+include uuid/Make.defs
 include wchar/Make.defs
 include wctype/Make.defs
-include misc/Make.defs
-include audio/Make.defs
-include uio/Make.defs
-
+include wqueue/Make.defs
+include fdt/Make.defs
 # REVISIT: Backslash causes problems in $(COBJS) target
 DELIM := $(strip /)
 BINDIR ?= bin
@@ -117,7 +138,6 @@ COBJS = $(patsubst %.c, $(BINDIR)$(DELIM)%$(OBJEXT), $(CSRCS))
 SRCS = $(ASRCS) $(CSRCS)
 OBJS = $(AOBJS) $(COBJS)
 
-UBIN = libuc$(LIBEXT)
 KBIN = libkc$(LIBEXT)
 BIN ?= libc$(LIBEXT)
 
@@ -137,15 +157,8 @@ $(COBJS): $(BINDIR)$(DELIM)%$(OBJEXT): %.c
 $(BIN): $(OBJS)
 	$(call ARCHIVE, $@, $(OBJS))
 
-ifeq ($(CONFIG_LIBC_DOWNLOAD_ZONEINFO),y)
+ifeq ($(CONFIG_LIBC_ZONEINFO_ROMFS),y)
 	$(Q) $(MAKE) $(JOBS) -C zoneinfo all TOPDIR=$(TOPDIR)
-endif
-
-# C library for the user phase of the two-pass kernel build
-
-ifneq ($(BIN),$(UBIN))
-$(UBIN):
-	$(Q) $(MAKE) $(JOBS) $(UBIN) BIN=$(UBIN) BINDIR=ubin TOPDIR=$(TOPDIR) EXTRADEFINES=$(EXTRADEFINES)
 endif
 
 # C library for the kernel phase of the two-pass kernel build
@@ -157,20 +170,26 @@ endif
 
 # Context
 
-context:
-ifeq ($(CONFIG_LIBC_DOWNLOAD_ZONEINFO),y)
+bin kbin:
+	$(Q) mkdir -p $@
+
+context: bin kbin
+ifeq ($(CONFIG_LIBC_ZONEINFO_ROMFS),y)
 	$(Q) $(MAKE) $(JOBS) -C zoneinfo context TOPDIR=$(TOPDIR)
 endif
 
 
+CFLAGS += -I$(TOPDIR)/libs/libc
+AFLAGS += -I$(TOPDIR)/libs/libc
+
 # Dependencies
 
 .depend: Makefile $(SRCS)
-ifeq ($(CONFIG_BUILD_PROTECTED),y)
-	$(Q) $(MKDEP) --obj-path ubin --obj-suffix $(OBJEXT) $(DEPPATH) "$(CC)" -- $(CFLAGS) -- $(SRCS) >Make_ubin.dep
-	$(Q) $(MKDEP) --obj-path kbin --obj-suffix $(OBJEXT) $(DEPPATH) "$(CC)" -- $(CFLAGS) $(KDEFINE) -- $(SRCS) >Make_kbin.dep
+ifneq ($(CONFIG_BUILD_FLAT),y)
+	$(Q) $(MKDEP) --obj-path bin --obj-suffix $(OBJEXT) $(DEPPATH) "$(CC)" -- $(CFLAGS) -- $(SRCS) >bin/Make.dep
+	$(Q) $(MKDEP) --obj-path kbin --obj-suffix $(OBJEXT) $(DEPPATH) "$(CC)" -- $(CFLAGS) $(KDEFINE) -- $(SRCS) >kbin/Make.dep
 else
-	$(Q) $(MKDEP) --obj-path bin --obj-suffix $(OBJEXT) $(DEPPATH) "$(CC)" -- $(CFLAGS) -- $(SRCS) >Make_bin.dep
+	$(Q) $(MKDEP) --obj-path bin --obj-suffix $(OBJEXT) $(DEPPATH) "$(CC)" -- $(CFLAGS) -- $(SRCS) >bin/Make.dep
 endif
 	$(Q) touch $@
 
@@ -179,26 +198,20 @@ depend: .depend
 # Clean most derived files, retaining the configuration
 
 clean:
-	$(Q) $(MAKE) -C bin  clean TOPDIR=$(TOPDIR)
-	$(Q) $(MAKE) -C ubin clean TOPDIR=$(TOPDIR)
-	$(Q) $(MAKE) -C kbin clean TOPDIR=$(TOPDIR)
 	$(call DELFILE, $(BIN))
-	$(call DELFILE, $(UBIN))
+	$(call DELFILE, libc$(LIBEXT))
 	$(call DELFILE, $(KBIN))
 	$(call CLEAN)
 
 # Deep clean -- removes all traces of the configuration
 
 distclean: clean
-	$(Q) $(MAKE) -C bin  distclean TOPDIR=$(TOPDIR)
-	$(Q) $(MAKE) -C ubin distclean TOPDIR=$(TOPDIR)
-	$(Q) $(MAKE) -C kbin distclean TOPDIR=$(TOPDIR)
+	$(call DELDIR, bin)
+	$(call DELDIR, kbin)
 	$(Q) $(MAKE) -C zoneinfo distclean TOPDIR=$(TOPDIR)
-	$(call DELFILE, Make_bin.dep)
-	$(call DELFILE, Make_ubin.dep)
-	$(call DELFILE, Make_kbin.dep)
+	$(call DELFILE, bin/Make.dep)
+	$(call DELFILE, kbin/Make.dep)
 	$(call DELFILE, .depend)
 
--include Make_bin.dep
--include Make_ubin.dep
--include Make_kbin.dep
+-include bin/Make.dep
+-include kbin/Make.dep
