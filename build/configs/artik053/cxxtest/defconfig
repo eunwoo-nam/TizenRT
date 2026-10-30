@@ -755,7 +755,6 @@ CONFIG_LIBCXX_HAVE_LIBSUPCXX=y
 #
 # uClibc++ Standard C++ Library
 #
-# CONFIG_UCLIBCXX is not set
 
 #
 # External Libraries
