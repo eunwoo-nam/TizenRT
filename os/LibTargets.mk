@@ -244,6 +244,12 @@ libm$(DELIM)libm$(LIBEXT): context
 $(LIBRARIES_DIR)$(DELIM)libm$(LIBEXT): libm$(DELIM)libm$(LIBEXT)
 	$(Q) install $(LIB_DIR)$(DELIM)libm$(DELIM)libm$(LIBEXT) $(LIBRARIES_DIR)$(DELIM)libm$(LIBEXT)
 
+libbuiltin$(DELIM)libbuiltin$(LIBEXT): context
+	$(Q) $(MAKE) $(JOBS) -C $(LIB_DIR)$(DELIM)libbuiltin TOPDIR="$(TOPDIR)" libbuiltin$(LIBEXT)
+
+$(LIBRARIES_DIR)$(DELIM)libbuiltin$(LIBEXT): libbuiltin$(DELIM)libbuiltin$(LIBEXT)
+	$(Q) install $(LIB_DIR)$(DELIM)libbuiltin$(DELIM)libbuiltin$(LIBEXT) $(LIBRARIES_DIR)$(DELIM)libbuiltin$(LIBEXT)
+
 mm$(DELIM)libmm$(LIBEXT): context
 	$(Q) $(MAKE) $(JOBS) -C mm TOPDIR="$(TOPDIR)" libmm$(LIBEXT)
 
