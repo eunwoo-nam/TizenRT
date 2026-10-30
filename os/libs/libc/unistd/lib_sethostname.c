@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- * Copyright 2016 Samsung Electronics All Rights Reserved.
+ * Copyright 2026 Samsung Electronics All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,10 +16,13 @@
  *
  ****************************************************************************/
 /****************************************************************************
- * libc/pthread/pthread_mutexattrsettype.c
+ * libs/libc/unistd/lib_sethostname.c
  *
- *   Copyright (C) 2008, 2011 Gregory Nutt. All rights reserved.
- *   Author: Gregory Nutt <gnutt@nuttx.org>
+ * SPDX-License-Identifier: BSD-3-Clause
+ * SPDX-FileCopyrightText: 2015 Stavros Polymenis. All rights reserved.
+ * SPDX-FileCopyrightText: 2015, 2016 Gregory Nutt. All rights reserved.
+ * SPDX-FileContributor: Stavros Polymenis <sp@orbitalfox.com>
+ * SPDX-FileContributor: Gregory Nutt <gnutt@nuttx.org>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -56,65 +59,76 @@
 
 #include <tinyara/config.h>
 
-#include <sys/types.h>
-#include <pthread.h>
-#include <errno.h>
+#include <string.h>
+#include <sys/param.h>
+#include <unistd.h>
+
+#include <tinyara/irq.h>
+#include <tinyara/spinlock.h>
+
+/* Further, in the protected and kernel build modes where kernel and
+ * application code are separated, the hostname is a common system property
+ * and must reside only in the kernel.  In that case, this accessor
+ * function only be called from user space is only via a kernel system call.
+ */
+
+#if defined(CONFIG_BUILD_FLAT) || defined(__KERNEL__)
 
 /****************************************************************************
- * Definitions
- ****************************************************************************/
-
-/****************************************************************************
- * Private Type Declarations
- ****************************************************************************/
-
-/****************************************************************************
- * Global Variables
- ****************************************************************************/
-
-/****************************************************************************
- * Private Variables
- ****************************************************************************/
-
-/****************************************************************************
- * Private Function Prototypes
+ * Pre-processor Definitions
  ****************************************************************************/
 
 /****************************************************************************
  * Public Functions
  ****************************************************************************/
 
+/* This is the system hostname (defined in lib_gethostname). */
+
+extern char g_hostname[HOST_NAME_MAX + 1];
+extern spinlock_t g_hostname_lock;
+
 /****************************************************************************
- * Function: pthread_mutexattr_settype
+ * Public Functions
+ ****************************************************************************/
+
+/****************************************************************************
+ * Name: sethostname
  *
  * Description:
- *   Set the mutex type in the mutex attributes.
  *
- * Parameters:
- *   attr - The mutex attributes in which to set the mutex type.
- *   type - The mutex type value to set.
+ *   sethostname() sets the hostname to the value given in the character
+ *   array name. The len argument specifies the number of bytes in name.
+ *   (Thus, name does not require a terminating null byte.)
  *
- * Return Value:
- *   0, if the mutex type was successfully set in 'attr', or
- *   EINVAL, if 'attr' is NULL or 'type' unrecognized.
+ * Conforming To
+ *   SVr4, 4.4BSD (these interfaces first appeared in 4.2BSD). POSIX.1-2001
+ *   specifies gethostname() but not sethostname().
  *
- * Assumptions:
+ * Input Parameters:
+ *   name - The user buffer to providing the new host name.
+ *   namelen - The size of the user buffer in bytes.
+ *
+ * Returned Value:
+ *   Upon successful completion, 0 will be returned; otherwise, -1 will be
+ *   returned.  No errors are defined;  errno variable is not set.
  *
  ****************************************************************************/
 
-int pthread_mutexattr_settype(pthread_mutexattr_t *attr, int type)
+int sethostname(FAR const char *name, size_t namelen)
 {
-	if (attr && type >= PTHREAD_MUTEX_NORMAL && type <= PTHREAD_MUTEX_RECURSIVE) {
-#ifdef CONFIG_PTHREAD_MUTEX_TYPES
-		attr->type = type;
-#else
-		if (type != PTHREAD_MUTEX_NORMAL) {
-			return ENOSYS;
-		}
-#endif
+	irqstate_t flags;
 
-		return OK;
-	}
+	/* Save the new host name, truncating to HOST_NAME_MAX if necessary.  This
+	 * internal copy is always NUL terminated. The hostname is global resource.
+	 * There is a microscopic possibility that it could be accessed while we
+	 * are setting it.
+	 */
 
-	return EINVAL;
+	flags = spin_lock_irqsave(&g_hostname_lock);
+	strlcpy(g_hostname, name, sizeof(g_hostname));
+	spin_unlock_irqrestore(&g_hostname_lock, flags);
+
+	return 0;
 }
+
+#endif /* CONFIG_BUILD_FLAT || __KERNEL__ */
