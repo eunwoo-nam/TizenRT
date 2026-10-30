@@ -149,6 +149,11 @@ CONTEXTDIRS = $(APPDIR)
 CONTEXTDIRS += $(TOOLSDIR)
 CONTEXTDIRS += mm
 CONTEXTDIRS += wqueue
+
+# NuttX directories with context targets (output directories of the
+# libraries, generated sources)
+
+CONTEXTDIRS += $(LIB_DIR)$(DELIM)libc
 #ifeq ($(CONFIG_ENABLE_IOTIVITY),y)
 #CONTEXTDIRS += $(EXTDIR)$(DELIM)iotivity
 #endif
