@@ -238,6 +238,12 @@ libc$(DELIM)libc$(LIBEXT): context
 $(LIBRARIES_DIR)$(DELIM)libc$(LIBEXT): libc$(DELIM)libc$(LIBEXT)
 	$(Q) install $(LIB_DIR)$(DELIM)libc$(DELIM)libc$(LIBEXT) $(LIBRARIES_DIR)$(DELIM)libc$(LIBEXT)
 
+libm$(DELIM)libm$(LIBEXT): context
+	$(Q) $(MAKE) $(JOBS) -C $(LIB_DIR)$(DELIM)libm TOPDIR="$(TOPDIR)" libm$(LIBEXT)
+
+$(LIBRARIES_DIR)$(DELIM)libm$(LIBEXT): libm$(DELIM)libm$(LIBEXT)
+	$(Q) install $(LIB_DIR)$(DELIM)libm$(DELIM)libm$(LIBEXT) $(LIBRARIES_DIR)$(DELIM)libm$(LIBEXT)
+
 mm$(DELIM)libmm$(LIBEXT): context
 	$(Q) $(MAKE) $(JOBS) -C mm TOPDIR="$(TOPDIR)" libmm$(LIBEXT)
 
