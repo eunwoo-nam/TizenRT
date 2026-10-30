@@ -140,11 +140,12 @@ endif
 #   be cleaned to prevent garbage from collecting in them when changing
 #   configurations.
 
-NONFSDIRS = kernel $(ARCH_SRC) $(TINYARA_ADDONS)
+NONFSDIRS = kernel $(ARCH_SRC) board $(TINYARA_ADDONS)
 FSDIRS = fs drivers binfmt
 CONTEXTDIRS = $(APPDIR)
 CONTEXTDIRS += $(TOOLSDIR)
 CONTEXTDIRS += mm
+CONTEXTDIRS += board
 
 # NuttX directories with context targets (output directories of the
 # libraries, generated sources)
