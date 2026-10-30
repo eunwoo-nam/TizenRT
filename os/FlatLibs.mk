@@ -65,7 +65,7 @@ USERLIBS =
 # Add libraries for syscall support.
 
 TINYARALIBS += $(LIBRARIES_DIR)$(DELIM)libc$(LIBEXT) $(LIBRARIES_DIR)$(DELIM)libmm$(LIBEXT)
-TINYARALIBS += $(LIBRARIES_DIR)$(DELIM)libwque$(LIBEXT) $(LIBRARIES_DIR)$(DELIM)libarch$(LIBEXT)
+TINYARALIBS += $(LIBRARIES_DIR)$(DELIM)libarch$(LIBEXT)
 
 # NuttX libraries
 

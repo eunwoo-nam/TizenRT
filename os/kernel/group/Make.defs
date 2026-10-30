@@ -50,31 +50,35 @@
 #
 ############################################################################
 
-CSRCS += group_create.c group_join.c group_leave.c group_find.c
-CSRCS += group_setupstreams.c group_setupidlefiles.c group_setuptaskfiles.c
+CSRCS += group_create.c group_join.c group_leave.c
+CSRCS += group_setupidlefiles.c group_setuptaskfiles.c
 CSRCS += group_foreachchild.c group_killchildren.c
 
-ifeq ($(CONFIG_SCHED_HAVE_PARENT),y)
-CSRCS += task_reparent.c
-ifeq ($(CONFIG_SCHED_CHILD_STATUS),y)
-CSRCS += group_childstatus.c
-endif
-endif
-
-ifeq ($(CONFIG_ARCH_ADDRENV),y)
-CSRCS += group_addrenv.c
-endif
-
-ifneq ($(CONFIG_DISABLE_SIGNALS),y)
+ifneq ($(CONFIG_DISABLE_ALL_SIGNALS),y)
 CSRCS += group_signal.c
 endif
 
-ifeq ($(CONFIG_BUILD_PROTECTED),y)
-CSRCS += group_malloc.c group_zalloc.c group_free.c
-else
-ifeq ($(CONFIG_BUILD_KERNEL),y)
-CSRCS += group_malloc.c group_zalloc.c group_free.c
+ifeq ($(CONFIG_SCHED_HAVE_PARENT),y)
+ifeq ($(CONFIG_SCHED_CHILD_STATUS),y)
+CSRCS += group_childstatus.c
 endif
+else
+ifeq ($(CONFIG_SCHED_WAITPID),y)
+CSRCS += group_waiter.c
+endif
+endif
+
+ifeq ($(CONFIG_SCHED_USER_IDENTITY),y)
+CSRCS += group_setuid.c group_setgid.c group_getuid.c group_getgid.c
+CSRCS += group_seteuid.c group_setegid.c group_geteuid.c group_getegid.c
+endif
+
+ifeq ($(CONFIG_SIG_SIGSTOP_ACTION),y)
+CSRCS += group_suspendchildren.c group_continue.c
+endif
+
+ifeq ($(CONFIG_MM_KERNEL_HEAP),y)
+CSRCS += group_malloc.c group_realloc.c group_zalloc.c group_free.c
 endif
 
 # Include group build support

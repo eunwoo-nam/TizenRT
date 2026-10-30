@@ -51,18 +51,29 @@
 ############################################################################
 
 CSRCS += irq_initialize.c irq_attach.c irq_dispatch.c irq_unexpectedisr.c
-CSRCS += fin_wait.c fin_notify.c
+CSRCS += irq_attach_thread.c irq_attach_wqueue.c
 
-ifeq ($(CONFIG_SMP), y)
+ifeq ($(CONFIG_SPINLOCK),y)
 CSRCS += irq_spinlock.c
-endif
-
-ifeq ($(CONFIG_DEBUG_IRQ_INFO),y)
-CSRCS += irq_procfs.c
 endif
 
 ifeq ($(CONFIG_IRQCOUNT),y)
 CSRCS += irq_csection.c
+endif
+
+ifeq ($(CONFIG_SCHED_IRQMONITOR),y)
+CSRCS += irq_foreach.c
+ifeq ($(CONFIG_FS_PROCFS),y)
+CSRCS += irq_procfs.c
+endif
+endif
+
+ifeq ($(CONFIG_IRQCHAIN),y)
+CSRCS += irq_chain.c
+endif
+
+ifneq ($(CONFIG_IRQ_WORK_SECTION),"")
+  CFLAGS += ${DEFINE_PREFIX}IRQ_WORK_SECTION=CONFIG_IRQ_WORK_SECTION
 endif
 
 # Include irq build support

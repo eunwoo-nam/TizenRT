@@ -148,7 +148,6 @@ endif
 CONTEXTDIRS = $(APPDIR)
 CONTEXTDIRS += $(TOOLSDIR)
 CONTEXTDIRS += mm
-CONTEXTDIRS += wqueue
 
 # NuttX directories with context targets (output directories of the
 # libraries, generated sources)
@@ -171,7 +170,7 @@ OTHERDIRS = $(LIBRARIES_DIR)
 
 ifeq ($(CONFIG_BUILD_PROTECTED),y)
 
-USERDIRS += $(LIB_DIR)$(DELIM)libc mm wqueue$(USER_ADDONS)
+USERDIRS += $(LIB_DIR)$(DELIM)libc mm $(USER_ADDONS)
 ifeq ($(CONFIG_HAVE_CXX),y)
 USERDIRS += $(LIB_DIR)$(DELIM)libxx
 endif
@@ -179,14 +178,14 @@ endif
 else
 ifeq ($(CONFIG_BUILD_KERNEL),y)
 
-USERDIRS += $(LIB_DIR)$(DELIM)libc mm wqueue
+USERDIRS += $(LIB_DIR)$(DELIM)libc mm
 ifeq ($(CONFIG_HAVE_CXX),y)
 USERDIRS += $(LIB_DIR)$(DELIM)libxx
 endif
 
 else
 
-NONFSDIRS += $(LIB_DIR)$(DELIM)libc mm wqueue
+NONFSDIRS += $(LIB_DIR)$(DELIM)libc mm
 OTHERDIRS += $(USER_ADDONS)
 ifeq ($(CONFIG_HAVE_CXX),y)
 NONFSDIRS += $(LIB_DIR)$(DELIM)libxx
