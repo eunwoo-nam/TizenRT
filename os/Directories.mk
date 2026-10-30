@@ -154,6 +154,9 @@ CONTEXTDIRS += wqueue
 # libraries, generated sources)
 
 CONTEXTDIRS += $(LIB_DIR)$(DELIM)libc
+ifeq ($(CONFIG_LIBM_TOOLCHAIN)$(CONFIG_LIBM_NONE),)
+CONTEXTDIRS += $(LIB_DIR)$(DELIM)libm
+endif
 #ifeq ($(CONFIG_ENABLE_IOTIVITY),y)
 #CONTEXTDIRS += $(EXTDIR)$(DELIM)iotivity
 #endif
@@ -190,6 +193,15 @@ endif
 
 endif
 endif
+
+# NuttX libraries
+
+ifeq ($(CONFIG_LIBM_TOOLCHAIN)$(CONFIG_LIBM_NONE),)
+NONFSDIRS += $(LIB_DIR)$(DELIM)libm
+else
+OTHERDIRS += $(LIB_DIR)$(DELIM)libm
+endif
+
 
 ifeq ($(CONFIG_LIB_SYSCALL),y)
 NONFSDIRS += syscall
