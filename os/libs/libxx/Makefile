@@ -57,25 +57,24 @@
 ASRCS =
 CSRCS =
 
-CXXSRCS  = libxx_cxapurevirtual.cxx libxx_eabi_atexit.cxx  libxx_cxa_atexit.cxx
-
-ifneq ($(CONFIG_LIBCXX),y)
-CXXSRCS += libxx_delete.cxx libxx_delete_sized.cxx libxx_deletea.cxx
-CXXSRCS += libxx_deletea_sized.cxx libxx_new.cxx libxx_newa.cxx
-CXXSRCS += libxx_stdthrow.cxx libxx_cxa_guard.cxx
-else
-ifneq ($(CONFIG_LIBCXX_EXCEPTION),y)
-CXXSRCS += libxx_stdthrow.cxx
-endif
-CXXSRCS += libxx_cxa_guard.cxx
+ifeq ($(CONFIG_UCLIBCXX),y)
+include uClibc++/Make.defs
+else ifeq ($(CONFIG_LIBCXX),y)
+include libcxx/Make.defs
 endif
 
-# Support newlib impure pointer
-ifeq ($(CONFIG_LIBCXX_HAVE_LIBSUPCXX),y)
-CSRCS += libxx_newlib_impure.c
+ifeq ($(CONFIG_ETL),y)
+include etl/Make.defs
 endif
 
-# Paths
+ifeq ($(CONFIG_LIBCXXABI),y)
+include libcxxabi/Make.defs
+else ifeq ($(CONFIG_LIBMINIABI),y)
+include libminiabi/Make.defs
+else ifeq ($(CONFIG_LIBSUPCXX),y)
+include libstdc++/libsupc++.defs
+endif
+
 
 DEPPATH = --dep-path .
 VPATH = .
@@ -121,3 +120,5 @@ distclean: clean
 	$(call DELFILE, .depend)
 
 -include Make.dep
+
+context:
