@@ -149,7 +149,7 @@ CONTEXTDIRS += mm
 # NuttX directories with context targets (output directories of the
 # libraries, generated sources)
 
-CONTEXTDIRS += drivers fs
+CONTEXTDIRS += drivers fs $(ARCH_SRC)
 CONTEXTDIRS += $(LIB_DIR)$(DELIM)libc $(LIB_DIR)$(DELIM)libbuiltin
 ifeq ($(CONFIG_LIBM_TOOLCHAIN)$(CONFIG_LIBM_NONE),)
 CONTEXTDIRS += $(LIB_DIR)$(DELIM)libm
