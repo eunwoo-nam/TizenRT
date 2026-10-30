@@ -122,10 +122,7 @@ endif
 # Add libraries for file system support
 
 TINYARALIBS += $(LIBRARIES_DIR)$(DELIM)libfs$(LIBEXT) $(LIBRARIES_DIR)$(DELIM)libdrivers$(LIBEXT)
-
-ifeq ($(CONFIG_BINFMT_ENABLE),y)
 TINYARALIBS += $(LIBRARIES_DIR)$(DELIM)libbinfmt$(LIBEXT)
-endif
 
 # Add libraries for the Audio sub-system
 

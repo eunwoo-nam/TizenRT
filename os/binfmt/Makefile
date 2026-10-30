@@ -61,11 +61,12 @@ CFLAGS += ${shell $(INCDIR) $(INCDIROPT) "$(CC)" "$(TOPDIR)$(DELIM)kernel"}
 
 # Basic BINFMT source files
 
-BINFMT_ASRCS  =
+BINFMT_ASRCS =
+DEPPATH = --dep-path .
+VPATH = .
 BINFMT_CSRCS  = binfmt_globals.c binfmt_initialize.c binfmt_register.c binfmt_unregister.c
 BINFMT_CSRCS += binfmt_loadmodule.c binfmt_unloadmodule.c binfmt_execmodule.c
-BINFMT_CSRCS += binfmt_exec.c binfmt_copyargv.c binfmt_dumpmodule.c
-BINFMT_CSRCS += binfmt_loadbinary.c binfmt_arch_apis.c
+BINFMT_CSRCS += binfmt_exec.c binfmt_copyargv.c binfmt_copyactions.c binfmt_dumpmodule.c
 
 ifeq ($(CONFIG_BINFMT_LOADABLE),y)
 BINFMT_CSRCS += binfmt_exit.c
@@ -75,18 +76,29 @@ ifeq ($(CONFIG_LIBC_EXECFUNCS),y)
 BINFMT_CSRCS += binfmt_execsymtab.c
 endif
 
-ifeq ($(CONFIG_ARCH_USE_MMU),y)
-BINFMT_CSRCS += binfmt_pgtable.c
+# Builtin application interfaces
+
+ifeq ($(CONFIG_BUILTIN),y)
+BINFMT_CSRCS += builtin.c
 endif
+
+# ELF application interfaces
+
+ifeq ($(CONFIG_ELF),y)
+BINFMT_CSRCS += elf.c
+endif
+
+# NXFLAT application interfaces
+
+ifeq ($(CONFIG_NXFLAT),y)
+BINFMT_CSRCS += nxflat.c
+endif
+
 # Add configured binary modules
 
-VPATH =
-SUBDIRS =
-DEPPATH = --dep-path .
+include libnxflat/Make.defs
 
-include libelf$(DELIM)Make.defs
-include libxipelf$(DELIM)Make.defs
-include libbuiltin$(DELIM)Make.defs
+CFLAGS += ${INCDIR_PREFIX}$(TOPDIR)$(DELIM)kernel
 
 BINFMT_AOBJS = $(BINFMT_ASRCS:.S=$(OBJEXT))
 BINFMT_COBJS = $(BINFMT_CSRCS:.c=$(OBJEXT))
@@ -123,3 +135,5 @@ distclean: clean
 	$(call DELFILE, .depend)
 
 -include Make.dep
+
+context:
