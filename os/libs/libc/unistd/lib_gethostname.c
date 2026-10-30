@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- * Copyright 2016 Samsung Electronics All Rights Reserved.
+ * Copyright 2026 Samsung Electronics All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,10 +16,13 @@
  *
  ****************************************************************************/
 /****************************************************************************
- * wqueue/uwqueue/uwork_lock.c
+ * libs/libc/unistd/lib_gethostname.c
  *
- *   Copyright (C) 2014 Gregory Nutt. All rights reserved.
- *   Author: Gregory Nutt <gnutt@nuttx.org>
+ * SPDX-License-Identifier: BSD-3-Clause
+ * SPDX-FileCopyrightText: 2015 Stavros Polymenis. All rights reserved.
+ * SPDX-FileCopyrightText: 2015, 2016 Gregory Nutt. All rights reserved.
+ * SPDX-FileContributor: Stavros Polymenis <sp@orbitalfox.com>
+ * SPDX-FileContributor: Gregory Nutt <gnutt@nuttx.org>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -56,97 +59,82 @@
 
 #include <tinyara/config.h>
 
-#include <pthread.h>
-#include <semaphore.h>
-#include <assert.h>
-#include <errno.h>
+#include <string.h>
+#include <unistd.h>
 
-#include "wqueue.h"
+#include <tinyara/irq.h>
+#include <tinyara/spinlock.h>
 
+/* Further, in the protected and kernel build modes where kernel and
+ * application code are separated, the hostname is a common system property
+ * and must reside only in the kernel.  In that case, this accessor
+ * function only be called from user space is only via a kernel system call.
+ */
+
+#if defined(CONFIG_BUILD_FLAT) || defined(__KERNEL__)
 
 /****************************************************************************
  * Pre-processor Definitions
  ****************************************************************************/
 
-/****************************************************************************
- * Private Type Declarations
- ****************************************************************************/
+/* The default host name is a system configuration setting.  This may be
+ * changed via sethostname(), however.
+ */
+
+#ifndef CONFIG_LIBC_HOSTNAME
+#  define CONFIG_LIBC_HOSTNAME ""
+#endif
 
 /****************************************************************************
- * Public Variables
+ * Public Data
  ****************************************************************************/
 
-/****************************************************************************
- * Private Variables
- ****************************************************************************/
+/* This is the system hostname */
 
-/****************************************************************************
- * Private Functions
- ****************************************************************************/
+char g_hostname[HOST_NAME_MAX + 1] = CONFIG_LIBC_HOSTNAME;
+spinlock_t g_hostname_lock = SP_UNLOCKED;
 
 /****************************************************************************
  * Public Functions
  ****************************************************************************/
 
 /****************************************************************************
- * Name: work_lock
+ * Name: gethostname
  *
  * Description:
- *   Lock the user-mode work queue.
+ *   The gethostname() function will return the standard host name for the
+ *   current machine. The namelen argument will specify the size of the
+ *   array pointed to by the name argument. The returned name will be null-
+ *   terminated, except that if namelen is an insufficient length to hold the
+ *   host name, then the returned name will be truncated and it is
+ *   unspecified whether the returned name is null-terminated.
  *
- * Input parameters:
- *   None
+ *   Host names are limited to {HOST_NAME_MAX} bytes.
+ *
+ * Input Parameters:
+ *   name - The user-provided buffer to receive the host name.
+ *   namelen - The size of the user provided buffer in bytes.
  *
  * Returned Value:
- *   Zero (OK) on success, a negated errno on failure.  This error may be
- *   reported:
- *
- *   -EINTR - Wait was interrupted by a signal
+ *   Upon successful completion, 0 will be returned; otherwise, -1 will be
+ *   returned.  No errors are defined;  errno variable is not set.
  *
  ****************************************************************************/
 
-int work_lock(void)
+int gethostname(FAR char *name, size_t namelen)
 {
-	int ret;
-#ifdef CONFIG_BUILD_PROTECTED
-	sem_t *usrsem = get_usrsem();
-	ret = sem_wait(usrsem);
-	if (ret < 0) {
-		DEBUGASSERT(errno == EINTR);
-		return -EINTR;
-	}
-#else
-	pthread_mutex_t *usrmutex = get_usrmutex();
-	ret = pthread_mutex_lock(usrmutex);
-	if (ret != 0) {
-		DEBUGASSERT(ret == EINTR);
-		return -EINTR;
-	}
-#endif
-	return ret;
+	irqstate_t flags;
+
+	/* Return the host name, truncating to fit into the user provided buffer.
+	 * The hostname is global resource.  There is a microscopic possibility
+	 * that it could change while we are copying it.
+	 */
+
+	flags = spin_lock_irqsave(&g_hostname_lock);
+	strlcpy(name, g_hostname, namelen);
+	spin_unlock_irqrestore(&g_hostname_lock, flags);
+
+	return 0;
 }
 
-/****************************************************************************
- * Name: work_unlock
- *
- * Description:
- *   Unlock the user-mode work queue.
- *
- * Input parameters:
- *   None
- *
- * Returned Value:
- *   None
- *
- ****************************************************************************/
-
-void work_unlock(void)
-{
-#ifdef CONFIG_BUILD_PROTECTED
-	sem_t *usrsem = get_usrsem();
-	(void)sem_post(usrsem);
-#else
-	pthread_mutex_t *usrmutex = get_usrmutex();
-	(void)pthread_mutex_unlock(usrmutex);
-#endif
-}
+#endif /* CONFIG_BUILD_FLAT || __KERNEL__ */
