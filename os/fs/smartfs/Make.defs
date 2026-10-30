@@ -54,13 +54,7 @@ ifeq ($(CONFIG_FS_SMARTFS),y)
 
 # Files required for SmartFS file system support
 
-ASRCS +=
 CSRCS += smartfs_smart.c smartfs_utils.c smartfs_procfs.c
-
-# Files required for mksmartfs utility function
-
-ASRCS +=
-CSRCS += smartfs_mksmartfs.c
 
 # Include SMART build support
 

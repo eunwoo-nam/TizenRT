@@ -1,6 +1,6 @@
 ###########################################################################
 #
-# Copyright 2016 Samsung Electronics All Rights Reserved.
+# Copyright 2026 Samsung Electronics All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,9 +16,9 @@
 #
 ###########################################################################
 ############################################################################
-# fs/dirent/Make.defs
+# libs/libbuiltin/Makefile
 #
-#   Copyright (C) 2014 Gregory Nutt. All rights reserved.
+#   Copyright (C) 2007-2014 Gregory Nutt. All rights reserved.
 #   Author: Gregory Nutt <gnutt@nuttx.org>
 #
 # Redistribution and use in source and binary forms, with or without
@@ -50,14 +50,55 @@
 #
 ############################################################################
 
-# Don't build anything if there are no file descriptors
+-include $(TOPDIR)/Make.defs
+ASRCS =
+CSRCS =
+DEPPATH = --dep-path .
+VPATH = .
 
-ifneq ($(CONFIG_NFILE_DESCRIPTORS),0)
+BIN ?= libbuiltin$(LIBEXT)
+BINDIR ?= bin
 
-CSRCS += fs_closedir.c fs_opendir.c fs_readdir.c fs_rewinddir.c fs_seekdir.c
+KBIN = libkbuiltin$(LIBEXT)
+KBINDIR = kbin
 
-# Include dirent build support
+include compiler-rt/Make.defs
+include libgcc/Make.defs
 
-DEPPATH += --dep-path dirent
-VPATH += :dirent
-endif
+AOBJS = $(ASRCS:.S=$(OBJEXT))
+COBJS = $(CSRCS:.c=$(OBJEXT))
+
+SRCS = $(ASRCS) $(CSRCS)
+OBJS = $(AOBJS) $(COBJS)
+
+BIN = libbuiltin$(LIBEXT)
+
+all: $(BIN)
+.PHONY: context depend clean distclean
+
+$(AOBJS): %$(OBJEXT): %.S
+	$(call ASSEMBLE, $<, $@)
+
+$(COBJS): %$(OBJEXT): %.c
+	$(call COMPILE, $<, $@)
+
+$(BIN): $(OBJS)
+	$(call ARCHIVE, $@, $(OBJS))
+
+.depend: Makefile $(SRCS)
+	$(Q) $(MKDEP) $(DEPPATH) "$(CC)" -- $(CFLAGS) -- $(SRCS) >Make.dep
+	$(Q) touch $@
+
+depend: .depend
+
+clean:
+	$(call DELFILE, $(BIN))
+	$(call CLEAN)
+
+distclean: clean
+	$(call DELFILE, Make.dep)
+	$(call DELFILE, .depend)
+
+-include Make.dep
+
+context:
