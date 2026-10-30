@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- * Copyright 2016 Samsung Electronics All Rights Reserved.
+ * Copyright 2026 Samsung Electronics All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,9 +16,10 @@
  *
  ****************************************************************************/
 /****************************************************************************
+ * include/nuttx/mtd/hamming.h
  *
- *   Copyright (C) 2013 Ken Pettit. All rights reserved.
- *   Author: Ken Pettit <pettitkd@gmail.com>
+ * SPDX-License-Identifier: BSD-3-Clause
+ * SPDX-FileCopyrightText: 2011, Atmel Corporation
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,8 +31,8 @@
  *    notice, this list of conditions and the following disclaimer in
  *    the documentation and/or other materials provided with the
  *    distribution.
- * 3. Neither the name NuttX nor the names of its contributors may be
- *    used to endorse or promote products derived from this software
+ * 3. Neither the names NuttX nor Atmel nor the names of its contributors
+ *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
@@ -49,108 +50,108 @@
  *
  ****************************************************************************/
 
-#ifndef __INCLUDE_CONFIGDATA_H
-#define __INCLUDE_CONFIGDATA_H
-
-/* The configdata device details kernel level services for providing
- * application config data from kernel control objects, such as partitions
- * on shared MTD devices, etc.
- */
+#ifndef __INCLUDE_NUTTX_MTD_HAMMING_H
+#define __INCLUDE_NUTTX_MTD_HAMMING_H
 
 /****************************************************************************
  * Included Files
  ****************************************************************************/
 
 #include <tinyara/config.h>
-#include <tinyara/compiler.h>
 
-#include <sys/types.h>
-
-#include <tinyara/fs/ioctl.h>
+#include <stdint.h>
+#include <stdbool.h>
 
 /****************************************************************************
  * Pre-processor Definitions
  ****************************************************************************/
-/* Configuration ************************************************************/
-/* CONFIG_AUDIO - Enables Audio driver support
- * CONFIG_DEBUG_AUDIO - If enabled (with CONFIG_DEBUG and, optionally,
- *   CONFIG_DEBUG_VERBOSE), this will generate output that can be used to
- *   debug Audio drivers.
+
+/* These are the possible errors when trying to verify a block of data
+ * encoded using a Hamming code:
+ *
+ *   HAMMING_SUCCESS            - Block verified without errors
+ *   HAMMING_ERROR_SINGLEBIT    - A single bit was incorrect but has been
+ *                                recovered
+ *   HAMMING_ERROR_ECC          - The original code has been corrupted
+ *   HAMMING_ERROR_MULTIPLEBITS - Multiple bits are incorrect in the data
+ *                                and they cannot be corrected
  */
 
-/* IOCTL Commands ***********************************************************/
-/* The Audio module uses a standard character driver framework.  However, a
- * lot of the Audio driver functionality is configured via a device control
- * interface, such as sampling rate, volume, data format, etc.
- * The Audio ioctl commands are lised below:
- *
- * CFGDIOC_GETCONFIG - Get a specified Config Data item.
- *
- *   ioctl argument:  Pointer to a config_data_s structure to receive the
- *                    config data.  All fields of the strucure must be
- *                    specified (i.e. id, instance, pointer and len).
- *
- * CFGDIOC_SETCONFIG - Set a specified Config Data Item
- *
- *   ioctl argument:  Pointer to a config_data_s structure to receive the
- *                    config data.  All fields of the strucure must be
- *                    specified (i.e. id, instance, pointer and len).
- */
-
-#define CFGDIOC_GETCONFIG  _CFGDIOC(1)
-#define CFGDIOC_SETCONFIG  _CFGDIOC(2)
+#define HAMMING_SUCCESS                 0
+#define HAMMING_ERROR_SINGLEBIT         1
+#define HAMMING_ERROR_ECC               2
+#define HAMMING_ERROR_MULTIPLEBITS      3
 
 /****************************************************************************
  * Public Types
  ****************************************************************************/
 
-/* This structure is used to get and set config data items */
-
-struct config_data_s {
-	uint16_t id;				/* ID of the config data item */
-	int instance;				/* Instance of the item */
-	FAR uint8_t *configdata;	/* Pointer to the config data */
-	size_t len;					/* Length of the config data buffer */
-};
-
 /****************************************************************************
  * Public Data
  ****************************************************************************/
 
-/****************************************************************************
- * Public Function Prototypes
- ****************************************************************************/
+#ifndef __ASSEMBLY__
 
 #ifdef __cplusplus
 #define EXTERN extern "C"
-extern "C" {
+extern "C"
+{
 #else
 #define EXTERN extern
 #endif
 
 /****************************************************************************
- * Name: mtdconfig_register
+ * Public Function Prototypes
+ ****************************************************************************/
+
+/****************************************************************************
+ * Name: hamming_compute256x
  *
  * Description:
- *   This function binds an instance of an MTD device to the /dev/config
- *   device.
+ *   Computes 3-bytes hamming codes for a data block whose size is multiple
+ *   of 256 bytes. Each 256 bytes block gets its own code.
  *
- *   When this function is called, the MTD device pass in should already
- *   be initialized appropriately to access the physical device or partition.
- *
- * Input parameters:
- *   mtd - Pointer to the MTD device to bind with the /dev/config device
+ * Input Parameters:
+ *   data - Data to compute code for
+ *   size - Data size in bytes
+ *   code - Codes buffer
  *
  * Returned Value:
- *   Zero on success; a negated errno value on failure.
+ *   None
  *
  ****************************************************************************/
 
-int mtdconfig_register(FAR struct mtd_dev_s *mtd);
+void hamming_compute256x(FAR const uint8_t *data,
+                         size_t size,
+                         FAR uint8_t *code);
+
+/****************************************************************************
+ * Name: hamming_verify256x
+ *
+ * Description:
+ *   Verifies 3-bytes hamming codes for a data block whose size is multiple
+ *   of 256 bytes. Each 256-bytes block is verified with its own code.
+ *
+ * Input Parameters:
+ *   data - Data buffer to verify
+ *   size - Size of the data in bytes
+ *   code - Original codes
+ *
+ * Returned Value:
+ *   Return 0 if the data is correct, HAMMING_ERROR_SINGLEBIT if one or more
+ *   block(s) have had a single bit corrected, or either HAMMING_ERROR_ECC
+ *   or HAMMING_ERROR_MULTIPLEBITS.
+ *
+ ****************************************************************************/
+
+int hamming_verify256x(FAR uint8_t *data,
+                       size_t size,
+                       FAR const uint8_t *code);
 
 #undef EXTERN
 #ifdef __cplusplus
 }
 #endif
 
-#endif							/* __INCLUDE_CONFIGDATA_H */
+#endif /* __ASSEMBLY__ */
+#endif /* __INCLUDE_NUTTX_MTD_HAMMING_H */
