@@ -55,6 +55,7 @@ DELIM ?= $(strip /)
 
 include proxies$(DELIM)Make.defs
 include stubs$(DELIM)Make.defs
+include wraps/Make.defs
 
 MKSYSCALL = "$(TOPDIR)$(DELIM)tools$(DELIM)mksyscall"
 CSVFILE = "$(TOPDIR)$(DELIM)syscall$(DELIM)syscall.csv"
@@ -68,7 +69,7 @@ else
 WRAP_SRCS += syscall_names.c
 endif
 endif
-STUB_SRCS += syscall_funclookup.c syscall_stublookup.c syscall_nparms.c
+STUB_SRCS += syscall_stublookup.c
 
 ASRCS =
 AOBJS = $(ASRCS:.S=$(OBJEXT))
@@ -76,7 +77,7 @@ AOBJS = $(ASRCS:.S=$(OBJEXT))
 PROXY_OBJS = $(PROXY_SRCS:.c=$(OBJEXT))
 STUB_OBJS = $(STUB_SRCS:.c=$(OBJEXT))
 
-CSRCS = $(PROXY_SRCS) $(STUB_SRCS)
+CSRCS = $(sort $(PROXY_SRCS) $(STUB_SRCS) $(WRAP_SRCS))
 COBJS = $(CSRCS:.c=$(OBJEXT))
 
 SRCS = $(ASRCS) $(CSRCS)
