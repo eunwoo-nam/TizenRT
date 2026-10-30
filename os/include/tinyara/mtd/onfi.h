@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- * Copyright 2019 Samsung Electronics All Rights Reserved.
+ * Copyright 2026 Samsung Electronics All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,17 +16,10 @@
  *
  ****************************************************************************/
 /****************************************************************************
- * include/tinyara/binfmt/builtin.h
+ * include/nuttx/mtd/onfi.h
  *
- * Originally by:
- *
- *   Copyright (C) 2011 Uros Platise. All rights reserved.
- *   Author: Uros Platise <uros.platise@isotel.eu>
- *
- * With subsequent updates, modifications, and general maintenance by:
- *
- *   Copyright (C) 2012-2013 Gregory Nutt.  All rights reserved.
- *   Author: Gregory Nutt <gnutt@nuttx.org>
+ * SPDX-License-Identifier: BSD-3-Clause
+ * SPDX-FileCopyrightText: 2010, Atmel Corporation
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -38,8 +31,8 @@
  *    notice, this list of conditions and the following disclaimer in
  *    the documentation and/or other materials provided with the
  *    distribution.
- * 3. Neither the name NuttX nor the names of its contributors may be
- *    used to endorse or promote products derived from this software
+ * 3. Neither the names NuttX nor Atmel nor the names of its contributors
+ *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
@@ -57,130 +50,151 @@
  *
  ****************************************************************************/
 
-#ifndef __INCLUDE_TINYARA_BINFMT_BUILTIN_H
-#define __INCLUDE_TINYARA_BINFMT_BUILTIN_H
+#ifndef __INCLUDE_NUTTX_MTD_ONFI_H
+#define __INCLUDE_NUTTX_MTD_ONFI_H
 
 /****************************************************************************
  * Included Files
  ****************************************************************************/
 
 #include <tinyara/config.h>
-#include <sys/types.h>
+
+#include <stdint.h>
+#include <stdbool.h>
+
+/****************************************************************************
+ * Pre-processor Definitions
+ ****************************************************************************/
 
 /****************************************************************************
  * Public Types
  ****************************************************************************/
 
-struct builtin_s {
-	const char *name;			/* Invocation name and as seen under /sbin/ */
-	int priority;				/* Use: SCHED_PRIORITY_DEFAULT */
-	int stacksize;				/* Desired stack size */
-	main_t main;				/* Entry point: main(int argc, char *argv[]) */
+/* Describes memory organization block information in ONFI parameter page */
+
+struct onfi_pgparam_s {
+	uint8_t manufacturer;   /* JEDEC manufacturer ID */
+	uint8_t buswidth;       /* Bus width */
+	uint8_t luns;           /* Number of logical units */
+	uint8_t eccsize;        /* Number of bits of ECC correction */
+	uint8_t model;          /* Device model */
+	uint16_t sparesize;     /* Number of spare bytes per page */
+	uint16_t pagesperblock; /* Number of pages per block */
+	uint16_t blocksperlun;  /* Number of blocks per logical unit (LUN) */
+	uint32_t pagesize;      /* Number of data bytes per page */
 };
 
 /****************************************************************************
  * Public Data
  ****************************************************************************/
 
-#if defined(__cplusplus)
+#ifndef __ASSEMBLY__
+
+#ifdef __cplusplus
 #define EXTERN extern "C"
-extern "C" {
+extern "C"
+{
 #else
 #define EXTERN extern
 #endif
 
 /****************************************************************************
- * Public Functions
+ * Public Function Prototypes
  ****************************************************************************/
 
 /****************************************************************************
- * Name: builtin_initialize
+ * Name: onfi_compatible
  *
  * Description:
- *   In order to use the builtin binary format, this function must be called
- *   during system initialize to register the builtin binary format.
- *
- * Returned Value:
- *   This is a NuttX internal function so it follows the convention that
- *   0 (OK) is returned on success and a negated errno is returned on
- *   failure.
- *
- ****************************************************************************/
-
-int builtin_initialize(void);
-
-/****************************************************************************
- * Name: builtin_uninitialize
- *
- * Description:
- *   Unregister the builtin binary loader
- *
- * Returned Value:
- *   None
- *
- ****************************************************************************/
-
-void builtin_uninitialize(void);
-
-/****************************************************************************
- * Name: builtin_isavail
- *
- * Description:
- *   Checks for availability of application registered during compile time.
+ *   This function read an the ONFI signature at address of 20h to detect
+ *   if the device is ONFI compatible.
  *
  * Input Parameters:
- *   filename - Name of the linked-in binary to be started.
+ *   cmdaddr  - NAND command address base
+ *   addraddr - NAND address address base
+ *   dataaddr - NAND data address
  *
  * Returned Value:
- *   This is an end-user function, so it follows the normal convention:
- *   Returns index of builtin application. If it is not found then it
- *   returns -1 (ERROR) and sets errno appropriately.
+ *   True if ONFI compatible
  *
  ****************************************************************************/
 
-int builtin_isavail(FAR const char *appname);
+bool onfi_compatible(uintptr_t cmdaddr, uintptr_t addraddr,
+                     uintptr_t dataaddr);
 
 /****************************************************************************
- * Name: builtin_getname
+ * Name: onfi_read
  *
  * Description:
- *   Returns pointer to a name of built-in application pointed by the
- *   index.
+ *   If the addresses refer to a compatible ONFI device, then read the ONFI
+ *   parameters from the FLASH into the user provided data staructure.
  *
  * Input Parameters:
- *   index, from 0 and on ...
+ *   cmdaddr  - NAND command address base
+ *   addraddr - NAND address address base
+ *   dataaddr - NAND data address
+ *   onfi     - The ONFI data structure to populate.
  *
  * Returned Value:
- *   Returns valid pointer pointing to the app name if index is valid.
- *   Otherwise NULL is returned.
+ *   OK is returned on success and the ONFI data structure is initialized
+ *   with NAND data.  A negated errno value is returned in the event of an
+ *   error.
  *
  ****************************************************************************/
 
-FAR const char *builtin_getname(int index);
+int onfi_read(uintptr_t cmdaddr, uintptr_t addraddr, uintptr_t dataaddr,
+              FAR struct onfi_pgparam_s *onfi);
 
 /****************************************************************************
- * Name: builtin_for_index
+ * Name: onfi_embeddedecc
  *
  * Description:
- *   Returns the builtin_s structure for the selected builtin.
- *   If support for builtin functions is enabled in the NuttX configuration,
- *   then this function must be provided by the application code.
+ *   Enable or disable the NAND's embedded ECC controller.
  *
  * Input Parameters:
- *   index, from 0 and on...
+ *   onfi     - An initialized ONFI data structure.
+ *   cmdaddr  - NAND command address base
+ *   addraddr - NAND address address base
+ *   dataaddr - NAND data address
+ *   enable - True: enabled the embedded ECC function; False: disable it
  *
  * Returned Value:
- *   Returns valid pointer pointing to the builtin_s structure if index is
- *   valid.
- *   Otherwise, NULL is returned.
+ *   True  - Internal ECC enabled or disabled successfully
+ *   False - Internal ECC not supported.
  *
  ****************************************************************************/
 
-FAR const struct builtin_s *builtin_for_index(int index);
+#ifdef CONFIG_MTD_NAND_EMBEDDEDECC
+bool onfi_embeddedecc(FAR const struct onfi_pgparam_s *onfi,
+                      uintptr_t cmdaddr, uintptr_t addraddr,
+                      uintptr_t dataaddr, bool enable);
+#else
+#  define onfi_embeddedecc(o,c,a,d,e) (false)
+#endif
+
+/****************************************************************************
+ * Name: onfi_ebidetect
+ *
+ * Description:
+ *   Detect Nand connection on EBI
+ *
+ * Input Parameters:
+ *   cmdaddr  - NAND command address base
+ *   addraddr - NAND address address base
+ *   dataaddr - NAND data address
+ *
+ * Returned Value:
+ *   True if the chip is detected; false otherwise.
+ *
+ ****************************************************************************/
+
+bool onfi_ebidetect(uintptr_t cmdaddr, uintptr_t addraddr, uintptr_t
+                    dataaddr);
 
 #undef EXTERN
-#if defined(__cplusplus)
+#ifdef __cplusplus
 }
 #endif
 
-#endif							/* __INCLUDE_TINYARA_BINFMT_BUILTIN_H */
+#endif /* __ASSEMBLY__ */
+#endif /* __INCLUDE_NUTTX_MTD_ONFI_H */
