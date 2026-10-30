@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- * Copyright 2016 Samsung Electronics All Rights Reserved.
+ * Copyright 2026 Samsung Electronics All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,10 +16,11 @@
  *
  ****************************************************************************/
 /****************************************************************************
- * include/tinyara/fs/ramdisk.h
+ * include/nuttx/modem/u-blox.h
  *
- *   Copyright (C) 2008-2009, 2012-2013, 2015 Gregory Nutt. All rights reserved.
- *   Author: Gregory Nutt <gnutt@nuttx.org>
+ * SPDX-License-Identifier: BSD-3-Clause
+ * SPDX-FileCopyrightText: 2016 Vladimir Komendantskiy. All rights reserved.
+ * SPDX-FileContributor: Vladimir Komendantskiy <vladimir@moixaenergy.com>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -50,73 +51,83 @@
  *
  ****************************************************************************/
 
-#ifndef __INCLUDE_FS_RAMDISK_H
-#define __INCLUDE_FS_RAMDISK_H
+#ifndef __INCLUDE_NUTTX_MODEM_U_BLOX_H
+#define __INCLUDE_NUTTX_MODEM_U_BLOX_H
 
 /****************************************************************************
  * Included Files
  ****************************************************************************/
 
 #include <tinyara/config.h>
+#include <tinyara/compiler.h>
 
-#include <stdint.h>
 #include <stdbool.h>
+
+#include <tinyara/modem/ioctl.h>
 
 /****************************************************************************
  * Pre-processor Definitions
  ****************************************************************************/
-/* Values for rdflags */
 
-#define RDFLAG_WRENABLED       (1 << 0)	/* Bit 0: 1=Can write to RAM disk */
-#define RDFLAG_FUNLINK         (1 << 1)	/* Bit 1: 1=Free memory when unlinked */
-
-/* For internal use by the driver only */
-
-#define RDFLAG_UNLINKED        (1 << 2)	/* Bit 2: 1=Driver has been unlinked */
+/* See IOCTL definitions in include/nuttx/modem/ioctl.h */
 
 /****************************************************************************
- * Type Definitions
+ * Public Types
  ****************************************************************************/
+
+struct ubxmdm_regval {
+	char name[3];
+	bool val;
+};
+
+struct ubxmdm_status {
+	bool on;
+	int register_values_size;
+	FAR struct ubxmdm_regval *register_values;
+};
+
+struct ubxmdm_lower;
+
+struct ubxmdm_ops {
+	CODE int (*poweron)(FAR struct ubxmdm_lower  *lower);
+	CODE int (*poweroff)(FAR struct ubxmdm_lower  *lower);
+	CODE int (*reset)(FAR struct ubxmdm_lower  *lower);
+	CODE int (*getstatus)(FAR struct ubxmdm_lower  *lower,
+	                      FAR struct ubxmdm_status *status);
+	CODE int (*ioctl)(FAR struct ubxmdm_lower  *lower,
+	                      int cmd,
+	                      unsigned long arg);
+};
+
+struct ubxmdm_lower {
+	FAR const struct ubxmdm_ops *ops;
+};
 
 /****************************************************************************
- * Public Function Prototypes
+ * Public Functions Prototypes
  ****************************************************************************/
 
-#ifdef __cplusplus
+#undef EXTERN
+#if defined(__cplusplus)
 #define EXTERN extern "C"
-extern "C" {
+extern "C"
+{
 #else
 #define EXTERN extern
 #endif
 
 /****************************************************************************
- * Name: ramdisk_register or romdisk_register
- *
- * Description:
- *   Non-standard function to register a ramdisk or a romdisk
- *
- * Input Parmeters:
- *   minor:         Selects suffix of device named /dev/ramN, N={1,2,3...}
- *   nsectors:      Number of sectors on device
- *   sectize:       The size of one sector
- *   rdflags:       See RDFLAG_* definitions
- *   buffer:        RAM disk backup memory
- *
- * Returned Valued:
- *   Zero on success; a negated errno value on failure.
- *
+ * "Upper-Half" Timer Driver Interfaces
  ****************************************************************************/
 
-#ifdef CONFIG_FS_WRITABLE
-int ramdisk_register(int minor, FAR uint8_t *buffer, uint32_t nsectors, uint16_t sectize, uint8_t rdflags);
-#define romdisk_register(m, b, n, s) ramdisk_register(m, b, n, s, 0)
-#else
-int romdisk_register(int minor, FAR uint8_t *buffer, uint32_t nsectors, uint16_t sectize);
-#endif
+FAR void *ubxmdm_register(FAR const char *path,
+                          FAR struct ubxmdm_lower *lower);
+
+void ubxmdm_unregister(FAR void *handle);
 
 #undef EXTERN
-#ifdef __cplusplus
+#if defined(__cplusplus)
 }
 #endif
 
-#endif							/* __INCLUDE_FS_RAMDISK_H */
+#endif /* __INCLUDE_NUTTX_MODEM_U_BLOX_H */
