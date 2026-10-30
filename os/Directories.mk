@@ -153,7 +153,7 @@ CONTEXTDIRS += wqueue
 # NuttX directories with context targets (output directories of the
 # libraries, generated sources)
 
-CONTEXTDIRS += $(LIB_DIR)$(DELIM)libc
+CONTEXTDIRS += $(LIB_DIR)$(DELIM)libc $(LIB_DIR)$(DELIM)libbuiltin
 ifeq ($(CONFIG_LIBM_TOOLCHAIN)$(CONFIG_LIBM_NONE),)
 CONTEXTDIRS += $(LIB_DIR)$(DELIM)libm
 endif
@@ -203,6 +203,12 @@ ifeq ($(CONFIG_LIBM_TOOLCHAIN)$(CONFIG_LIBM_NONE),)
 NONFSDIRS += $(LIB_DIR)$(DELIM)libm
 else
 OTHERDIRS += $(LIB_DIR)$(DELIM)libm
+endif
+
+ifeq ($(CONFIG_LIB_BUILTIN),y)
+NONFSDIRS += $(LIB_DIR)$(DELIM)libbuiltin
+else
+OTHERDIRS += $(LIB_DIR)$(DELIM)libbuiltin
 endif
 
 
