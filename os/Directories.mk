@@ -287,3 +287,10 @@ endif
 CLEANDIRS += se
 
 CLEANDIRS += userspace
+
+# NuttX DSP library
+
+ifeq ($(CONFIG_LIBDSP),y)
+KERNDEPDIRS += $(LIB_DIR)$(DELIM)libdsp
+endif
+CLEANDIRS += $(LIB_DIR)$(DELIM)libdsp

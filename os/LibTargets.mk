@@ -250,6 +250,12 @@ libbuiltin$(DELIM)libbuiltin$(LIBEXT): context
 $(LIBRARIES_DIR)$(DELIM)libbuiltin$(LIBEXT): libbuiltin$(DELIM)libbuiltin$(LIBEXT)
 	$(Q) install $(LIB_DIR)$(DELIM)libbuiltin$(DELIM)libbuiltin$(LIBEXT) $(LIBRARIES_DIR)$(DELIM)libbuiltin$(LIBEXT)
 
+libdsp$(DELIM)libdsp$(LIBEXT): context
+	$(Q) $(MAKE) $(JOBS) -C $(LIB_DIR)$(DELIM)libdsp TOPDIR="$(TOPDIR)" libdsp$(LIBEXT)
+
+$(LIBRARIES_DIR)$(DELIM)libdsp$(LIBEXT): libdsp$(DELIM)libdsp$(LIBEXT)
+	$(Q) install $(LIB_DIR)$(DELIM)libdsp$(DELIM)libdsp$(LIBEXT) $(LIBRARIES_DIR)$(DELIM)libdsp$(LIBEXT)
+
 mm$(DELIM)libmm$(LIBEXT): context
 	$(Q) $(MAKE) $(JOBS) -C mm TOPDIR="$(TOPDIR)" libmm$(LIBEXT)
 
