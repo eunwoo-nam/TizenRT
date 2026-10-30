@@ -60,87 +60,65 @@ endif
 DEPPATH = --dep-path .
 ASRCS =
 CSRCS =
+DEPPATH = --dep-path .
 VPATH = .
 
-ifeq ($(CONFIG_TASK_MANAGER),y)
-CFLAGS += -I $(TOPDIR)/kernel
-endif
+CSRCS = drivers_initialize.c
 
 # Include support for various drivers.  Each Make.defs file will add its
 # files to the source file list, add its DEPPATH info, and will add
 # the appropriate paths to the VPATH variable
 
-include analog$(DELIM)Make.defs
-include audio$(DELIM)Make.defs
-include bch$(DELIM)Make.defs
-include bluetooth$(DELIM)Make.defs
-include compression$(DELIM)Make.defs
-include cpuload$(DELIM)Make.defs
-include gpio$(DELIM)Make.defs
-include prodconfig$(DELIM)Make.defs
-include memory$(DELIM)Make.defs
-include i2c$(DELIM)Make.defs
-include iotdev$(DELIM)Make.defs
-include input$(DELIM)Make.defs
-include os_api_test$(DELIM)Make.defs
-include lcd$(DELIM)Make.defs
-include lwnl${DELIM}Make.defs
-include mipidsi${DELIM}Make.defs
-include net$(DELIM)Make.defs
-include otp$(DELIM)Make.defs
-include pipes$(DELIM)Make.defs
-include pm$(DELIM)Make.defs
-include power$(DELIM)Make.defs
-include seclink$(DELIM)Make.defs
-include sensors$(DELIM)Make.defs
-include serial$(DELIM)Make.defs
-include silent_reboot$(DELIM)Make.defs
-include spi$(DELIM)Make.defs
-include syslog$(DELIM)Make.defs
-include task_manager$(DELIM)Make.defs
-include usbdev$(DELIM)Make.defs
-include usbhost$(DELIM)Make.defs
-include video$(DELIM)Make.defs
-include wifi_csi$(DELIM)Make.defs
-include wireless$(DELIM)Make.defs
+include analog/Make.defs
+include audio/Make.defs
+include bch/Make.defs
+include crypto/Make.defs
+include i2c/Make.defs
+include i2s/Make.defs
+include input/Make.defs
+include ioexpander/Make.defs
+include lcd/Make.defs
+include loop/Make.defs
+include misc/Make.defs
+include mtd/Make.defs
+include net/Make.defs
+include note/Make.defs
+include pipes/Make.defs
+include power/Make.defs
+include sensors/Make.defs
+include serial/Make.defs
+include spi/Make.defs
+include syslog/Make.defs
+include timers/Make.defs
+include usbdev/Make.defs
+include usbhost/Make.defs
+include video/Make.defs
+include wireless/Make.defs
 
-ifneq ($(CONFIG_NFILE_DESCRIPTORS),0)
-  CSRCS += dev_null.c dev_zero.c
+# TizenRT drivers that NuttX does not have
 
-ifneq ($(CONFIG_DISABLE_MOUNTPOINT),y)
-  CSRCS += loop.c
-ifeq ($(CONFIG_DRVR_WRITEBUFFER),y)
-  CSRCS += rwbuffer.c
-else
-ifeq ($(CONFIG_DRVR_READAHEAD),y)
-  CSRCS += rwbuffer.c
-endif
-endif
-endif
-
-ifeq ($(CONFIG_DEV_URANDOM),y)
-  CSRCS += dev_urandom.c
-endif
-
-ifeq ($(CONFIG_PWM),y)
-  CSRCS += pwm.c
-endif
-
-ifeq ($(CONFIG_WATCHDOG),y)
-  CSRCS += watchdog.c
-endif
-
-ifeq ($(CONFIG_TIMER),y)
-  CSRCS += timer.c
-endif
-
-ifeq ($(CONFIG_RTC),y)
-  CSRCS += rtc.c
-endif
+include bluetooth/Make.defs
+include compression/Make.defs
+include cpuload/Make.defs
+include iotdev/Make.defs
+include lwnl/Make.defs
+include memory/Make.defs
+include mipidsi/Make.defs
+include os_api_test/Make.defs
+include otp/Make.defs
+include pm/Make.defs
+include prodconfig/Make.defs
+include seclink/Make.defs
+include silent_reboot/Make.defs
+include task_manager/Make.defs
+include wifi_csi/Make.defs
 
 ifeq ($(CONFIG_VIRTKEY),y)
   CSRCS += virtkey.c
 endif
+
+ifeq ($(CONFIG_SPECIFIC_DRIVERS),y)
+-include platform/Make.defs
 endif
 
 AOBJS = $(ASRCS:.S=$(OBJEXT))
@@ -178,3 +156,6 @@ distclean: clean
 	$(call DELFILE, .depend)
 
 -include Make.dep
+
+# Context hook used by the TizenRT top-level build.
+context:
