@@ -3,6 +3,14 @@
 # see kconfig-language at https://www.kernel.org/doc/Documentation/kbuild/kconfig-language.txt
 #
 
+menuconfig USBHOST
+        bool "USB Host Driver Support"
+        default n
+        ---help---
+                USB host drivers.  See also include/nuttx/usb/usbhost.h
+
+if USBHOST
+
 config USBHOST_NPREALLOC
 	int "Number of pre-allocated class instances"
 	default 4
@@ -312,3 +320,5 @@ config USBHOST_TRACE_VERBOSE
 endif
 
 source drivers/usbhost/uvc/Kconfig
+
+endif # USBHOST

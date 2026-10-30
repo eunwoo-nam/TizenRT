@@ -1,3 +1,11 @@
+menuconfig USBDEV
+	bool "USB Device Driver Support"
+	default n
+	---help---
+		USB device drivers.  See also include/tinyara/usb/usbdev.h
+
+if USBDEV
+
 
 comment "USB Device Controller Driver Options"
 
@@ -648,3 +656,5 @@ config USBMSC_SCSI_STACKSIZE
 		is not tuned.
 
 endif
+
+endif # USBDEV
