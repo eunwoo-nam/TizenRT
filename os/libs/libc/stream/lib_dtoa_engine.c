@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- * Copyright 2020 Samsung Electronics All Rights Reserved.
+ * Copyright 2026 Samsung Electronics All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,10 +16,10 @@
  *
  ****************************************************************************/
 /****************************************************************************
- * lib/libc/stdio/lib_dtoa_engine.c
+ * libs/libc/stream/lib_dtoa_engine.c
  *
- *   Copyright © 2018, Keith Packard
- *   All rights reserved.
+ * SPDX-License-Identifier: BSD-3-Clause
+ * SPDX-FileCopyrightText: 2018, Keith Packard. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -54,8 +54,9 @@
  * Included Files
  ****************************************************************************/
 
-#include <tinyara/math.h>
-#include <sys/types.h>
+#include <math.h>
+
+#include <sys/param.h>
 
 #include "lib_dtoa_engine.h"
 
@@ -67,6 +68,20 @@
  * by pasting the value of DBL_DIG onto '1e' to
  */
 
+/* Green hills #define DBL_DIG (6) or #define DBL_DIG (15)
+ * we need remove "()" here
+ */
+
+#if DBL_DIG == 6
+#  undef DBL_DIG
+#  define DBL_DIG 6
+#endif
+
+#if DBL_DIG == 15
+#  undef DBL_DIG
+#  define DBL_DIG 15
+#endif
+
 #define PASTE(a)      1e##a
 #define SUBSTITUTE(a) PASTE(a)
 #define MIN_MANT      (SUBSTITUTE(DBL_DIG))
@@ -74,35 +89,32 @@
 #define MIN_MANT_INT  ((uint64_t)MIN_MANT)
 #define MIN_MANT_EXP  DBL_DIG
 
-#define MAX(a, b)     ((a) > (b) ? (a) : (b))
-#define MIN(a, b)     ((a) < (b) ? (a) : (b))
-
 /****************************************************************************
  * Public Functions
  ****************************************************************************/
 
-int __dtoa_engine(double_t x, FAR struct dtoa_s *dtoa, int max_digits, int max_decimals)
+int __dtoa_engine(double x, FAR struct dtoa_s *dtoa, int max_digits,
+                  int max_decimals)
 {
 	int32_t exp = 0;
 	uint8_t flags = 0;
 	int i;
 
-	if (__builtin_signbit(x)) {
+	if (x < 0) {
 		flags |= DTOA_MINUS;
 		x = -x;
 	}
 
 	if (x == 0) {
 		flags |= DTOA_ZERO;
-		for (i = 0; i < max_digits; i++) {
+		for (i = 0; i < max_digits; i++)
 			dtoa->digits[i] = '0';
-		}
 	} else if (isnan(x)) {
 		flags |= DTOA_NAN;
 	} else if (isinf(x)) {
 		flags |= DTOA_INF;
 	} else {
-		double_t y;
+		double y;
 
 		exp = MIN_MANT_EXP;
 
@@ -130,11 +142,12 @@ int __dtoa_engine(double_t x, FAR struct dtoa_s *dtoa, int max_digits, int max_d
 
 		/* If limiting decimals, then limit the max digits to no more than the
 		 * number of digits left of the decimal plus the number of digits right
-		 * of the decimal
+		 * of the decimal. If the integer value is 0, there are only values to
+		 * the right of the decimal point in dtoa->digits.
 		 */
 
 		if (max_decimals != 0) {
-			max_digits = MIN(max_digits, max_decimals + MAX(exp + 1, 1));
+			max_digits = MIN(max_digits, max_decimals + MAX(exp + 1, 0));
 		}
 
 		/* Round nearest by adding 1/2 of the last digit before converting to
@@ -150,7 +163,7 @@ int __dtoa_engine(double_t x, FAR struct dtoa_s *dtoa, int max_digits, int max_d
 
 		/* Now convert mantissa to decimal. */
 
-		uint64_t mant = (uint64_t) x;
+		uint64_t mant = (uint64_t)x;
 		uint64_t decimal = MIN_MANT_INT;
 
 		/* Compute digits */
