@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- * Copyright 2016 Samsung Electronics All Rights Reserved.
+ * Copyright 2026 Samsung Electronics All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,10 +16,11 @@
  *
  ****************************************************************************/
 /****************************************************************************
- * libc/syslog/lib_syslogstream.c
+ * libs/libc/misc/lib_utsname.c
  *
- *   Copyright (C) 2012 Gregory Nutt. All rights reserved.
- *   Author: Gregory Nutt <gnutt@nuttx.org>
+ * SPDX-License-Identifier: BSD-3-Clause
+ * SPDX-FileCopyrightText: 2015 Stavros Polymenis. All rights reserved.
+ * SPDX-FileContributor: Stavros Polymenis <sp@orbitalfox.com>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -56,82 +57,74 @@
 
 #include <tinyara/config.h>
 
+#include <sys/utsname.h>
 #include <stdio.h>
+#include <string.h>
+
+#include <tinyara/version.h>
 #include <unistd.h>
-#include <assert.h>
-#include <errno.h>
-
-#include <tinyara/syslog/syslog.h>
-#include <tinyara/streams.h>
-
-#include "syslog/syslog.h"
-
-#ifdef CONFIG_SYSLOG
 
 /****************************************************************************
- * Pre-processor definition
+ * Private Data
  ****************************************************************************/
 
-/****************************************************************************
- * Private Functions
- ****************************************************************************/
-
-/****************************************************************************
- * Name: syslogstream_putc
- ****************************************************************************/
-
-static void syslogstream_putc(FAR struct lib_outstream_s *this, int ch)
-{
-	int ret;
-
-	/* Try writing until the write was successful or until an irrecoverable
-	 * error occurs.
-	 */
-
-	do {
-		/* Write the character to the supported logging device.  On failure,
-		 * syslog_putc returns EOF with the errno value set;
-		 */
-
-		ret = syslog_putc(ch);
-		if (ret != EOF) {
-			this->nput++;
-			return;
-		}
-
-		/* The special errno value -EINTR means that syslog_putc() was
-		 * awakened by a signal.  This is not a real error and must be
-		 * ignored in this context.
-		 */
-	} while (errno == -EINTR);
-}
+#if defined(__DATE__) && defined(__TIME__) && \
+    !defined(CONFIG_LIBC_UNAME_DISABLE_TIMESTAMP)
+static char g_version[] = CONFIG_VERSION_BUILD " " __DATE__ " " __TIME__;
+#else
+static char g_version[] = CONFIG_VERSION_BUILD;
+#endif
 
 /****************************************************************************
  * Public Functions
  ****************************************************************************/
 
 /****************************************************************************
- * Name: lib_syslogstream
+ * Name: uname
  *
  * Description:
- *   Initializes a stream for use with the configured syslog interface.
+ *   The uname() function will store information identifying the current
+ *   system in the structure pointed to by name.
  *
- * Input parameters:
- *   lowoutstream - User allocated, uninitialized instance of struct
- *                  lib_lowoutstream_s to be initialized.
+ *   The uname() function uses the utsname structure defined in
+ *   <sys/utsname.h>.
+ *
+ *   The uname() function will return a string naming the current system in
+ *   the character array sysname. Similarly, nodename will contain the name
+ *   of this node within an implementation-defined communications network.
+ *   The arrays release and version will further identify the operating
+ *   system. The array machine will contain a name that identifies the
+ *   hardware that the system is running on.
+ *
+ *   The format of each member is implementation-defined.
+ *
+ * Input Parameters:
+ *   name - The user-provided buffer to receive the system information.
  *
  * Returned Value:
- *   None (User allocated instance initialized).
+ *   Upon successful completion, a non-negative value will be returned.
+ *   Otherwise, -1 will be returned and errno set to indicate the error.
  *
  ****************************************************************************/
 
-void lib_syslogstream(FAR struct lib_outstream_s *stream)
+int uname(FAR struct utsname *name)
 {
-	stream->put = syslogstream_putc;
-#ifdef CONFIG_STDIO_LINEBUFFER
-	stream->flush = lib_noflush;
-#endif
-	stream->nput = 0;
-}
+	int ret = 0;
 
-#endif							/* CONFIG_SYSLOG */
+	/* Copy the strings.  Assure that each is NUL terminated. */
+
+	strlcpy(name->sysname, "NuttX", sizeof(name->sysname));
+
+	/* Get the hostname */
+
+	ret = gethostname(name->nodename, HOST_NAME_MAX);
+	name->nodename[HOST_NAME_MAX - 1] = '\0';
+
+	strlcpy(name->release,  CONFIG_VERSION_STRING, sizeof(name->release));
+
+	strlcpy(name->version,  g_version, sizeof(name->version));
+
+	strlcpy(name->machine,  CONFIG_ARCH, sizeof(name->machine));
+
+	return ret;
+}
