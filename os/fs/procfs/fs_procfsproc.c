@@ -102,7 +102,7 @@
  * such as ps.  See PROC_STAT_* in apps/system/utils/utils_proc.h.
  */
 
-#define PROC_STAT_FMT_BASE "%d %d %d %d %d %d %d %d %d %d"
+#define PROC_STAT_FMT_BASE "%d %d %d %" PRIu32 " %d %d %d %d %d %d"
 #ifdef CONFIG_IRQCOUNT
 #define PROC_STAT_FMT_IRQ  " %d"
 #else
@@ -565,7 +565,8 @@ static ssize_t proc_entry_stat(FAR struct proc_file_s *procfile,
 	switch (tcb->task_state) {
 	case TSTATE_WAIT_SIG:
 		linesize = procfs_snprintf(procfile->line, STATUS_LINELEN,
-		                           " %08x %s", tcb->sigwaitmask, name);
+		                           " " SIGSET_FMT " %s",
+		                           SIGSET_ELEM(&tcb->sigwaitmask), name);
 		break;
 
 	default:
