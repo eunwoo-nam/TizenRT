@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- * Copyright 2016 Samsung Electronics All Rights Reserved.
+ * Copyright 2026 Samsung Electronics All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,9 +16,15 @@
  *
  ****************************************************************************/
 /****************************************************************************
+ * include/nuttx/list_type.h
  *
- *   Copyright (C) 2012 Gregory Nutt. All rights reserved.
- *   Author: Gregory Nutt <gnutt@nuttx.org>
+ * SPDX-License-Identifier: BSD-2-Clause
+ * SPDX-FileCopyrightText: 2008 Travis Geiselbrecht. All rights reserved.
+ * SPDX-FileContributor: Travis Geiselbrecht <geist@foobox.com>
+ *
+ * Extracted from logic originally written by Travis Geiselbrecht and
+ * released under a public domain license.  Re-released here under the 3-
+ * clause BSD license by Pinecone, Inc.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -49,32 +55,36 @@
  *
  ****************************************************************************/
 
-#ifndef __INCLUDE_STDARG_H
-#define __INCLUDE_STDARG_H
+#ifndef __INCLUDE_NUTTX_LIST_TYPE_H
+#define __INCLUDE_NUTTX_LIST_TYPE_H
 
 /****************************************************************************
  * Included Files
  ****************************************************************************/
 
-#include <tinyara/config.h>
+#include <tinyara/compiler.h>
 
-/* If CONFIG_ARCH_STDARG_H is defined, then the top-level Makefile will copy
- * this header file to include/stdarg.h where it will become the system
- * stdarg.h header file.  In this case, the architecture specific code must
- * provide an arch/<architecture>/include/math.h file which will be included
- * below:
- */
+/****************************************************************************
+ * Public Type Definitions
+ ****************************************************************************/
 
-#ifdef CONFIG_ARCH_STDARG_H
-#include <arch/stdarg.h>
+#undef EXTERN
+#if defined(__cplusplus)
+#define EXTERN extern "C"
+extern "C"
+{
+#else
+#define EXTERN extern
 #endif
 
-/****************************************************************************
- * Type Definitions
- ****************************************************************************/
+struct list_node {
+	FAR struct list_node *next;
+	FAR struct list_node *prev;
+};
 
-/****************************************************************************
- * Public Function Prototypes
- ****************************************************************************/
+#undef EXTERN
+#if defined(__cplusplus)
+}
+#endif
 
-#endif							/* __INCLUDE_STDARG_H */
+#endif /* __INCLUDE_NUTTX_LIST_TYPE_H */
