@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- * Copyright 2020 Samsung Electronics All Rights Reserved.
+ * Copyright 2026 Samsung Electronics All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,10 +16,10 @@
  *
  ****************************************************************************/
 /****************************************************************************
- * lib/libc/stdio/lib_ultoa_invert.h
+ * libs/libc/stream/lib_ultoa_invert.h
  *
- *   Copyright (c) 2005, Dmitry Xmelkov
- *   All rights reserved.
+ * SPDX-License-Identifier: BSD-3-Clause
+ * SPDX-FileCopyrightText: 2005, Dmitry Xmelkov. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -50,14 +50,13 @@
  *
  ****************************************************************************/
 
-#ifndef __LIBS_LIBC_STDIO_LIB_ULTOA_INVERT_H
-#define __LIBS_LIBC_STDIO_LIB_ULTOA_INVERT_H
+#ifndef __LIBS_LIBC_STREAM_LIB_ULTOA_INVERT_H
+#define __LIBS_LIBC_STREAM_LIB_ULTOA_INVERT_H
 
 /****************************************************************************
  * Included Files
  ****************************************************************************/
 
-#include <tinyara/config.h>
 #include <tinyara/compiler.h>
 
 /****************************************************************************
@@ -69,13 +68,13 @@
  */
 
 #ifndef CONFIG_HAVE_LONG_LONG
-#undef CONFIG_LIBC_LONG_LONG
+#  undef CONFIG_LIBC_LONG_LONG
 #endif
 
 /* Next flags are to use with `base'. Unused fields are reserved. */
 
-#define XTOA_PREFIX  0x0100		/* Put prefix for octal or hex */
-#define XTOA_UPPER   0x0200		/* Use upper case letters */
+#define XTOA_PREFIX  0x0100    /* Put prefix for octal or hex */
+#define XTOA_UPPER   0x0200    /* Use upper case letters */
 
 /****************************************************************************
  * Public Function Prototypes
@@ -89,4 +88,4 @@ FAR char *__ultoa_invert(unsigned long long val, FAR char *str, int base);
 FAR char *__ultoa_invert(unsigned long val, FAR char *str, int base);
 #endif
 
-#endif							/* __LIBS_LIBC_STDIO_LIB_ULTOA_INVERT_H */
+#endif /* __LIBS_LIBC_STREAM_LIB_ULTOA_INVERT_H */

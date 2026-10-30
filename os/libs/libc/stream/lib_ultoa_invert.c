@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- * Copyright 2020 Samsung Electronics All Rights Reserved.
+ * Copyright 2026 Samsung Electronics All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,10 +16,10 @@
  *
  ****************************************************************************/
 /****************************************************************************
- * lib/libc/stdio/lib_ultoa_invert.c
+ * libs/libc/stream/lib_ultoa_invert.c
  *
- *   Copyright © 2017, Keith Packard
- *   All rights reserved.
+ * SPDX-License-Identifier: BSD-3-Clause
+ * SPDX-FileCopyrightText: 2017, Keith Packard. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -72,20 +72,20 @@ FAR char *__ultoa_invert(unsigned long val, FAR char *str, int base)
 		upper = 1;
 		base &= ~XTOA_UPPER;
 	}
+
 	do {
 		int v;
 
-		v = val % base;
+		v   = val % base;
 		val = val / base;
 
 		if (v <= 9) {
 			v += '0';
 		} else {
-			if (upper) {
+			if (upper)
 				v += 'A' - 10;
-			} else {
+			else
 				v += 'a' - 10;
-			}
 		}
 
 		*str++ = v;
