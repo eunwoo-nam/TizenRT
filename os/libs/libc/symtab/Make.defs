@@ -50,16 +50,15 @@
 #
 ############################################################################
 
-ifeq ($(CONFIG_LIBC_SYMTAB),y)
+CSRCS += symtab_findbyname.c symtab_findbyvalue.c symtab_sortbyname.c
 
-# Symbol table source files
+# Symbolic information support
 
-CSRCS += symtab_findbyname.c symtab_findbyvalue.c
-CSRCS += symtab_findorderedbyname.c symtab_sortbyname.c
+ifeq ($(CONFIG_ALLSYMS),y)
+CSRCS += symtab_allsyms.c
+endif
 
 # Add the symtab directory to the build
 
 DEPPATH += --dep-path symtab
 VPATH += :symtab
-
-endif

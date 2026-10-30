@@ -135,7 +135,7 @@ BUILD_DIR = ../build
 OUTPUT_DIR = $(BUILD_DIR)/output
 LIBRARIES_DIR = $(OUTPUT_DIR)/libraries
 OUTBIN_DIR = $(OUTPUT_DIR)/bin
-LIB_DIR = ../lib
+LIB_DIR = libs
 
 # Add-on directories.  These may or may not be in place in the
 # TinyAra source tree (they must be specifically installed)
