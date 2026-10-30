@@ -53,21 +53,13 @@
 ifeq ($(CONFIG_FS_PROCFS),y)
 # Files required for procfs file system support
 
-ASRCS +=
-CSRCS += fs_procfs.c fs_procfsutil.c fs_procfsproc.c fs_procfsuptime.c
-CSRCS += fs_procfsversion.c fs_procfsereport.c
-ifeq ($(CONFIG_LOG_DUMP),y)
-CSRCS += fs_procfslogsave.c
-endif
-ifeq ($(CONFIG_SCHED_CPULOAD),y)
-CSRCS += fs_procfscpuload.c
-endif
-ifeq ($(CONFIG_CM),y)
-CSRCS += fs_procfscm.c
-endif
+CSRCS += fs_procfs.c fs_procfscpuinfo.c fs_procfscpuload.c
+CSRCS += fs_procfscritmon.c fs_procfsfdt.c fs_procfsiobinfo.c
+CSRCS += fs_procfsmeminfo.c fs_procfsproc.c fs_procfstcbinfo.c
+CSRCS += fs_procfsuptime.c fs_procfsutil.c fs_procfsversion.c
 
-ifeq ($(CONFIG_ARCH_BOARD_SIDK_S5JT200),y)
-CFLAGS+=-I$(TOPDIR)/../apps/include/netutils/wifi
+ifeq ($(CONFIG_FS_PROCFS_INCLUDE_PRESSURE),y)
+CSRCS += fs_procfspressure.c
 endif
 
 # Include procfs build support
