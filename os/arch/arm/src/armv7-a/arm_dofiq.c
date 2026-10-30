@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- * Copyright 2023 Samsung Electronics All Rights Reserved.
+ * Copyright 2026 Samsung Electronics All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,9 @@
  *
  ****************************************************************************/
 /****************************************************************************
- * arch/arm/src/armv7-a/arm_cpuindex.c
+ * arch/arm/src/armv7-a/arm_dofiq.c
+ *
+ * SPDX-License-Identifier: Apache-2.0
  *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -42,47 +44,39 @@
 #include <tinyara/config.h>
 
 #include <stdint.h>
+#include <assert.h>
 
+#include <tinyara/irq.h>
 #include <tinyara/arch.h>
+#include <tinyara/board.h>
+#include <arch/board/board.h>
 
-#include "cp15.h"
-#include "sctlr.h"
-
-#ifdef CONFIG_SMP
+#include "gic.h"
 
 /****************************************************************************
  * Public Functions
  ****************************************************************************/
 
 /****************************************************************************
- * Name: up_cpu_index
+ * Name: arm_dofiq
  *
  * Description:
- *   Return an index in the range of 0 through (CONFIG_SMP_NCPUS-1) that
- *   corresponds to the currently executing CPU.
- *
- *   If TLS is enabled, then the RTOS can get this information from the TLS
- *   info structure.  Otherwise, the MCU-specific logic must provide some
- *   mechanism to provide the CPU index.
- *
- * Input Parameters:
- *   None
- *
- * Returned Value:
- *   An integer index in the range of 0 through (CONFIG_SMP_NCPUS-1) that
- *   corresponds to the currently executing CPU.
+ *   Receives the decoded GIC interrupt information and dispatches control
+ *   to the attached fiq handler. It is not allowed to call OS functions
+ *   within a FIQ handler.
  *
  ****************************************************************************/
 
-int up_cpu_index(void)
+uint32_t *arm_dofiq(int fiq, uint32_t *regs)
 {
-	/* Read the Multiprocessor Affinity Register (MPIDR) */
+	board_autoled_on(LED_INIRQ);
 
-	uint32_t mpidr = cp15_rdmpidr();
+#ifdef CONFIG_SUPPRESS_INTERRUPTS
+	PANIC();
+#else
+	irq_dispatch(fiq, regs);
+#endif
 
-	/* And return the CPU ID field */
-
-	return (mpidr & MPIDR_CPUID_MASK) >> MPIDR_CPUID_SHIFT;
+	board_autoled_off(LED_INIRQ);
+	return regs;
 }
-
-#endif							/* CONFIG_SMP */
