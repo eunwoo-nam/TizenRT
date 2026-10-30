@@ -53,40 +53,56 @@
 -include $(TOPDIR)/Make.defs
 
 ASRCS =
-AOBJS = $(ASRCS:.S=$(OBJEXT))
-
-CSRCS = fs_initialize.c
-
 DEPPATH = --dep-path .
 VPATH = .
+
+CSRCS = fs_initialize.c fs_heap.c
+
+ifneq ($(CONFIG_FS_HEAPBUF_SECTION),"")
+  CFLAGS += ${DEFINE_PREFIX}FS_HEAPBUF_SECTION=CONFIG_FS_HEAPBUF_SECTION
+endif
 
 include inode/Make.defs
 include vfs/Make.defs
 include driver/Make.defs
-include dirent/Make.defs
 include aio/Make.defs
-
+include mmap/Make.defs
 
 # OS resources
 
 include semaphore/Make.defs
 include mqueue/Make.defs
+include shm/Make.defs
+include event/Make.defs
 
 # Additional files required is mount-able file systems are supported
 
-ifneq ($(CONFIG_NFILE_DESCRIPTORS),0)
 ifneq ($(CONFIG_DISABLE_MOUNTPOINT),y)
 
 include mount/Make.defs
-include smartfs/Make.defs
-include procfs/Make.defs
-include tmpfs/Make.defs
+include partition/Make.defs
+include fat/Make.defs
 include romfs/Make.defs
+include cromfs/Make.defs
+include tmpfs/Make.defs
+include nxffs/Make.defs
+include smartfs/Make.defs
+include binfs/Make.defs
+include procfs/Make.defs
+include spiffs/Make.defs
+include unionfs/Make.defs
+include userfs/Make.defs
+include hostfs/Make.defs
 include littlefs/Make.defs
-
+include zipfs/Make.defs
+include mnemofs/Make.defs
+include v9fs/Make.defs
 endif
-endif
 
+CFLAGS += ${INCDIR_PREFIX}$(TOPDIR)$(DELIM)fs
+CFLAGS += ${INCDIR_PREFIX}$(TOPDIR)$(DELIM)kernel
+
+AOBJS = $(ASRCS:.S=$(OBJEXT))
 COBJS = $(CSRCS:.c=$(OBJEXT))
 
 SRCS = $(ASRCS) $(CSRCS)
@@ -122,3 +138,5 @@ distclean: clean
 	$(call DELFILE, .depend)
 
 -include Make.dep
+
+context:
