@@ -218,8 +218,19 @@ make like dbuild.sh; `-j` runs the post-build before the link) builds
 tinyara.axf and km0_km4_ap_image_all.bin.  Not run on hardware.  The
 defconfig is made from `$S/rtl/seed.config` (`$S/rtl/mkseed.sh`) with
 `$S/rtl/olddef.sh` (olddefconfig in docker) and copied from os/.config.
-Remaining work: see the rtl8730e section of
-docs/NuttX-12.13.0-Migration.md.
+Details, reviews and remaining work:
+docs/NuttX-12.13.0-Migration-rtl8730e.md.
+
+Rule (user, from the SMP work on): a fix needed only because of the old
+TizenRT code (its Cortex-A32 changes in the old armv7-a files,
+TizenRT-only APIs/options such as `up_cpu_pause_all()`, `CPU_HOTPLUG`,
+`kregionx`) is always its own commit, and its analysis goes into the
+"TizenRT-only differences" section of that document.
+
+Found in the review: the NuttX `mpcore.h` gives Cortex-A32 the GIC CPU
+interface offset 0x0100 (old TizenRT: 0x2000 like Cortex-A7), so the
+pushed port uses 0xA0100100 instead of 0xA0102000 (TD-1, fix in
+amebasmart `chip.h`).
 
 ## Environment (recreate after a new session)
 

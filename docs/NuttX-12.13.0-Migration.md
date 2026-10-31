@@ -214,27 +214,12 @@ the third-party licensed files and the files without a license are in
 
 `rtl8730e/tash` (branch `DEV-12.13.0-LABEL-RTL8730E`) is the first real
 board on the NuttX 12.13.0 code.  The scope is the one of the QEMU
-ports: boot, TASH and the `ostest` command, single core.  The chip and
-the board follow the NuttX armv7-a code; no file taken from NuttX was
-changed for it.
-
-| Area | Change |
-|---|---|
-| `os/arch/arm/src/amebasmart` | `Make.defs` includes `armv7-a/Make.defs` like the NuttX qemu chip; `arm_boot()`, `up_irqinitialize()` (GICv2 of NuttX), `up_timer_initialize()` (the generic virtual timer of the chip, PPI 27, with `nxsched_process_timer()`), `arm_serialinit()`, `up_putc()`; `up_allocate_heap()` returns the PSRAM between the image and the IDLE stack; the memory map provides `NUTTX_TEXT_*`, `NUTTX_RAM_*` and `IDLE_STACK_BASE` for `arm_head.S` (IDLE stack and page table at the end of the PSRAM); Kconfig selects `ARCH_ARMV7A` and `UARTn_SERIALDRIVER` |
-| `os/board/rtl8730e` | `board_late_initialize()`; Wi-Fi, lwip, inic, kv, vfs2.0, FTL, BLE glue and the KM4 log task only with their options; the Realtek OS wrapper uses `kthread_create()`, `nxsched_get_tcb()`, `nxsched_set_param()`; the Realtek headers define the `u8`/`u16`/`u32` and `__kernel_size_t` types that the NuttX `sys/types.h` does not have and avoid the `<tinyara/list.h>` macro names and `atomic_t` |
-| `build/configs/rtl8730e` | `-mcpu=cortex-a32` in `Make.defs` (the NuttX armv7-a `Toolchain.defs` has no Cortex-A32); `rlx8730e_img2.ld` keeps the NuttX `arm_head.o` in the PSRAM `.code` section (it runs before `arm_boot()` maps the flash) and defines `_stext`/`_etext`; `tash/defconfig` (OS options of qemu-armv7a/tash, chip and board options of flat_apps: PSRAM, UART4 console, TrustZone) |
-
-Not in `rtl8730e/tash` and still to port: SMP (`amebasmart_smp.c`,
-`amebasmart_cpuboot.c`), PM, network, Wi-Fi, BLE, SE, flash
-partitions, MTD/FTL, SmartFS, the other peripherals, the KM4 log task
-(it uses the BLE OS layer) and the KM4 IPC log print (Wi-Fi inic API).
-The TizenRT GIC additions that the NuttX sync removed
-(`up_irq_is_pending()`, `up_set_pending_irq()`,
-`up_clear_pending_irq()`, `arm_gic_freq_switch()`,
-`arm_gic_freq_restore()`) are still called by Realtek code that this
-configuration does not link (`osdep_service_misc.c`,
-`ameba_rom_patch.c`).  The other rtl8730e configurations and
-`rlx8730e_img2_ddr.ld` are not updated.
+ports: boot, TASH and the `ostest` command, single core, build and
+post-build only.  The chip and the board follow the NuttX armv7-a code;
+no file taken from NuttX was changed for it.  The port, its reviews
+(atomics, system tick, Cortex-A32), the differences that come from the
+old TizenRT code and the SMP plan are in
+[NuttX-12.13.0-Migration-rtl8730e.md](NuttX-12.13.0-Migration-rtl8730e.md).
 
 ## Known gaps
 
