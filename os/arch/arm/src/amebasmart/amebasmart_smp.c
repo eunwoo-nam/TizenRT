@@ -174,6 +174,12 @@ int vPortSecondaryBoot(int cpu)
 	return OK;
 }
 
+/* CPU hot-plug of the old TizenRT (CONFIG_CPU_HOTPLUG, selected with SMP and
+ * PM).  NuttX 12.13.0 has no such option and no up_cpu_up/down/die(); keep
+ * the code for the PM port.
+ */
+
+#ifdef CONFIG_CPU_HOTPLUG
 /****************************************************************************
  * Name: cpu_core_powerdown
  *
@@ -353,3 +359,4 @@ int up_cpu_up(int cpu)
 	smpllvdbg("Secondary core booted successfully\n");
 	return OK;
 }
+#endif /* CONFIG_CPU_HOTPLUG */
