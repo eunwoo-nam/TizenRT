@@ -199,6 +199,28 @@ None planned.  Possible follow-ups (ask the user first): port another
 board, protected build, compat headers or include fixes for the moved
 NuttX headers, a `board_power_off()` for mps2-an521.
 
+## rtl8730e (branch DEV-12.13.0-LABEL-RTL8730E, from DEV-12.13.0-LABEL)
+
+User decisions: scope as the QEMU armv7-a port (boot, TASH, ostest
+command), one new config `rtl8730e/tash` (flat_apps unchanged), single
+core, only the UART4 console and TrustZone of the board features;
+SmartFS, CONFIG_PM, network/Wi-Fi/BLE/SE, flash partitions, TizenRT
+kernel extras and the socket/VFS glue excluded; the KM4 log path is
+excluded; the chip keeps its generic virtual timer (not the NuttX
+arm_timer.c); verification = build + Realtek post-build images.
+Rule: never change a file taken from NuttX 12.13.0 / nuttx-apps (ask
+the user first); rtl8730e adapts to the NuttX HAL.
+
+State: amebasmart chip, rtl8730e board/SDK, build/configs/rtl8730e
+(Make.defs, rlx8730e_img2.ld) and rtl8730e/tash/defconfig committed
+([MODI_TR]); `configure.sh rtl8730e/tash && make` (sequential top-level
+make like dbuild.sh; `-j` runs the post-build before the link) builds
+tinyara.axf and km0_km4_ap_image_all.bin.  Not run on hardware.  The
+defconfig is made from `$S/rtl/seed.config` (`$S/rtl/mkseed.sh`) with
+`$S/rtl/olddef.sh` (olddefconfig in docker) and copied from os/.config.
+Remaining work: see the rtl8730e section of
+docs/NuttX-12.13.0-Migration.md.
+
 ## Environment (recreate after a new session)
 
 ```bash
