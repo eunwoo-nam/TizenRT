@@ -136,8 +136,8 @@ SECTIONS
 		_stext_flash = ABSOLUTE(.);
 		_stext = ABSOLUTE(.);
 
-		EXCLUDE_FILE (*arm_head.o) *(.text)		/* .text sections (code) */
-		EXCLUDE_FILE (*arm_head.o *arm_mmu.o *arm_cpupause.o *arm_testset.o *spinlock.o)*(.text*)      /* .text* sections (code) */
+		EXCLUDE_FILE (*arm_head.o *arm_cpuhead.o) *(.text)		/* .text sections (code) */
+		EXCLUDE_FILE (*arm_head.o *arm_cpuhead.o *arm_mmu.o *arm_cpupause.o *arm_testset.o *spinlock.o)*(.text*)      /* .text* sections (code) */
 		*(.rodata)      /* .rodata sections (constants, strings, etc.) */
 		*(.rodata*)     /* .rodata* sections (constants, strings, etc.) */
 		*(.glue_7)      /* glue arm to thumb code */
@@ -182,6 +182,10 @@ SECTIONS
 		 * MMU code run before arm_boot() maps the flash.
 		 */
 		*arm_head.o (.text*)
+		/* CPU1 enters the NuttX __cpu1_start (arm_cpuhead.S) with the MMU
+		 * off (PSCI CPU_ON from up_cpu_start()).
+		 */
+		*arm_cpuhead.o (.text*)
 		/* Place arm_mmu.c in PSRAM to reduce delay in boot sequence */
 		*arm_mmu.o (.text*)
 		*arm_cpupause.o (.text*)
