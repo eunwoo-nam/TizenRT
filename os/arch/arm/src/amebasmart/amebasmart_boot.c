@@ -38,7 +38,7 @@
 #include "arm.h"
 #include "mmu.h"
 #include "scu.h"
-#include "up_internal.h"
+#include "arm_internal.h"
 #include "amebasmart_config.h"
 #include "amebasmart_memorymap.h"
 
@@ -57,6 +57,10 @@
 
 extern uint8_t _vector_start[]; /* Beginning of vector block */
 extern uint8_t _vector_end[];   /* End+1 of vector block */
+
+/* Realtek SoC start-up (fwlib/ap_core/ameba_app_start.c) */
+
+extern void app_start(void);
 
 /****************************************************************************
  * Private Functions
