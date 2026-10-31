@@ -94,7 +94,7 @@ CHIP_ASRCS += a32_pm.S
 endif
 
 ifeq ($(CONFIG_SMP),y)
-CHIP_CSRCS += amebasmart_cpuboot.c
+CHIP_CSRCS += amebasmart_cpuboot.c amebasmart_enablesmp.c
 ifeq ($(CONFIG_AMEBASMART_TRUSTZONE),y)
 CHIP_CSRCS += amebasmart_smp.c
 endif

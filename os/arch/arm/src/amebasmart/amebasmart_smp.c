@@ -115,8 +115,11 @@ int cpu_core_poweron(int cpu)
 	rtk_core1_power_on();
 	DelayUs(50);
 
-	/* renable scu and invalidate tags on all processors */
-	arm_enable_smp(0);
+	/* The Cortex-A32 has no SCU to re-enable.  The old arm_enable_smp(0)
+	 * call here only invalidated the L1 data cache of the running CPU0,
+	 * which can drop dirty lines; CPU0 takes part in the coherency since
+	 * amebasmart_enable_smp(0) at boot.
+	 */
 
 	return OK;
 }

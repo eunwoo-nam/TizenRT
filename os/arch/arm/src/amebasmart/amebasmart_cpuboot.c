@@ -35,6 +35,7 @@
 #include "smp.h"
 #include "scu.h"
 #include "gic.h"
+#include "amebasmart_enablesmp.h"
 #include "mmu.h"
 #include "barriers.h"
 
@@ -89,9 +90,9 @@ extern uint8_t _vector_start[]; /* Beginning of vector block */
 
 void arm_cpu_boot(int cpu)
 {
-  /* Enable SMP cache coherency for the CPU */
+  /* Enable SMP cache coherency for the CPU (no SCU on the Cortex-A32) */
 
-  arm_enable_smp(cpu);
+  amebasmart_enable_smp(cpu);
 
   /* Initialize the FPU */
 
