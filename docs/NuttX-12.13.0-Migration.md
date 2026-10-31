@@ -11,12 +11,16 @@ The result is verified on two QEMU boards, FLAT build only:
 
 | Board | CPU | Configs | Result on QEMU 8.2 |
 |---|---|---|---|
-| [qemu-armv7a](../build/configs/qemu-armv7a/README.md) | Cortex-A7, `virt`, GICv2, PL011 | `ostest`, `tash` | 33 test groups pass, `ostest_main: Exiting with status 0` |
+| [qemu-armv7a](../build/configs/qemu-armv7a/README.md) | 2 × Cortex-A7 (SMP), `virt`, GICv2, PL011 | `ostest`, `tash` | ostest passes with the SMP `smp_call` test, `ostest_main: Exiting with status 0`; TASH `smp` passes |
 | [mps2-an521](../build/configs/mps2-an521/README.md) | Cortex-M33, MPS2 AN521, CMSDK UART | `ostest`, `tash` | 31 test groups pass, `ostest_main: Exiting with status 0` |
 
-The Realtek rtl8730e (AmebaSmart, Cortex-A32) builds with the `tash`
-configuration, including the Realtek flash images; it was not run on
-hardware (see [rtl8730e](#rtl8730e)).
+Both qemu-armv7a configurations use SMP with 2 CPUs (`CONFIG_SMP=y`,
+`CONFIG_SMP_NCPUS=2`, `CONFIG_NCPUS=2`, as `rtl8730e/loadable_ext_*`);
+before the SMP change they passed with 33 test groups on one CPU.
+
+The Realtek rtl8730e (AmebaSmart, 2 × Cortex-A32, SMP) builds with the
+`tash` configuration, including the Realtek flash images; it was not
+run on hardware (see [rtl8730e](#rtl8730e)).
 
 ## Layout
 
@@ -214,11 +218,11 @@ the third-party licensed files and the files without a license are in
 
 `rtl8730e/tash` (branch `DEV-12.13.0-LABEL-RTL8730E`) is the first real
 board on the NuttX 12.13.0 code.  The scope is the one of the QEMU
-ports: boot, TASH and the `ostest` command, single core, build and
-post-build only.  The chip and the board follow the NuttX armv7-a code;
-no file taken from NuttX was changed for it.  The port, its reviews
-(atomics, system tick, Cortex-A32), the differences that come from the
-old TizenRT code and the SMP plan are in
+ports: boot, TASH, the `ostest` and `smp` commands, SMP with 2 CPUs,
+build and post-build only.  The chip and the board follow the NuttX
+armv7-a code; no file taken from NuttX was changed for it.  The port,
+its reviews (atomics, system tick, Cortex-A32), the differences that
+come from the old TizenRT code and the SMP work are in
 [NuttX-12.13.0-Migration-rtl8730e.md](NuttX-12.13.0-Migration-rtl8730e.md).
 
 ## Known gaps

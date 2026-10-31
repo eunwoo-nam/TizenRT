@@ -9,9 +9,10 @@ is described in [NuttX-12.13.0-Migration.md](NuttX-12.13.0-Migration.md).
 - Branch: `DEV-12.13.0-LABEL-RTL8730E` (from `DEV-12.13.0-LABEL`).
 - Configuration: `rtl8730e/tash`.  The other rtl8730e configurations
   (`flat_apps`, `loadable_*`, `flat_dev_*`) are not updated.
-- Scope (the one of the QEMU ports): boot, TASH and the `ostest`
-  command.  Single core, UART4 console, TrustZone.
-- Not in the scope: SMP (planned next, see [SMP](#smp)), `CONFIG_PM`,
+- Scope (the one of the QEMU ports): boot, TASH, the `ostest` and `smp`
+  commands.  SMP with 2 CPUs (see [SMP](#smp)), UART4 console,
+  TrustZone.
+- Not in the scope: `CONFIG_PM`, CPU hot-plug,
   network, Wi-Fi, BLE, SE, flash partitions, MTD/FTL, SmartFS, the
   other peripherals, the TizenRT kernel extras (binary manager, log
   dump, heapinfo, memory leak checker), the socket/VFS glue and the KM4
@@ -56,6 +57,17 @@ Files that may be changed: `os/arch/arm/src/amebasmart/**`,
 | `0c893140` | `[MODI_TR]` | `-mcpu=cortex-a32`; NuttX start-up code in PSRAM (linker script) |
 | `cb50553c` | `[MODI_TR]` | `rtl8730e/tash` configuration |
 | `324a81cd`, `14e73d5d` | `[DOC]` | migration document, HANDOFF |
+| `a979455a` | `[DOC]` | this document |
+| `3d7d56e5` | `[MODI_TR]` | GIC-400 CPU interface offset of the Cortex-A32 ([TD-1](#td-1-gic-cpu-interface-offset)) |
+| `4a4e2975` | `[MODI_TR]` | `amebasmart_enable_smp()` without the SCU ([TD-2](#td-2-scu-writes-in-arm_enable_smp)) |
+| `bfa56f7f` | `[MODI_TR]` | TizenRT CPU hot-plug only with `CONFIG_CPU_HOTPLUG` ([TD-3](#td-3-cpu-hot-plug)) |
+| `0fcdeefb` | `[MODI_TR]` | qemu-armv7a `ostest` and `tash` with SMP (2 CPUs) |
+| `8b5ecaf2` | `[MODI_TR]` | `apps/examples/smp`: NuttX `CPU_SET`, `set_affinity()` only with `CONFIG_AMP` ([TD-9](#td-9-cpu_set-and-config_amp-in-the-smp-example)) |
+| `bc521285` | `[MODI_TR]` | Realtek SMCCC call in the ARM state ([TD-10](#td-10-assembler-state-of-the-realtek-smccc-call)) |
+| `190580b6` | `[MODI_TR]` | NuttX 12.13.0 headers in the SMP files ([TD-8](#td-8-old-armv7-a-headers-in-the-smp-files)) |
+| `288e887d` | `[MODI_TR]` | `up_get_intstackbase()` ([TD-11](#td-11-interrupt-stack-interface)) |
+| `feaa878f` | `[MODI_TR]` | CPU1 start with the NuttX 12.13.0 SMP code ([TD-12](#td-12-cpu1-start)) |
+| `0b068d7b` | `[MODI_TR]` | `rtl8730e/tash` with SMP (2 CPUs); `arm_cpuhead.o` in PSRAM |
 
 ## Build
 
@@ -76,7 +88,11 @@ the chip and board options of `rtl8730e/flat_apps`, then run through
 `olddefconfig`.  Main values: `CONFIG_RAM_START=0x60100000`,
 `CONFIG_RAM_SIZE=7340032` (PSRAM), `CONFIG_UART4_SERIAL_CONSOLE=y`,
 `CONFIG_AMEBASMART_TRUSTZONE=y`, `CONFIG_ARCH_IRQPRIO=y`,
-`CONFIG_ARCH_INTERRUPTSTACK=2048`, `CONFIG_USEC_PER_TICK=1000`, no SMP.
+`CONFIG_ARCH_INTERRUPTSTACK=2048`, `CONFIG_USEC_PER_TICK=1000`,
+`CONFIG_SMP=y`, `CONFIG_SMP_NCPUS=2`, `CONFIG_NCPUS=2`,
+`CONFIG_TESTING_SMP=y`.  When an option is changed, only the lines that
+`olddefconfig` changes for it are applied (the generated file also
+differs in options that have nothing to do with the change).
 
 ## NuttX HAL hooks
 
@@ -89,6 +105,9 @@ the chip and board options of `rtl8730e/flat_apps`, then run through
 | `up_allocate_heap()` (weak in NuttX) | `amebasmart_allocateheap.c`: the PSRAM from `_psram_heap_start` (end of the image) to the IDLE stack |
 | `board_late_initialize()` | `rtl8730e_boot.c` (was the TizenRT `board_initialize()`); needs `CONFIG_BOARD_LATE_INITIALIZE` |
 | `board_app_initialize(uintptr_t)` | `rtl8730e_boot.c`, returns `OK` |
+| `up_cpu_start(cpu)` (`nx_smp_start()`, SMP) | `amebasmart_cpuboot.c`: `cpu_core_poweron()` and the Realtek PSCI `CPU_ON` at `__cpu1_start` (`amebasmart_smp.c`); overrides the weak SGI version of `armv7-a/arm_cpustart.c` |
+| `arm_cpu_boot(cpu)` (`armv7-a/arm_cpuhead.S`, SMP) | `amebasmart_cpuboot.c`: `amebasmart_enable_smp()`, FPU, `up_irqinitialize()` (GIC CPU interface only, VBAR, interrupts on), `nx_idle_trampoline()` |
+| `up_get_intstackbase(cpu)` (SMP) | `amebasmart_irq.c` |
 
 Kconfig (`amebasmart/Kconfig`): `ARCH_CHIP_RTL8730E` selects
 `ARCH_ARMV7A` (the TizenRT `ARCH_CORTEXA32` entry in the taken
@@ -110,6 +129,9 @@ needs: `NUTTX_TEXT_*` and `NUTTX_RAM_*` (renamed from `TIZENRT_*`),
 | `__start` (`arm_head.S`) | 0x60100060 (PSRAM) |
 | page table | 0x607fc000 (end of the PSRAM) |
 | IDLE stack (`g_idle_topstack`) | below the page table, top 0x607fc000 |
+| `__cpu1_start` (`arm_cpuhead.S`) | 0x60100300 (PSRAM) |
+| `__arm_smccc_smc` (`.vectors`) | 0x60100040 (PSRAM) |
+| CPU1 IDLE stack (`g_cpu1_idlestack`, `.noinit`) | 0x60108900 (PSRAM) |
 | heap | `_psram_heap_start` .. IDLE stack |
 | text | XIP flash, except the code below |
 
@@ -117,7 +139,8 @@ needs: `NUTTX_TEXT_*` and `NUTTX_RAM_*` (renamed from `TIZENRT_*`),
 `arm_boot()`.  `build/configs/rtl8730e/scripts/rlx8730e_img2.ld`
 therefore keeps `*arm_head.o (.text*)` and `*arm_mmu.o (.text*)` in the
 PSRAM `.code` section (`EXCLUDE_FILE` on the flash text) and defines
-`_stext`/`_etext`.  NuttX puts `__start` in `.text` (the old TizenRT
+`_stext`/`_etext`.  CPU1 enters `__cpu1_start` with the MMU off (PSCI
+`CPU_ON`), so `*arm_cpuhead.o (.text*)` is kept there too.  NuttX puts `__start` in `.text` (the old TizenRT
 used `.start`).
 
 ## Realtek SDK adaptations
@@ -137,7 +160,9 @@ used `.start`).
 
 ### Atomics, spinlocks and barriers
 
-Result: correct for the single-core `rtl8730e/tash`; nothing to change.
+Result: correct for `rtl8730e/tash`; nothing to change.  The review was
+made for the single-core build; the SMP notes are at the end of the
+list.
 
 - NuttX atomics (`<tinyara/atomic.h>`): `CONFIG_LIBC_ARCH_ATOMIC` is not
   set, so the gcc `<stdatomic.h>` is used, as on qemu-armv7a.  With
@@ -167,6 +192,12 @@ Result: correct for the single-core `rtl8730e/tash`; nothing to change.
   macros, this depends on the include order; check it again when Wi-Fi
   or SMP add files.
 - Barriers: the Realtek `ARM_DSB`/`ARM_ISB` became `UP_DSB`/`UP_ISB`.
+- With SMP: `CONFIG_SPINLOCK=y` (selected by SMP) uses the same
+  `up_testset()`; the LOGUART spinlock of `amebasmart_serial.c` is
+  built.  `arm_head.S`/`arm_cpuhead.S` leave the D-cache off with
+  `CONFIG_SMP`; `amebasmart_enable_smp()` turns on ACTLR.SMP and the
+  caches on each CPU ([TD-2](#td-2-scu-writes-in-arm_enable_smp)), so
+  the exclusives run on cacheable, coherent memory as before.
 
 ### System tick
 
@@ -213,8 +244,8 @@ had these Cortex-A32 changes:
 
 | Old TizenRT | NuttX 12.13.0 | Effect on rtl8730e |
 |---|---|---|
-| `mpcore.h`: `MPCORE_ICC_OFFSET` 0x2000 for `CORTEXA7 \|\| CORTEXA32` | 0x2000 only for `CORTEXA7`, else 0x0100 | **Bug in the single-core port**: the GIC CPU interface is taken at 0xA0100100 instead of 0xA0102000, so interrupts do not work on hardware.  Not seen by the build.  See [TD-1](#td-1-gic-cpu-interface-offset) |
-| `arm_scu.c` `arm_enable_smp()`: no SCU writes and no ACTLR write for Cortex-A32 | SCU writes and ACTLR.SMP for every core | SMP only.  See [TD-2](#td-2-scu-writes-in-arm_enable_smp) |
+| `mpcore.h`: `MPCORE_ICC_OFFSET` 0x2000 for `CORTEXA7 \|\| CORTEXA32` | 0x2000 only for `CORTEXA7`, else 0x0100 | **Bug in the first single-core port**: the GIC CPU interface was taken at 0xA0100100 instead of 0xA0102000, so interrupts would not work on hardware.  Not seen by the build.  Fixed, see [TD-1](#td-1-gic-cpu-interface-offset) |
+| `arm_scu.c` `arm_enable_smp()`: no SCU writes and no ACTLR write for Cortex-A32 | SCU writes and ACTLR.SMP for every core | SMP only.  amebasmart uses its own function, see [TD-2](#td-2-scu-writes-in-arm_enable_smp) |
 | `arm_head.S`, `arm_cpuhead.S`: no TTBR1 write, no NOPs, no `SCTLR_Z`, does not clear `SCTLR_SW/RR/HA` | does all of them | No effect: TTBR1 is not used (TTBCR.N=0), and on ARMv8 AArch32 `SCTLR.Z` is RES1 and `SW`/`RR`/`HA` are RES0 |
 | `Toolchain.defs`: `-mcpu=cortex-a32` | no Cortex-A32 | Done in `build/configs/rtl8730e/Make.defs` (`0c893140`) |
 | `arm_signal_dispatch.c`, `arm_signal_handler.S`: SP alignment for Cortex-A32 | files do not exist (NuttX signal code) | None |
@@ -246,7 +277,8 @@ One entry per item that exists only because of the old TizenRT code
 - NuttX 12.13.0: 0x2000 only for Cortex-A7; Cortex-A32 gets 0x0100.
 - Decision: amebasmart `chip.h` defines `MPCORE_ICC_OFFSET 0x2000`
   before the NuttX header (no NuttX file changed).
-- Commit: own `[MODI_TR]` commit, next on the branch.
+- Commit: `3d7d56e5`.  `arm_gicv2.o` now accesses 0xA0102004..0xA0102010
+  for the CPU interface.
 
 ### TD-2 SCU writes in arm_enable_smp
 
@@ -262,11 +294,16 @@ One entry per item that exists only because of the old TizenRT code
 - Whether the GIC-400 ignores the writes to its reserved area cannot be
   checked without hardware.  The ACTLR write is done by the Realtek
   start-up code too.
-- Decision (user): amebasmart gets its own `amebasmart_enable_smp(cpu)`:
-  the NuttX `arm_enable_smp()` without the SCU writes.  The chip boot
-  code calls it instead of `arm_enable_smp()`.  The NuttX `arm_scu.c`
-  stays unchanged (built, not called by amebasmart).
-- Commit: own `[MODI_TR]` commit in the SMP work.
+- Decision (user): amebasmart gets its own `amebasmart_enable_smp(cpu)`
+  (`amebasmart_enablesmp.c`): the NuttX `arm_enable_smp()` without the
+  SCU writes.  The chip boot code calls it instead of `arm_enable_smp()`.
+  The NuttX `arm_scu.c` stays unchanged (built, not called: the image
+  has no `arm_enable_smp`).
+- Old TizenRT also called `arm_enable_smp(0)` in `cpu_core_poweron()`
+  after powering CPU1 on ("re-enable the SCU").  With no SCU this only
+  invalidated the L1 D-cache of the running CPU0, which can drop dirty
+  lines; the call is removed.
+- Commit: `4a4e2975`.
 
 ### TD-3 CPU hot-plug
 
@@ -275,9 +312,11 @@ One entry per item that exists only because of the old TizenRT code
   `amebasmart_smp.c`, `arm_cpuoff.c`.  `rtl8730e/loadable_ext_*` set
   `CONFIG_CPU_HOTPLUG=y`.
 - NuttX 12.13.0: no `CPU_HOTPLUG` option and no such API.
-- Decision: not used without PM.  In the SMP work the amebasmart
-  hot-plug functions go under `CONFIG_CPU_HOTPLUG` (never defined in
-  NuttX 12.13.0), in their own commit.  To be ported with PM.
+- Decision: not used without PM.  The amebasmart hot-plug functions
+  (`cpu_core_powerdown()`, `up_cpu_die()`, `up_cpu_down()`,
+  `up_cpu_up()`) are built only with `CONFIG_CPU_HOTPLUG` (never defined
+  in NuttX 12.13.0).  To be ported with PM.
+- Commit: `bfa56f7f`.
 
 ### TD-4 Pausing the other CPU during XIP flash writes
 
@@ -287,9 +326,14 @@ One entry per item that exists only because of the old TizenRT code
   linker script kept `arm_cpupause.o`, `arm_testset.o` and
   `spinlock.o` in PSRAM for this.
 - NuttX 12.13.0: no CPU pause API (`nxsched_smp_call*()` exists).
-- `rtl8730e/tash`: the code is only built with `ARM_CORE_CA32 &&
-  CONFIG_XIP_FLASH`, and `CONFIG_XIP_FLASH` is not defined, so nothing
-  is needed now.
+- `rtl8730e/tash`: the code is built (`ARM_CORE_CA32` and
+  `CONFIG_XIP_FLASH` are defined by the Realtek `platform_autoconf.h`),
+  with implicit declarations of `up_cpu_pause_all()`,
+  `up_cpu_resume_all()` and `up_is_cpu_paused()`.  It is not linked:
+  nothing in `rtl8730e/tash` calls `FLASH_Write_Lock()` (no MTD, FTL,
+  OTA or Wi-Fi).  A configuration that writes the flash would fail to
+  link.  (An earlier version of this document said the code was not
+  built; that was wrong.)
 - To do with MTD/FTL on SMP: an amebasmart pause/resume (for example a
   `nxsched_smp_call_async()` handler that spins in PSRAM with the
   interrupts off).
@@ -320,9 +364,92 @@ One entry per item that exists only because of the old TizenRT code
   `UARTn_SERIALDRIVER`.
 - Done in `246f38d0` (before rule 3), in `amebasmart/Kconfig`.
 
+### TD-8 Old armv7-a headers in the SMP files
+
+- Old TizenRT: `amebasmart_cpuboot.c` and `amebasmart_smp.c` included
+  `up_internal.h` and `barriers.h` of the old armv7-a code.  These also
+  brought in `smplldbg()` (`<debug.h>`), `DEBUGASSERT()` and the PSCI
+  prototypes that `amebasmart_smp.c` uses without including them.
+- NuttX 12.13.0: `arm_internal.h`; `<arch/barriers.h>` (not needed
+  here).  Without the other headers, `smplldbg` was an undefined
+  reference at link time and `psci_cpu_on()`/`psci_affinity_info()`
+  were implicit declarations.
+- Decision: use `arm_internal.h`, drop `barriers.h`, include
+  `<assert.h>`, `<debug.h>` and the chip `psci.h`.
+- Commit: `190580b6`.
+
+### TD-9 CPU_SET and CONFIG_AMP in the smp example
+
+- Old TizenRT: `apps/examples/smp/smp_main.c` defines its own
+  `CPU_ZERO()`/`CPU_SET()` with the same text as the old `sched.h`, so
+  there was no warning.  `set_affinity()` is only used with
+  `CONFIG_AMP`, an old TizenRT option.
+- NuttX 12.13.0: `sched.h` defines `CPU_SET()` with `1u`, so the copy
+  is a redefinition ("CPU_SET redefined"); there is no `CONFIG_AMP`
+  ("set_affinity defined but not used").
+- Decision: use the `sched.h` macros; build `set_affinity()` and its
+  counter only with `CONFIG_AMP`.  No change in behavior.
+- Commit: `8b5ecaf2`.
+
+### TD-10 Assembler state of the Realtek SMCCC call
+
+- Old TizenRT: `smccc_call.S` (`__arm_smccc_smc`, the SMC to the secure
+  firmware) emits the SMC as data with its ARM encoding
+  (`__inst_arm`, `0xE1600070`) and has no `.arm`.  The old flags passed
+  only `-mthumb` to gcc, and gas assembled the file in the ARM state.
+- NuttX 12.13.0: `common/Toolchain.defs` adds `-Wa,-mthumb` (and
+  `-Wa,-mimplicit-it=always`) with `CONFIG_ARM_THUMB`, so `.S` files
+  without a directive are assembled as Thumb.  The file failed ("lo
+  register required" for `ldm`/`stm r12`), and as Thumb the ARM SMC
+  word would be a wrong instruction.
+- Check: no other non-NuttX `.S` file is built for `rtl8730e/tash`.  The
+  Realtek `a32_pm.S` (PM) must be checked the same way when PM is
+  ported.
+- Decision: `.syntax unified` and `.arm` in `smccc_call.S`.  The code
+  is the same as before (`mov ip, sp; push; ldm ip; smc #0; pop; ldr ip;
+  stm ip; bx lr`).
+- Commit: `bc521285`.
+
+### TD-11 Interrupt stack interface
+
+- Old TizenRT: the chip provided `arm_intstack_top()` and
+  `arm_intstack_alloc()` (current CPU) for the per-CPU interrupt
+  stacks.
+- NuttX 12.13.0: `up_get_intstackbase(cpu)` (used by `assert.c`,
+  `arm_checkstack.c` and the backtrace code); the SMP link failed with
+  an undefined reference.
+- Decision: `up_get_intstackbase(cpu)` in `amebasmart_irq.c`, as in the
+  NuttX qemu chip.
+- Commit: `288e887d`.
+
+### TD-12 CPU1 start
+
+- Old TizenRT: `up_cpu_on()` called `up_cpu_up()` (power-on with
+  `cpu_core_poweron()`, PSCI `CPU_ON` at `__cpu1_start` with
+  `vPortSecondaryBoot()`), then sent SGI1.  `arm_cpu_boot()` of CPU1
+  initialized the GIC, set VBAR, enabled the interrupts and waited in
+  WFI; the SGI1 handler (`arm_start_handler()`) switched to the IDLE
+  task.
+- NuttX 12.13.0: `nx_smp_start()` calls `up_cpu_start(cpu)` (weak SGI
+  version in `armv7-a/arm_cpustart.c`; qemu overrides it with PSCI).
+  `arm_cpu_boot()` must end with `nx_idle_trampoline()`.  NuttX
+  `up_irqinitialize()` of qemu initializes the GIC distributor only on
+  CPU0, because CPUn also calls it.
+- Decision: `up_cpu_start()` in amebasmart = `cpu_core_poweron()` +
+  `vPortSecondaryBoot()` (Realtek code kept); `arm_cpu_boot()` as qemu;
+  `up_irqinitialize()` initializes the distributor only on CPU0.
+- Linking: the first version put `up_cpu_start()` in
+  `amebasmart_smp.c`.  Nothing else pulled that archive member in, so
+  the weak NuttX version was linked (`W up_cpu_start` in the image, no
+  `psci_cpu_on`).  `up_cpu_start()` is now in `amebasmart_cpuboot.c`,
+  which is always linked (`arm_cpuhead.S` calls `arm_cpu_boot()`), like
+  qemu has it in `qemu_boot.c`.  Check with `nm`: `T up_cpu_start`.
+- Commit: `feaa878f`.
+
 ## SMP
 
-Planned next on this branch.  The analysis so far:
+SMP with 2 CPUs, at the level of `rtl8730e/loadable_ext_*`, first on
+qemu-armv7a, then on `rtl8730e/tash`.
 
 - Options of `rtl8730e/loadable_ext_*`: `CONFIG_SMP=y`,
   `CONFIG_SMP_NCPUS=2`, `CONFIG_SPINLOCK=y`, `CONFIG_IRQCOUNT=y`,
@@ -330,41 +457,83 @@ Planned next on this branch.  The analysis so far:
   and `IRQCOUNT` and needs `ARCH_HAVE_MULTICPU`, `ARCH_HAVE_TESTSET`
   and `ARCH_INTERRUPTSTACK != 0`.  `CPU_HOTPLUG` does not exist
   ([TD-3](#td-3-cpu-hot-plug)).
+- `CONFIG_NCPUS` must be set too.  It has a prompt and only defaults to
+  `SMP_NCPUS`, so a full `.config` with `CONFIG_NCPUS=1` keeps 1.
+  `arm_head.S` tests `CONFIG_NCPUS > 1` to send CPUn away from the CPU0
+  boot path: with 1, CPU1 ran `arm_boot()`/`nx_start()` a second time
+  on QEMU, and the second `nx_smp_start()` failed (`CPU_ON` of a running
+  CPU), an assertion at `nx_start.c:740`.
 - SMP tests ("smptc"): the ostest `smp_call` test (`smp_call.c`, built
   with `CONFIG_SMP`, run with `CONFIG_BUILD_FLAT`) and the TASH `smp`
   command (`apps/examples/smp`, `CONFIG_TESTING_SMP`, as in
   `rtl8730e/flat_apps`).
-- qemu-armv7a first: the NuttX qemu chip already has the SMP code
-  (`qemu_cpuboot.c`: `arm_cpu_boot()` → `nx_idle_trampoline()`;
-  `qemu_boot.c`: `up_cpu_start()` = PSCI `CPU_ON` at `__start`).  Only
-  the defconfigs and `qemu_run.sh` (`-smp`) change.
-- CPU1 start on rtl8730e:
-
-  | Step | Old TizenRT | NuttX 12.13.0 |
-  |---|---|---|
-  | start | `up_cpu_on()` → `up_cpu_up()` | `up_cpu_start()` (weak SGI version in `arm_cpustart.c`; a chip overrides it, like qemu) |
-  | power | `cpu_core_poweron()` (`rtk_core1_power_on()`) | same, from amebasmart |
-  | entry | Realtek `psci_cpu_on(1, __cpu1_start)` with the `psci_affinity_info()` wait | same; `__cpu1_start` is in the NuttX `arm_cpuhead.S` |
-  | C entry | `arm_cpu_boot()`: GIC, VBAR, IRQ on, then WFI until SGI1 | `arm_cpu_boot()` must end with `nx_idle_trampoline()` (qemu pattern) |
-  | first task | SGI1 → `arm_start_handler()` restores the IDLE context | `nx_idle_trampoline()` |
-
-- PSCI: the Realtek `psci.c`/`smccc_call.S` stay (also used by PM).  The
+- PSCI: the Realtek `psci.c`/`smccc_call.S` are used (also by PM).  The
   NuttX `CONFIG_ARM_PSCI` stays off because `arm_cpu_psci.c` defines
-  `psci_cpu_on()` too.
-- Linker: `__cpu1_start` runs with the MMU off, so `arm_cpuhead.o` goes
-  to the PSRAM `.code` section like `arm_head.o`.  `g_cpu1_idlestack`
-  is in `.noinit`, which is in PSRAM.
-- Coherency: [TD-2](#td-2-scu-writes-in-arm_enable_smp).  XIP flash
-  writes: [TD-4](#td-4-pausing-the-other-cpu-during-xip-flash-writes).
+  `psci_cpu_on()` too.  `psci_init()` of the Realtek `psci.c` (never
+  called, as in the old TizenRT) uses `debug_printf()` without its
+  header; it is not linked.
+- The system tick stays on CPU0 (chip CNTV timer); NuttX 12.13.0 runs the
+  round robin of tasks on CPU1 with `nxsched_smp_call()`.
+
+### qemu-armv7a
+
+The NuttX qemu chip already has the SMP code (`qemu_cpuboot.c`:
+`arm_cpu_boot()` → `nx_idle_trampoline()`; `qemu_boot.c`:
+`up_cpu_start()` = PSCI `CPU_ON` at `__start`).  Only
+`build/configs/qemu-armv7a` changes (`0fcdeefb`): the options above in
+both defconfigs, `CONFIG_TESTING_SMP=y` in `tash`, and `qemu_run.sh`
+passes `-smp CONFIG_SMP_NCPUS`.
+
+| Config | Result on QEMU 8.2 (`-smp 2`) |
+|---|---|
+| `ostest` | `smp_call_test: Test success`, `ostest_main: Exiting with status 0` (206 s) |
+| `tash` | `ps` shows `CPU0 IDLE` and `CPU1 IDLE` and tasks on both CPUs; `smp` completes its 8 barrier threads with result 0, on CPU0 and CPU1; `ostest` from TASH passes with `smp_call` |
+
+After the last commit (`0b068d7b`, with [TD-9](#td-9-cpu_set-and-config_amp-in-the-smp-example)),
+qemu-armv7a `tash` was run again (`smp` and `ostest` pass, no warning from
+`smp_main.c`), and mps2-an521 `ostest` and `tash` still pass (status 0).
+
+### rtl8730e
+
+| Step | Old TizenRT | NuttX 12.13.0 port |
+|---|---|---|
+| start | `up_cpu_on()` → `up_cpu_up()` | `up_cpu_start()` in `amebasmart_cpuboot.c` ([TD-12](#td-12-cpu1-start)) |
+| power | `cpu_core_poweron()` (`rtk_core1_power_on()`) | same |
+| entry | Realtek `psci_cpu_on(1, __cpu1_start)` with the `psci_affinity_info()` wait | same; `__cpu1_start` is in the NuttX `arm_cpuhead.S`, kept in PSRAM |
+| coherency | old `arm_enable_smp()` with the Cortex-A32 changes | `amebasmart_enable_smp()` ([TD-2](#td-2-scu-writes-in-arm_enable_smp)) |
+| C entry | `arm_cpu_boot()`: GIC, VBAR, IRQ on, then WFI until SGI1 | `arm_cpu_boot()`: `up_irqinitialize()` (CPU interface only), `nx_idle_trampoline()` |
+| first task | SGI1 → `arm_start_handler()` restores the IDLE context | `nx_idle_trampoline()` |
+
+Fixes found on the way, each in its own commit: [TD-8](#td-8-old-armv7-a-headers-in-the-smp-files),
+[TD-9](#td-9-cpu_set-and-config_amp-in-the-smp-example),
+[TD-10](#td-10-assembler-state-of-the-realtek-smccc-call),
+[TD-11](#td-11-interrupt-stack-interface).
+
+Result of `rtl8730e/tash` (`0b068d7b`), build only:
+
+- rc 0, no error, the same warnings as the single-core build; post-build
+  `km0_km4_ap_image_all.bin` 1058998 bytes.
+- No implicit declaration in the amebasmart files (checked with
+  `-Wimplicit-function-declaration`); the new ones in the Realtek code
+  are the TD-4 functions, which are not linked.
+- `nm`: `T up_cpu_start` (amebasmart), `psci_cpu_on`,
+  `__arm_smccc_smc` (0x60100040), `__cpu1_start` (0x60100300),
+  `g_cpu1_idlestack` (0x60108900), `amebasmart_enable_smp`,
+  `up_get_intstackbase`, `smp_call_test`, `smp_main`; no
+  `arm_enable_smp`, no `FLASH_Write_Lock`.
+- Not run on hardware.  What only hardware can show: the PSCI `CPU_ON`
+  of the Realtek secure firmware with `__cpu1_start`, the coherency
+  without SCU writes, CPU1 in the GIC.
 
 ## Known gaps
 
-- Not run on hardware.
-- SMP not done yet (see above).
+- Not run on hardware (single core and SMP).
+- CPU hot-plug and PM ([TD-3](#td-3-cpu-hot-plug)).
 - PM, network, Wi-Fi, BLE, SE, flash partitions, MTD/FTL, SmartFS, the
   other peripherals, the KM4 log task (it uses the BLE OS layer) and the
   KM4 IPC log print (Wi-Fi inic API) are not ported.
-- [TD-4](#td-4-pausing-the-other-cpu-during-xip-flash-writes) and
+- [TD-4](#td-4-pausing-the-other-cpu-during-xip-flash-writes) (needed
+  before anything writes the flash with SMP) and
   [TD-6](#td-6-tizenrt-gic-additions) are open.
 - The other rtl8730e configurations and `rlx8730e_img2_ddr.ld` are not
   updated.

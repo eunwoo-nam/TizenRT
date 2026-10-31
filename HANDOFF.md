@@ -215,7 +215,8 @@ State: amebasmart chip, rtl8730e board/SDK, build/configs/rtl8730e
 (Make.defs, rlx8730e_img2.ld) and rtl8730e/tash/defconfig committed
 ([MODI_TR]); `configure.sh rtl8730e/tash && make` (sequential top-level
 make like dbuild.sh; `-j` runs the post-build before the link) builds
-tinyara.axf and km0_km4_ap_image_all.bin.  Not run on hardware.  The
+tinyara.axf and km0_km4_ap_image_all.bin (SMP, 2 CPUs).  Not run on
+hardware.  The
 defconfig is made from `$S/rtl/seed.config` (`$S/rtl/mkseed.sh`) with
 `$S/rtl/olddef.sh` (olddefconfig in docker) and copied from os/.config.
 Details, reviews and remaining work:
@@ -228,9 +229,19 @@ TizenRT-only APIs/options such as `up_cpu_pause_all()`, `CPU_HOTPLUG`,
 "TizenRT-only differences" section of that document.
 
 Found in the review: the NuttX `mpcore.h` gives Cortex-A32 the GIC CPU
-interface offset 0x0100 (old TizenRT: 0x2000 like Cortex-A7), so the
-pushed port uses 0xA0100100 instead of 0xA0102000 (TD-1, fix in
-amebasmart `chip.h`).
+interface offset 0x0100 (old TizenRT: 0x2000 like Cortex-A7); fixed in
+amebasmart `chip.h` (TD-1, 3d7d56e5).
+
+SMP (2 CPUs, like rtl8730e/loadable_ext_*), user decisions: enable it in
+the existing configs (qemu-armv7a/ostest, qemu-armv7a/tash,
+rtl8730e/tash), "smptc" = ostest smp_call + TASH `smp`, Cortex-A32
+coherency with an amebasmart function without the SCU writes (TD-2,
+own commit).  Done: qemu-armv7a ostest/tash pass on QEMU -smp 2
+(0fcdeefb); rtl8730e/tash builds with SMP incl. post-build (0b068d7b),
+not run on hardware.  TizenRT-only fixes TD-2, TD-3, TD-8..TD-12 each
+in their own commit.  Defconfig changes: apply only the lines that
+olddefconfig changes for the option (diff of an olddefconfig of the
+old and of the new seed), and set CONFIG_NCPUS with CONFIG_SMP_NCPUS.
 
 ## Environment (recreate after a new session)
 
