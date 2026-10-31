@@ -19,12 +19,15 @@
 # build/configs/qemu-armv7a/qemu_run.sh
 #
 # Run build/output/bin/tinyara on the QEMU virt machine (Cortex-A7,
-# GICv2, PL011 console).  Extra arguments are passed to QEMU.
+# GICv2, PL011 console).  The number of CPUs is CONFIG_SMP_NCPUS of
+# os/.config (1 without SMP).  Extra arguments are passed to QEMU.
 # Quit with Ctrl-a x.
 
 TOPDIR=$(cd "$(dirname "$0")/../../.." && pwd)
 
-exec qemu-system-arm -cpu cortex-a7 -nographic \
+NCPUS=$(sed -n 's/^CONFIG_SMP_NCPUS=//p' "${TOPDIR}/os/.config" 2>/dev/null)
+
+exec qemu-system-arm -cpu cortex-a7 -smp "${NCPUS:-1}" -nographic \
 	-machine virt,virtualization=off,gic-version=2 -net none \
 	-chardev stdio,id=con,mux=on -serial chardev:con \
 	-mon chardev=con,mode=readline \
