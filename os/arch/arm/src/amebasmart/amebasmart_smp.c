@@ -13,6 +13,7 @@
 #include "ameba_soc.h"
 #include "psci.h"
 #include "smp.h"
+#include "amebasmart_smp.h"
 #include <errno.h>
 
 #define SECONDARY_CORE_ID     1

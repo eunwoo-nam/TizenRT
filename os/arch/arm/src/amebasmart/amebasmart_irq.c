@@ -119,9 +119,16 @@ void up_irqinitialize(void)
    * access to the GIC.
    */
 
-  /* Initialize the Generic Interrupt Controller (GIC) for CPU0 */
+  /* Initialize the Generic Interrupt Controller (GIC).  The distributor is
+   * initialized once by CPU0; CPUn only initializes its CPU interface when
+   * arm_cpu_boot() calls this function (as in the NuttX qemu chip).
+   */
 
-  arm_gic0_initialize();  /* Initialization unique to CPU0 */
+  if (up_cpu_index() == 0)
+    {
+      arm_gic0_initialize();  /* Initialization unique to CPU0 */
+    }
+
   arm_gic_initialize();   /* Initialization common to all CPUs */
 
 #ifdef CONFIG_ARCH_LOWVECTORS
