@@ -154,33 +154,18 @@ void up_irqinitialize(void)
 }
 
 /****************************************************************************
- * Name: arm_intstack_top
- *
- * Description:
- *   Return a pointer to the top the correct interrupt stack allocation
- *   for the current CPU.
- *
- ****************************************************************************/
-
-#if defined(CONFIG_SMP) && CONFIG_ARCH_INTERRUPTSTACK > 7
-uintptr_t arm_intstack_top(void)
-{
-  return g_irqstack_top[up_cpu_index()];
-}
-#endif
-
-/****************************************************************************
- * Name: arm_intstack_alloc
+ * Name: up_get_intstackbase
  *
  * Description:
  *   Return a pointer to the "alloc" the correct interrupt stack allocation
- *   for the current CPU.
+ *   for the given CPU (NuttX 12.13 interface; the old TizenRT had
+ *   arm_intstack_top() and arm_intstack_alloc() for the current CPU).
  *
  ****************************************************************************/
 
 #if defined(CONFIG_SMP) && CONFIG_ARCH_INTERRUPTSTACK > 7
-uintptr_t arm_intstack_alloc(void)
+uintptr_t up_get_intstackbase(int cpu)
 {
-  return g_irqstack_top[up_cpu_index()] - INTSTACK_SIZE;
+  return g_irqstack_top[cpu] - INTSTACK_SIZE;
 }
 #endif
