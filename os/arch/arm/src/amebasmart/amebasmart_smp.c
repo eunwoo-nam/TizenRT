@@ -4,9 +4,14 @@
  * Author: PSP Software Group
  */
 
+#include <tinyara/config.h>
+
+#include <assert.h>
+#include <debug.h>
+
 #include "sheipa.h"
 #include "ameba_soc.h"
-#include "barriers.h"
+#include "psci.h"
 #include "smp.h"
 #include <errno.h>
 

@@ -30,14 +30,13 @@
 #include <tinyara/arch.h>
 #include <arch/irq.h>
 
-#include "up_internal.h"
+#include "arm_internal.h"
 #include "sctlr.h"
 #include "smp.h"
 #include "scu.h"
 #include "gic.h"
 #include "amebasmart_enablesmp.h"
 #include "mmu.h"
-#include "barriers.h"
 
 #ifdef CONFIG_SMP
 
