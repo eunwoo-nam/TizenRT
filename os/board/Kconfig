@@ -166,13 +166,15 @@ config ARCH_BOARD_STM32H745ZI_NUCLEO
 		STMicro STM32H745ZI-Nucleo board based on the STMicro STM32H745ZI MCU.
 
 config ARCH_BOARD_SABRE_6QUAD
- 	bool "SABRE_6QUAD"
-	depends on ARCH_CHIP_IMX6
+	bool "NXP/Freescale i.MX6 Sabre-6Quad board"
+	depends on ARCH_CHIP_IMX6_6QUAD
+	select ARCH_HAVE_LEDS
 	select ARCH_HAVE_BUTTONS
-	select ARCH_BUTTONS
 	select ARCH_HAVE_IRQBUTTONS
-	select ARCH_HAVE_RAM_KERNEL_TEXT
- 
+	---help---
+		This options selects support for NuttX on the NXP/Freescale Sabre
+		board featuring the iMX 6Quad CPU.
+
 config ARCH_BOARD_QEMU_ARMV7A
 	bool "Qemu ARMv7a CPUs board"
 	depends on ARCH_CHIP_QEMU_ARM
@@ -693,6 +695,9 @@ source board/rtl8721csm/Kconfig
 endif
 if ARCH_BOARD_STM32H745ZI_NUCLEO
 source board/stm32h745zi-nucleo/Kconfig
+endif
+if ARCH_BOARD_SABRE_6QUAD
+source board/sabre-6quad/Kconfig
 endif
 if ARCH_BOARD_QEMU_ARMV7A
 source board/qemu-armv7a/Kconfig
