@@ -74,7 +74,7 @@ so `git log --follow` shows their TizenRT history.
 | `crypto/`, `cmake/` | out of scope |
 | `tools/`, `dummy/`, `pass1/` | NuttX build system; TizenRT `os/tools` is kept |
 | drivers TizenRT does not have | not added, except `note` and what the QEMU boards need (`serial/uart_pl011`, `serial/serial_cmsdk`, `timers`) |
-| other arch and board directories | only the two QEMU boards are ported |
+| other arch and board directories | only the two QEMU boards are ported; which chips can be overwritten with NuttX 12.13.0: [NuttX-12.13.0-Arch-Survey.md](NuttX-12.13.0-Arch-Survey.md) |
 
 Five rpmsg headers that synced files include unconditionally are synced
 although openamp is not: `include/nuttx/drivers/rpmsgdev.h`,

@@ -243,6 +243,18 @@ in their own commit.  Defconfig changes: apply only the lines that
 olddefconfig changes for the option (diff of an olddefconfig of the
 old and of the new seed), and set CONFIG_NCPUS with CONFIG_SMP_NCPUS.
 
+## Arch survey (not-synced chips, analysis only)
+
+User decision: the cores armv7-m and armv7-r will be taken from NuttX
+12.13.0; the chips are selected one by one.  A chip may be overwritten
+with NuttX 12.13.0 when only QEMU boards use it, or when TizenRT made no
+changes of its own (test board).  docs/NuttX-12.13.0-Arch-Survey.md has
+the codesim comparison (NuttX 7.8, 11.0.0 and the release at import),
+the boards and the decision per chip: overwrite imx6, tiva (QEMU only)
+and stm32 (test boards); review stm32l4, imxrt, xtensa/esp32;
+stm32h745 is not NuttX code.  No code was imported.  Work files:
+$S/survey (survey.py, report.py, classify.py, out/*.json).
+
 ## Environment (recreate after a new session)
 
 ```bash
