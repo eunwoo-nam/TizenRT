@@ -18,6 +18,8 @@
 /****************************************************************************
  * arch/arm/src/imx6/imx_idle.c
  *
+ * SPDX-License-Identifier: Apache-2.0
+ *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -42,7 +44,7 @@
 #include <tinyara/config.h>
 
 #include <tinyara/arch.h>
-#include "up_internal.h"
+#include "arm_internal.h"
 
 /****************************************************************************
  * Public Functions
@@ -64,15 +66,15 @@
 void up_idle(void)
 {
 #if defined(CONFIG_SUPPRESS_INTERRUPTS) || defined(CONFIG_SUPPRESS_TIMER_INTS)
-  /* If the system is idle and there are no timer interrupts, then process
-   * "fake" timer interrupts. Hopefully, something will wake up.
-   */
+	/* If the system is idle and there are no timer interrupts, then process
+	 * "fake" timer interrupts. Hopefully, something will wake up.
+	 */
 
-  sched_process_timer();
+	nxsched_process_timer();
 #else
 
-  /* Sleep until an interrupt occurs to save power */
+	/* Sleep until an interrupt occurs to save power */
 
-  asm("WFI");
+	asm("WFI");
 #endif
 }

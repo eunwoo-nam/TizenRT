@@ -18,6 +18,8 @@
 /****************************************************************************
  * arch/arm/src/imx6/imx_lowputc.h
  *
+ * SPDX-License-Identifier: Apache-2.0
+ *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -49,7 +51,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "up_internal.h"
+#include "arm_internal.h"
 #include "chip.h"
 
 /****************************************************************************
@@ -59,12 +61,11 @@
 #ifdef IMX_HAVE_UART
 /* This structure describes the configuration of an UART */
 
-struct uart_config_s
-{
-  uint32_t baud;          /* Configured baud */
-  uint8_t  parity;        /* 0=none, 1=odd, 2=even */
-  uint8_t  bits;          /* Number of bits (5-9) */
-  bool     stopbits2;     /* true: Configure with 2 stop bits instead of 1 */
+struct uart_config_s {
+	uint32_t baud;          /* Configured baud */
+	uint8_t  parity;        /* 0=none, 1=odd, 2=even */
+	uint8_t  bits;          /* Number of bits (5-9) */
+	bool     stopbits2;     /* true: Configure with 2 stop bits instead of 1 */
 };
 #endif
 

@@ -18,6 +18,8 @@
 /****************************************************************************
  * arch/arm/src/imx6/imx_pgalloc.c
  *
+ * SPDX-License-Identifier: Apache-2.0
+ *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -111,11 +113,11 @@
 
 void up_allocate_pgheap(void **heap_start, size_t *heap_size)
 {
-  DEBUGASSERT(heap_start && heap_size);
+	DEBUGASSERT(heap_start && heap_size);
 
-  *heap_start = (void *)((uintptr_t)IMX_MMDCDDR_PSECTION +
-                             CONFIG_IMX6_DDRCS_PGHEAP_OFFSET);
-  *heap_size  = CONFIG_IMX6_DDRCS_PGHEAP_SIZE;
+	*heap_start = (void *)((uintptr_t)IMX_MMDCDDR_PSECTION +
+	                           CONFIG_IMX6_DDRCS_PGHEAP_OFFSET);
+	*heap_size  = CONFIG_IMX6_DDRCS_PGHEAP_SIZE;
 }
 
 #endif /* CONFIG_MM_PGALLOC */

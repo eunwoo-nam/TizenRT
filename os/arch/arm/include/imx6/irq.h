@@ -18,6 +18,8 @@
 /****************************************************************************
  * arch/arm/include/imx6/irq.h
  *
+ * SPDX-License-Identifier: Apache-2.0
+ *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -36,7 +38,7 @@
  ****************************************************************************/
 
 /* This file should never be included directly but, rather,
- * only indirectly through tinyara/irq.h
+ * only indirectly through nuttx/irq.h
  */
 
 #ifndef __ARCH_ARM_INCLUDE_IMX6_IRQ_H
