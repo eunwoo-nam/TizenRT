@@ -1,121 +1,81 @@
-# QEMU
+# lm3s6965-ek
 
-QEMU is a generic and open source machine emulator and virtualizer.
+TizenRT on the QEMU `lm3s6965evb` machine: TI Stellaris LM3S6965
+evaluation board (Cortex-M3, 256 KB flash, 64 KB SRAM), UART0 console.
+The chip and the board come from NuttX 12.13.0 (`arch/arm/src/tiva`,
+`boards/arm/tiva/lm3s6965-ek`; `os/arch/arm/src/tiva`,
+`os/board/lm3s6965-ek`); they use the `armv7-m` core.  FLAT build only.
+The board is used only on QEMU.
 
-## Information
+This directory was `build/configs/qemu` before the NuttX 12.13.0 port.
 
-Targets Supported:
+## Configurations
 
-- **lm3s6963-ek**
+| Config | What it does |
+|---|---|
+| `ostest` | Runs the NuttX OS test (`apps/examples/testcase/ostest`) as the entry point (`CONFIG_INIT_ENTRYPOINT="ostest_main"`). |
+| `tash` | Starts TASH (`CONFIG_INIT_ENTRYPOINT="preapp_start"`, `apps/system/init`) with the system and FS commands and the `ostest` command. |
 
- ***NOTE:*** TizenRT supports three memory options for lm3s6963-ek board.
+Both use the memory of the real board, which upstream QEMU emulates:
+256 KB flash and 64 KB SRAM.  To fit, they are built with
+`CONFIG_DEBUG_FULLOPT=y` (`-Os`, as the NuttX lm3s6965-ek
+configurations) and with the default stack sizes of NuttX (2 KB task
+stacks, 1 KB IDLE stack, one high priority work queue thread).  In
+`tash`, `CONFIG_TESTING_OSTEST_STACKSIZE=4096`: with TASH running, the
+8 KB stacks of the ostest tasks do not fit in the heap.
 
-  - 64KB RAM requirement configuration which matches with real memory of ***lm3s6963-ek*** board
+The board has no `board_power_off()`, so QEMU keeps running after the
+test.  QEMU prints "Timer with period zero, disabling" at boot (its
+timer model); this has no effect.
 
-  - 1MB RAM requirement which can be run on QEMU only with the [qemu-2.12.0-rc1_1m_ram_size.patch](https://github.com/Samsung/TizenRT/blob/master/build/configs/qemu/qemu-2.12.0-rc1_1m_ram_size.patch)
+## Build
 
-  - 16MB RAM requirement which can be run on QEMU only with the [qemu-2.12.0-rc1_16m_ram_size.patch](https://github.com/Samsung/TizenRT/blob/master/build/configs/qemu/qemu-2.12.0-rc1_16m_ram_size.patch)
+The `tizenrt/tizenrt:2.0.1-qemu` docker image adds QEMU to the TizenRT
+build image (see `tools/docker`).  `CONFIG_DOCKER_VERSION="2.0.1-qemu"`
+makes `dbuild.sh` use it.
 
-## Environment Set-up
-This section covers board-specific environment set-up.  
-Please set TizenRT common environment, [quick start](https://github.com/Samsung/TizenRT#quick-start), first before doing below.
-
-### QEMU installation
-
-#### Qemu version used 2.12.0-rc1
-
-```
-wget https://download.qemu.org/qemu-2.12.0-rc1.tar.xz
-
-tar xvJf qemu-2.12.0-rc1.tar.xz
-
-cd qemu-2.12.0-rc1
-```
-
-To Run **QEMU with 1MB RAM**, copy **qemu-2.12.0-rc1_1m_ram_size.patch** from **TizenRT/build/configs/qemu** to **PWD**
-
-```
-patch -p1 < qemu-2.12.0-rc1_1m_ram_size.patch
-```
-To Run **QEMU with 16MB RAM**, copy **qemu-2.12.0-rc1_16m_ram_size.patch** from **TizenRT/build/configs/qemu** to **PWD**
-```
-patch -p1 < qemu-2.12.0-rc1_16m_ram_size.patch
-```
-```
-./configure --target-list=arm-softmmu
-
-make -j 4
-
-cd arm-softmmu/
-
-sudo ln qemu-system-arm /usr/local/bin/qemu-system-arm
-```
-## How to program a binary
-
-There are two methods,
-- Using **qemu** command
-
-- Using **make** command.  
-
-After building TizenRT, follow below steps at $TIZENRT_BASEDIR/os folder.
-
-See [[Getting the sources]](https://github.com/Samsung/TizenRT#getting-the-sources) for how to set *TIZENRT_BASEDIR*.
-
-### Using QEMU command
-
-```
-qemu-system-arm -M lm3s6965evb -kernel ../build/output/bin/tinyara -nographic -gdb tcp::3333
+```bash
+docker build -t tizenrt/tizenrt:2.0.1-qemu tools/docker
+cd os
+./tools/configure.sh lm3s6965-ek/ostest    # or lm3s6965-ek/tash
+./dbuild.sh build
 ```
 
-### Using make command
+## Run
 
-```
-./dbuild.sh download
-```
-
-## How to debug
-
-To debug TizenRT on QEMU, GDB should be connected through below commands.
-
-```
-arm-none-eabi-gdb
-(gdb) file ../build/output/bin/tinyara
-(gdb) target remote:3333
+```bash
+docker run --rm -it -v $PWD:/root/tizenrt tizenrt/tizenrt:2.0.1-qemu \
+	/root/tizenrt/build/configs/lm3s6965-ek/qemu_run.sh
 ```
 
-## Configuration Sets
-### tc_64k
-for running tc under 256KB flash and 64KB sram
+`qemu_run.sh` runs:
 
-### tc_1m
-for running tc under 32MB flash and 1MB sram
-
-### tc_16m
-for running tc under 128MB flash and 16MB sram
-
-## APPENDIX
-### How to change memory size
-If you want to set your sram to 64KB or 16MB, follow these steps.  
-`make menuconfig`
-
-Enter `Board Selection` -> `Build for qemu hardware`  
-Select `NONE`(64KB) or `Build for SRAM increased QEMU Hardware`(16MB)
-
-Enter `Chip Selection` -> `Boot Memory Configuration`  
-Set `Primary RAM size` to `65536`(64KB) or `16777216`(16MB)
-
-### How to run network stack on QEMU
-To run the network stack on QEMU please refer [How to run network stack on Qemu](HowToRunNetworkStackOnQemu.md).
-
-### Trouble Shooting
-#### Issues on `./configure --target-list=arm-softmmu`
-If you encouter below log after `./configure --target-list=arm-softmmu`,
-```
-ERROR: pixman >= 0.21.8 not present.
-       Please install the pixman devel package.
+```bash
+qemu-system-arm -M lm3s6965evb -nographic \
+	-chardev stdio,id=con,mux=on -serial chardev:con \
+	-mon chardev=con,mode=readline -kernel build/output/bin/tinyara
 ```
 
-install pixman to reslove issue.
+The test passes when the log shows
+
 ```
-sudo apt-get install libpixman-1-dev
+user_main: Exiting
+ostest_main: Exiting with status 0
 ```
+
+With the `tash` configuration, type `ostest` at the `TASH>>` prompt.
+Quit QEMU with `Ctrl-a x`.
+
+## Old configurations
+
+`build_test`, `smartfs`, `tc_1m`, `tc_16m`, `tc_16m_grpc` and `tc_64k`
+are the configurations of the old TizenRT kernel.  They are kept but not
+updated for NuttX 12.13.0 and do not build with it.  `tc_1m`, `tc_16m`
+and `tc_16m_grpc` also need QEMU 2.12.0-rc1 with the RAM size patches of
+this directory (`qemu-2.12.0-rc1_1m_ram_size.patch`,
+`qemu-2.12.0-rc1_16m_ram_size.patch`) and the linker scripts
+`scripts/flash-sram-qemu-memory-increased.ld` and
+`scripts/flash-sdram-qemu-memory-increased.ld`, which the old
+`QEMU_SRAM`/`QEMU_SDRAM` board options selected.  Those options are gone
+with the NuttX 12.13.0 board Kconfig.  Running the old network stack on
+QEMU is described in [HowToRunNetworkStackOnQemu.md](HowToRunNetworkStackOnQemu.md).
