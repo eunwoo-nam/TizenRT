@@ -18,6 +18,8 @@
 /****************************************************************************
  * boards/arm/imx6/sabre-6quad/src/imx_autoleds.c
  *
+ * SPDX-License-Identifier: Apache-2.0
+ *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -74,7 +76,7 @@
 #include <tinyara/board.h>
 #include <arch/board/board.h>
 
-#include "up_internal.h"
+#include "arm_internal.h"
 #include "imx_gpio.h"
 #include "sabre-6quad.h"
 
@@ -90,9 +92,9 @@
 
 void board_autoled_initialize(void)
 {
-  /* Configure LED PIOs for output */
+	/* Configure LED PIOs for output */
 
-  imx_config_gpio(GPIO_LED);
+	imx_config_gpio(GPIO_LED);
 }
 
 /****************************************************************************
@@ -101,10 +103,9 @@ void board_autoled_initialize(void)
 
 void board_autoled_on(int led)
 {
-  if (led == 1 || led == 3)
-    {
-      imx_gpio_write(GPIO_LED, true); /* High illuminates */
-    }
+	if (led == 1 || led == 3) {
+		imx_gpio_write(GPIO_LED, true); /* High illuminates */
+	}
 }
 
 /****************************************************************************
@@ -113,10 +114,9 @@ void board_autoled_on(int led)
 
 void board_autoled_off(int led)
 {
-  if (led == 3)
-    {
-      imx_gpio_write(GPIO_LED, false);  /* Low extinguishes */
-    }
+	if (led == 3) {
+		imx_gpio_write(GPIO_LED, false);  /* Low extinguishes */
+	}
 }
 
 #endif /* CONFIG_ARCH_LEDS */

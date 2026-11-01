@@ -18,6 +18,8 @@
 /****************************************************************************
  * boards/arm/imx6/sabre-6quad/src/imx_appinit.c
  *
+ * SPDX-License-Identifier: Apache-2.0
+ *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -78,14 +80,14 @@
  *
  ****************************************************************************/
 
-int board_app_initialize(void)
+int board_app_initialize(uintptr_t arg)
 {
 #ifndef CONFIG_BOARD_LATE_INITIALIZE
-  /* Perform board initialization */
+	/* Perform board initialization */
 
-  return imx_bringup();
+	return imx_bringup();
 #else
-  return OK;
+	return OK;
 #endif
 }
 

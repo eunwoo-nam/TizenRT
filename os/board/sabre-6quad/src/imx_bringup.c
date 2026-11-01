@@ -18,6 +18,8 @@
 /****************************************************************************
  * boards/arm/imx6/sabre-6quad/src/imx_bringup.c
  *
+ * SPDX-License-Identifier: Apache-2.0
+ *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -62,18 +64,27 @@
 
 int imx_bringup(void)
 {
-  int ret;
+	int ret;
 
-#ifdef CONFIG_FS_PROCFS
-  /* Mount the procfs file system */
+#ifdef CONFIG_FS_TMPFS
+	/* Mount the tmpfs file system */
 
-  ret = smartfs_mount(NULL, "/proc", "procfs", 0, NULL);
-  if (ret < 0)
-    {
-      syslog(LOG_ERR, "ERROR: Failed to mount procfs at /proc: %d\n", ret);
-    }
+	ret = nx_mount(NULL, CONFIG_LIBC_TMPDIR, "tmpfs", 0, NULL);
+	if (ret < 0) {
+		syslog(LOG_ERR, "ERROR: Failed to mount tmpfs at %s: %d\n",
+		       CONFIG_LIBC_TMPDIR, ret);
+	}
 #endif
 
-  UNUSED(ret);
-  return OK;
+#ifdef CONFIG_FS_PROCFS
+	/* Mount the procfs file system */
+
+	ret = nx_mount(NULL, "/proc", "procfs", 0, NULL);
+	if (ret < 0) {
+		syslog(LOG_ERR, "ERROR: Failed to mount procfs at /proc: %d\n", ret);
+	}
+#endif
+
+	UNUSED(ret);
+	return OK;
 }

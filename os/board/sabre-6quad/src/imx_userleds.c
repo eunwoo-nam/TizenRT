@@ -18,6 +18,8 @@
 /****************************************************************************
  * boards/arm/imx6/sabre-6quad/src/imx_userleds.c
  *
+ * SPDX-License-Identifier: Apache-2.0
+ *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -59,10 +61,10 @@
 
 uint32_t board_userled_initialize(void)
 {
-  /* Configure LED PIOs for output */
+	/* Configure LED PIOs for output */
 
-  imx_config_gpio(GPIO_LED);
-  return BOARD_NLEDS;
+	imx_config_gpio(GPIO_LED);
+	return BOARD_NLEDS;
 }
 
 /****************************************************************************
@@ -71,10 +73,9 @@ uint32_t board_userled_initialize(void)
 
 void board_userled(int led, bool ledon)
 {
-  if (led == BOARD_LED)
-    {
-      imx_gpio_write(GPIO_LED, !ledon); /* Low illuminates */
-    }
+	if (led == BOARD_LED) {
+		imx_gpio_write(GPIO_LED, !ledon); /* Low illuminates */
+	}
 }
 
 /****************************************************************************
@@ -83,7 +84,7 @@ void board_userled(int led, bool ledon)
 
 void board_userled_all(uint32_t ledset)
 {
-  /* Low illuminates */
+	/* Low illuminates */
 
-  imx_gpio_write(GPIO_LED, (ledset & BOARD_LED_BIT) == 0);
+	imx_gpio_write(GPIO_LED, (ledset & BOARD_LED_BIT) == 0);
 }

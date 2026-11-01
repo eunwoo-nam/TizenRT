@@ -18,6 +18,8 @@
 /****************************************************************************
  * boards/arm/imx6/sabre-6quad/src/imx_boardinit.c
  *
+ * SPDX-License-Identifier: Apache-2.0
+ *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.  The
@@ -46,8 +48,8 @@
 #include <tinyara/board.h>
 #include <arch/board/board.h>
 
-//#include "chip.h"
-#include "up_internal.h"
+#include "chip.h"
+#include "arm_internal.h"
 #include "imx_boot.h"
 #include "sabre-6quad.h"
 
@@ -86,11 +88,11 @@
 
 void imx_memory_initialize(void)
 {
-  /* SDRAM was initialized by a bootloader in the supported configurations. */
+	/* SDRAM was initialized by a bootloader in the supported configurations. */
 }
 
 /****************************************************************************
- * Name: board_initialize
+ * Name: imx_board_initialize
  *
  * Description:
  *   All i.MX6 architectures must provide the following entry point.  This
@@ -106,12 +108,12 @@ void imx_memory_initialize(void)
  *
  ****************************************************************************/
 
-void board_initialize(void)
+void imx_board_initialize(void)
 {
 #ifdef CONFIG_ARCH_LEDS
-  /* Configure on-board LEDs if LED support has been selected. */
+	/* Configure on-board LEDs if LED support has been selected. */
 
-  board_autoled_initialize();
+	board_autoled_initialize();
 #endif
 }
 
@@ -131,8 +133,8 @@ void board_initialize(void)
 #ifdef CONFIG_BOARD_LATE_INITIALIZE
 void board_late_initialize(void)
 {
-  /* Perform board initialization */
+	/* Perform board initialization */
 
-  imx_bringup();
+	imx_bringup();
 }
 #endif /* CONFIG_BOARD_LATE_INITIALIZE */
