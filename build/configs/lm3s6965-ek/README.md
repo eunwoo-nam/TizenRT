@@ -70,8 +70,8 @@ Quit QEMU with `Ctrl-a x`.
 
 `build_test`, `smartfs`, `tc_1m`, `tc_16m`, `tc_16m_grpc` and `tc_64k`
 are the configurations of the old TizenRT kernel.  They are kept but not
-updated for NuttX 12.13.0 and do not build with it.  `tc_1m`, `tc_16m`
-and `tc_16m_grpc` also need QEMU 2.12.0-rc1 with the RAM size patches of
+updated for NuttX 12.13.0 and do not build with it.  All of them except
+`tc_64k` (`QEMU_SRAM`) also need QEMU 2.12.0-rc1 with the RAM size patches of
 this directory (`qemu-2.12.0-rc1_1m_ram_size.patch`,
 `qemu-2.12.0-rc1_16m_ram_size.patch`) and the linker scripts
 `scripts/flash-sram-qemu-memory-increased.ld` and
@@ -79,3 +79,8 @@ this directory (`qemu-2.12.0-rc1_1m_ram_size.patch`,
 `QEMU_SRAM`/`QEMU_SDRAM` board options selected.  Those options are gone
 with the NuttX 12.13.0 board Kconfig.  Running the old network stack on
 QEMU is described in [HowToRunNetworkStackOnQemu.md](HowToRunNetworkStackOnQemu.md).
+
+What these configurations need on the NuttX 12.13.0 code (QEMU memory,
+network, testcase driver, SmartFS) is analysed in
+[NuttX-12.13.0-Migration-armv7.md](../../../docs/NuttX-12.13.0-Migration-armv7.md#old-lm3s6965-ek-configurations-analysis-not-applied);
+the update is planned for later.

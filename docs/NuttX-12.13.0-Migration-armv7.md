@@ -367,6 +367,119 @@ buildable since `common` was synced; `binary_manager` and
   get the same directory as before.
 - Commit: `8ebb9ebc`.
 
+## Old lm3s6965-ek configurations (analysis, not applied)
+
+The QEMU-only boards should also support their old configurations.
+sabre-6quad `hello` and `hello_smp` are updated (`82f80554`).  The six
+old lm3s6965-ek configurations are full `.config` files of the old
+TizenRT kernel.  They were analysed (with two probe builds) but not
+changed.  **Decision (user): the analysis is recorded here only; it is
+applied later.**
+
+| Config | Purpose | Memory it needs | Main features | Blockers |
+|---|---|---|---|---|
+| `tc_64k` | TizenRT kernel TCs (`tc_main`) | real board: 256 KB flash, 64 KB SRAM (`QEMU_NONE`) | kernel TCs, no TASH | B3 |
+| `build_test` | CI build test (CircleCI `qemu_build_test`, `os/tools/build_test.sh`) | patched QEMU (`QEMU_SRAM`) | kernel, driver and procfs TCs, SmartFS on the RAM MTD, examples (eeprom, timer, smart), ramtest, TASH, Ethernet | B1, B2 (Ethernet), B3 |
+| `smartfs` | SmartFS demo | patched QEMU (`QEMU_SRAM`) | hello, SmartFS on the tiva flash (`TIVA_FLASH`), TASH, Ethernet | B1, B2 (Ethernet), B4 |
+| `tc_1m` | kernel and network TCs | patched QEMU 1 MB variant | kernel TCs, lwip network TCs, TASH | B1, B2, B3 |
+| `tc_16m` | network and Wi-Fi manager TCs, iperf | patched QEMU (`QEMU_SRAM`) | lwip, DHCP client/server, Wi-Fi manager TCs, iperf | B1, B2 |
+| `tc_16m_grpc` | gRPC/protobuf C++ examples | patched QEMU (`QEMU_SRAM`) | lwip, gRPC, protobuf, libcxx, `helloxx_main` | B1, B2 |
+
+### B1 Memory of the QEMU board
+
+- The real LM3S6965 has 256 KB of flash and 64 KB of SRAM.  The
+  upstream QEMU machine `lm3s6965evb` has the same sizes, and its flash
+  is read-only: QEMU does not emulate the flash controller, so the
+  software cannot program it.
+- The old TizenRT ran these configurations on a patched QEMU 2.12.0-rc1
+  (patches in `build/configs/lm3s6965-ek`):
+  `qemu-2.12.0-rc1_16m_ram_size.patch` gives 16 MB SRAM, 128 MB
+  writable flash and a 512 MB SDRAM at 0x60000000;
+  `qemu-2.12.0-rc1_1m_ram_size.patch` gives 1 MB SRAM and 32 MB flash.
+  The old board option `QEMU_SRAM` (or `QEMU_SDRAM`) selected the
+  linker script `scripts/flash-sram-qemu-memory-increased.ld` (128 MB
+  flash, 16 MB SRAM) or `flash-sdram-qemu-memory-increased.ld`.  The
+  images with the testcases, SmartFS, lwip or the C++/gRPC code do not
+  fit in 256 KB/64 KB.
+- Now: the image `tizenrt/tizenrt:2.0.1-qemu` has the upstream QEMU 8.2
+  without the patch (64 KB/256 KB only), and the `QEMU_SRAM`/
+  `QEMU_SDRAM`/`QEMU_NONE` choice is gone with the NuttX 12.13.0 board
+  Kconfig (TD-21).  So every configuration except `tc_64k` can neither
+  be linked with the new `scripts/ld.script` nor run on our QEMU.
+- Ways to apply it later:
+  1. port the patch to QEMU 8.2 (the `stellaris.c` code changed since
+     2.12) and build it as its own image, like qemu-armv7r
+     (`build/configs/lm3s6965-ek/Dockerfile`); select the bigger linker
+     script and `CONFIG_RAM_SIZE` in `build/configs` (Make.defs and the
+     defconfigs), without changing a NuttX file;
+  2. cut the configurations down to the real 256 KB/64 KB (most of the
+     testcases, SmartFS, the network and gRPC would go);
+  3. drop the configurations.
+
+### B2 Network
+
+- The TizenRT network stack (`os/net`, lwip) does not build on this
+  tree.  Probe (`lm3s6965-ek/tash` + `NET`, `NET_LWIP`, `TIVA_ETHERNET`):
+  `os/include/netinet/in.h:66: lwip/inet.h: No such file or directory`
+  and `os/include/sys/socket.h:75: lwip/sockets.h: No such file or
+  directory` in `os/net/netmgr` (`netdev_mgr.c`, `netdev_lwnl.c`,
+  `netdev_wifi.c`, ...).  The network is outside the NuttX 12.13.0
+  migration so far (not synced).
+- The Ethernet driver of the NuttX 12.13.0 tiva chip (`lm3s_ethernet.c`)
+  is written for the NuttX network stack; the old TizenRT lwip changes
+  of the driver (83152fe1c, 8fa74eac3) went with the tiva sync.
+- To apply later: the lwip build on the new tree, then an lwip netdev
+  for the lm3s Ethernet on the TizenRT side (no NuttX file changed).
+  `tc_1m` could also be updated with its kernel TCs only, and
+  `tc_16m_grpc` with the C++ examples only; `tc_16m` has nearly nothing
+  without the network.
+
+### B3 TizenRT testcases
+
+- Probe (`lm3s6965-ek/tash` + the kernel TC options of `tc_64k`): the
+  application-side TCs of `apps/examples/testcase/le_tc` compile.  The
+  kernel-side test driver `os/drivers/os_api_test`
+  (`CONFIG_DRIVERS_OS_API_TEST`, TizenRT only), which the kernel TCs
+  use through ioctl, fails with 39 errors in `os_api_test_drv.c` and
+  `kernel/test_{task,clock,signal,sched,timer,sem}.c`: the `TESTIOC_*`
+  ioctl numbers are no longer constant expressions, `struct task_tcb_s`
+  and the old kernel internals are gone.
+- Old names and the NuttX 12.13.0 functions: `task_init` →
+  `nxtask_init`, `task_activate` → `nxtask_activate`, `sched_gettcb` →
+  `nxsched_get_tcb`, `sched_self` → `nxsched_self`, `sched_foreach` →
+  `nxsched_foreach`, `sched_removeblocked` → `nxsched_remove_blocked`,
+  `sched_releasetcb` → `nxsched_release_tcb`, `sem_tickwait` →
+  `nxsem_tickwait`, `sig_findaction` → `nxsig_find_action`.
+- To apply later: port `os_api_test` to these functions (TizenRT side,
+  own commits and TD entries), then run the TCs and review the failures
+  one by one; the TCs of TizenRT-only features (TASH heapinfo and
+  stack monitor) need a check against the NuttX behaviour.  `tc_64k`
+  must also fit in 256 KB/64 KB (built with `DEBUG_FULLOPT` as the new
+  configurations).
+
+### B4 SmartFS on the flash
+
+- The old board mounted a 1 MB SmartFS at `/mnt` in
+  `board_initialize()` on the flash of the patched QEMU, through the
+  QEMU path of the old TizenRT `tiva_flash.c` (3a3c238bd,
+  `CONFIG_QEMU_SRAM`), which wrote the writable flash directly.  Both
+  went with the NuttX 12.13.0 sync (TD-21).  The NuttX tiva flash driver
+  (`TIVA_FLASH`) programs the flash controller, which QEMU does not
+  emulate.
+- `build_test` uses the RAM MTD (`RAMMTD`), which the NuttX code still
+  has; only the mount is missing (the NuttX `lm_bringup.c` does not
+  create it).
+- To apply later: SmartFS on the RAM MTD, created on the TizenRT side
+  (content lost at each boot), or a TizenRT MTD for the writable flash
+  of a patched QEMU (needs B1, option 1).
+
+### How the probes were made
+
+A seed from `lm3s6965-ek/tash/defconfig` with the extra options
+(`mkseed.py`), `olddefconfig`, a temporary
+`build/configs/lm3s6965-ek/_probe/defconfig` and `make -k -j8`, so
+that all errors are listed.  The probe directory is not committed.
+
 ## Known gaps
 
 - The other armv7-m and armv7-r chips (stm32, stm32l4, stm32h745,
@@ -379,7 +492,9 @@ buildable since `common` was synced; `binary_manager` and
 - Protected build: the `kernel/` user space blobs of lm3s6965-ek,
   qemu-armv7r and mps2-an500 are not taken.
 - The old lm3s6965-ek configurations (`build_test`, `smartfs`, `tc_*`)
-  are not updated; the CircleCI job and `os/tools/build_test.sh` still
-  build `lm3s6965-ek/build_test`, which does not build.
+  are not updated (analysis and options in
+  [Old lm3s6965-ek configurations](#old-lm3s6965-ek-configurations-analysis-not-applied));
+  the CircleCI job and `os/tools/build_test.sh` still build
+  `lm3s6965-ek/build_test`, which does not build.
 - qemu-armv7r needs the OpenVela QEMU (not upstream); the image is built
   from source (gitlab.com is needed for the QEMU meson subprojects).

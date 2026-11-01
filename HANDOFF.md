@@ -293,6 +293,20 @@ Next (ask the user first): port the other armv7-m/armv7-r chips (stm32
 is a candidate per the survey), the TizenRT-only features of TD-13..16
 on the NuttX cores, lm3s6965-ek old configurations.
 
+Old lm3s6965-ek configurations (build_test, smartfs, tc_1m, tc_16m,
+tc_16m_grpc, tc_64k): analysed, user decision "record now, apply later";
+section "Old lm3s6965-ek configurations" of
+docs/NuttX-12.13.0-Migration-armv7.md.  Blockers: B1 QEMU memory (all
+but tc_64k need the patched QEMU 2.12: 16 MB SRAM / 128 MB writable
+flash; options: port the patch to QEMU 8.2 in its own image, cut down to
+64 KB/256 KB, or drop), B2 lwip does not build on this tree and there is
+no lwip lm3s Ethernet driver, B3 os/drivers/os_api_test uses the old
+kernel internals (39 errors), B4 SmartFS on the flash needs a writable
+flash (RAM MTD possible).  Probe recipe: seed from lm3s6965-ek/tash +
+the options (mkseed.py), olddef.sh, temporary
+build/configs/lm3s6965-ek/_probe/defconfig, dbuild.sh with -k -j8,
+delete _probe afterwards.
+
 Tools of this step (scratchpad $S/tools, not committed):
 - `nxsync.py sync|verify|stale UNIT`: as described under Tools, with
   the units armv7-m, armv7-r, libc-armv7, imx6, tiva, armv7-a, qemu,
