@@ -12,12 +12,14 @@ source "libs/libc/machine/arm/armv7-a/Kconfig"
 endif
 
 if ARCH_ARMV7R
+source "libs/libc/machine/arm/armv7-r/Kconfig"
 endif
 
 if ARCH_ARMV6M
 endif
 
 if ARCH_ARMV7M
+source "libs/libc/machine/arm/armv7-m/Kconfig"
 endif
 
 if ARCH_ARMV8M
