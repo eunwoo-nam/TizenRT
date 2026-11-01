@@ -7,7 +7,7 @@
 | 원본 | NuttX `nuttx-12.13.0` (b9b5d9afbf5a), nuttx-apps 12.13.0 (e4b84b2) |
 | 대상 | TizenRT `os/`, `apps/examples/testcase/ostest`, `build/configs`, `tools/docker` |
 | 검증 보드 | qemu-armv7a (Cortex-A7), mps2-an521 (Cortex-M33), FLAT 빌드 |
-| 함께 볼 문서 | [NuttX-12.13.0-Migration.md](NuttX-12.13.0-Migration.md) (구조·규칙·차이 목록), [qemu-armv7a README](../build/configs/qemu-armv7a/README.md), [mps2-an521 README](../build/configs/mps2-an521/README.md), [HANDOFF.md](../HANDOFF.md) |
+| 함께 볼 문서 | [NuttX-12.13.0-Migration.md](NuttX-12.13.0-Migration.md) (구조·규칙·차이 목록), [qemu-armv7a README](../build/configs/qemu-armv7a/README.md), [mps2-an521 README](../build/configs/mps2-an521/README.md), [HANDOFF.md](HANDOFF.md) |
 
 ## 1. 요약
 
@@ -309,7 +309,7 @@ docker run --rm -it -v $PWD:/root/tizenrt tizenrt/tizenrt:2.0.1-qemu \
 	/root/tizenrt/build/configs/qemu-armv7a/qemu_run.sh
 ```
 
-다음 싱크에 쓸 도구(nxsync.py, adapt.py, kmerge.py, ppnum.py 등)는 커밋하지 않았습니다(사용자 결정). 동작과 재구성 방법은 [HANDOFF.md](../HANDOFF.md)의 Tools와 Environment에 있습니다.
+다음 싱크에 쓸 도구(nxsync.py, adapt.py, kmerge.py, ppnum.py 등)는 커밋하지 않았습니다(사용자 결정). 동작과 재구성 방법은 [HANDOFF.md](HANDOFF.md)의 Tools와 Environment에 있습니다.
 
 ## 9. 삼성 라이선스 적용
 

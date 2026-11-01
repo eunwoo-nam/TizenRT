@@ -58,10 +58,10 @@ library, drivers: per group).
 | 422cae36 | Kconfig integration (os/Kconfig, Kconfig.debug, arch, arm, board, adapted NuttX Kconfigs, apps_entry) |
 | 0f89d2cf | re-format the 9 files with exponent numbers after the cformatter fix 51e698d9 |
 | 002d1e26 | 5 rpmsg headers synced (rpmsgdev.h, rpmsgblk.h, syslog_rpmsg.h, rpmsg_port.h, fs/rpmsgfs/rpmsgfs.h), their include guards dropped; codesim 3867/20 of 3887; 4 QEMU configs pass |
-| 90a584b6 | license ②: Samsung header added to 2548 new NuttX files (2026) and 13 existing NuttX-licensed files (git add year); docs/NuttX-12.13.0-License-Warnings.md; license sections in the migration notes and the report |
+| 90a584b6 | license ②: Samsung header added to 2548 new NuttX files (2026) and 13 existing NuttX-licensed files (git add year); docs_migrate/NuttX-12.13.0-License-Warnings.md; license sections in the migration notes and the report |
 | 90ad849c | license ①: Samsung headers of 1122 existing files restored from master (same text/year, 665 same path + 457 moved) |
-| ceb8595e | docs/NuttX-12.13.0-Migration-Report.md: final report in Korean (results rebuilt and run from 28d774bd, user decisions, own decisions with reasons, deviations); test group counts corrected to 33/31 (34/32 counted the argv[0] line) |
-| 1268b92d | docs/NuttX-12.13.0-Migration.md (mapping, rules, exclusions, intentional differences, known gaps) |
+| ceb8595e | docs_migrate/NuttX-12.13.0-Migration-Report.md: final report in Korean (results rebuilt and run from 28d774bd, user decisions, own decisions with reasons, deviations); test group counts corrected to 33/31 (34/32 counted the argv[0] line) |
+| 1268b92d | docs_migrate/NuttX-12.13.0-Migration.md (mapping, rules, exclusions, intentional differences, known gaps) |
 | a989f610 | build/configs/mps2-an521: Make.defs, scripts/flash.ld, ostest, tash, qemu_run.sh, README.md. **Both pass on QEMU** (31 groups; no FPU/prio-inherit as in NuttX nsh; no board_power_off so QEMU keeps running) |
 | 98ff0124 | build/configs/qemu-armv7a/tash (+README): TASH via `preapp_start`, `ostest` from TASH passes |
 | 52b06bd1 | apps: TASH/FS_CMDS no longer depend on NFILE_DESCRIPTORS (removed in NuttX), fscmd.c guard dropped, local mount point handler type (foreach_mountpoint_t is OS internal now) |
@@ -94,11 +94,11 @@ the formatter (`1e - 1`); `ppnum.py` (see Tools) scans for that.
   checked with TASH).
 - Final verification (`nxsync.py verify` for every unit): 3858 of 3882
   synced files identical to NuttX 12.13.0 / nuttx-apps; the 24 others are
-  the intentional changes listed in docs/NuttX-12.13.0-Migration.md.
+  the intentional changes listed in docs_migrate/NuttX-12.13.0-Migration.md.
   `ppnum.py`: no split exponent numbers.
 - Final rerun from 28d774bd (distclean → configure → make → QEMU): all
   four configurations pass (qemu-armv7a 33 groups, mps2-an521 31 groups).
-  The final report is docs/NuttX-12.13.0-Migration-Report.md.
+  The final report is docs_migrate/NuttX-12.13.0-Migration-Report.md.
 - All planned steps are done.  Remaining work is in "Known gaps" of the
   migration doc (other boards, protected/kernel build, moved headers,
   NFILE_DESCRIPTORS users, CONFIG_PM boards).
