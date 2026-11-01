@@ -13,6 +13,14 @@ The result is verified on two QEMU boards, FLAT build only:
 |---|---|---|---|
 | [qemu-armv7a](../build/configs/qemu-armv7a/README.md) | 2 × Cortex-A7 (SMP), `virt`, GICv2, PL011 | `ostest`, `tash` | ostest passes with the SMP `smp_call` test, `ostest_main: Exiting with status 0`; TASH `smp` passes |
 | [mps2-an521](../build/configs/mps2-an521/README.md) | Cortex-M33, MPS2 AN521, CMSDK UART | `ostest`, `tash` | 31 test groups pass, `ostest_main: Exiting with status 0` |
+| [sabre-6quad](../build/configs/sabre-6quad/README.md) | 4 × Cortex-A9 (SMP), i.MX6 Quad, `sabrelite`, UART1 | `ostest`, `tash`, `hello`, `hello_smp` | ostest passes with `smp_call`; TASH `smp` and `ostest` pass; `hello` starts with TASH |
+| [lm3s6965-ek](../build/configs/lm3s6965-ek/README.md) | Cortex-M3, TI LM3S6965, `lm3s6965evb`, UART0 | `ostest`, `tash` | ostest passes in 256 KB flash / 64 KB SRAM |
+| [mps2-an500](../build/configs/mps2-an500/README.md) | Cortex-M7 + FPU, MPS2 AN500, CMSDK UART | `ostest`, `tash` | ostest passes with the FPU test |
+| [qemu-armv7r](../build/configs/qemu-armv7r/README.md) | Cortex-R5F, `virt` (OpenVela QEMU), PL011 | `ostest`, `tash` | ostest passes with the FPU test |
+
+The last four boards check the `armv7-m` and `armv7-r` cores and the
+`imx6` and `tiva` chips taken in the second arch step; see
+[NuttX-12.13.0-Migration-armv7.md](NuttX-12.13.0-Migration-armv7.md).
 
 Both qemu-armv7a configurations use SMP with 2 CPUs (`CONFIG_SMP=y`,
 `CONFIG_SMP_NCPUS=2`, `CONFIG_NCPUS=2`, as `rtl8730e/loadable_ext_*`);
@@ -35,8 +43,9 @@ run on hardware (see [rtl8730e](#rtl8730e)).
 | `graphics/`, `video/` | `os/graphics`, `os/video` | new |
 | `drivers/*` | `os/drivers/*` | driver files at the root of `os/drivers` moved to the NuttX subdirectories first |
 | `arch/arm/{src,include}/{common,armv7-a,armv8-m,qemu,mps}` | `os/arch/arm/...` | |
+| `arch/arm/{src,include}/{armv7-m,armv7-r,imx6,tiva}`, `libs/libc/machine/arm/{armv7-m,armv7-r}` | `os/arch/arm/...`, `os/libs/libc/machine/arm/...` | second arch step, [NuttX-12.13.0-Migration-armv7.md](NuttX-12.13.0-Migration-armv7.md) |
 | `boards/boardctl.c` | `os/board/boardctl.c` | was `os/arch/boardctl.c` |
-| `boards/arm/{qemu/qemu-armv7a,mps/mps2-an521}` | `os/board/<board>/{Kconfig,include,src}` + `build/configs/<board>/{Make.defs,scripts,<config>/defconfig}` | |
+| `boards/arm/{qemu/qemu-armv7a,qemu/qemu-armv7r,mps/mps2-an521,mps/mps2-an500,imx6/sabre-6quad,tiva/lm3s6965-ek}` | `os/board/<board>/{Kconfig,include,src}` + `build/configs/<board>/{Make.defs,scripts,<config>/defconfig}` | |
 | nuttx-apps `testing/ostest` | `apps/examples/testcase/ostest` | |
 
 Directories and files were moved with `git mv` before the sync commits,
@@ -47,7 +56,9 @@ so `git log --follow` shows their TizenRT history.
 - Only include paths are renamed: `#include <nuttx/...>` →
   `<tinyara/...>`; in makefiles and Kconfig `sched/` → `kernel/` and
   `boards/` → `board/`.  Header guards, `__NUTTX__` and comments keep
-  their NuttX names.
+  their NuttX names.  The quoted form `#include "nuttx/..."` is renamed
+  too, and the third comment line of the Kconfig files has the TizenRT
+  form ("see kconfig-language at https://www.kernel.org/...").
 - C files are formatted with `tools/cformatter.py` of branch
   `agent/261022_improve-cformatter-tool`, which changes only whitespace.
   Two formatter bugs were fixed on that branch during the migration:
@@ -74,7 +85,7 @@ so `git log --follow` shows their TizenRT history.
 | `crypto/`, `cmake/` | out of scope |
 | `tools/`, `dummy/`, `pass1/` | NuttX build system; TizenRT `os/tools` is kept |
 | drivers TizenRT does not have | not added, except `note` and what the QEMU boards need (`serial/uart_pl011`, `serial/serial_cmsdk`, `timers`) |
-| other arch and board directories | only the two QEMU boards are ported; which chips can be overwritten with NuttX 12.13.0: [NuttX-12.13.0-Arch-Survey.md](NuttX-12.13.0-Arch-Survey.md) |
+| other arch and board directories | only the QEMU boards and rtl8730e are ported; which chips can be overwritten with NuttX 12.13.0: [NuttX-12.13.0-Arch-Survey.md](NuttX-12.13.0-Arch-Survey.md) |
 
 Five rpmsg headers that synced files include unconditionally are synced
 although openamp is not: `include/nuttx/drivers/rpmsgdev.h`,
@@ -225,11 +236,27 @@ its reviews (atomics, system tick, Cortex-A32), the differences that
 come from the old TizenRT code and the SMP work are in
 [NuttX-12.13.0-Migration-rtl8730e.md](NuttX-12.13.0-Migration-rtl8730e.md).
 
+## armv7-m, armv7-r, imx6 and tiva
+
+The second arch step (branch `DEV-12.13.0-LABEL-ARMV7`) takes the cores
+`armv7-m` and `armv7-r` with their libc parts, overwrites the QEMU-only
+chips `imx6` (sabre-6quad) and `tiva` (lm3s6965-ek) and adds
+`qemu-armv7r` (on the OpenVela QEMU, `build/configs/qemu-armv7r/Dockerfile`)
+and `mps2-an500`.  It also restores the NuttX optimization level
+options (`DEBUG_FULLOPT` for lm3s6965-ek), takes the NuttX core
+directory selection of `os/arch/arm/src/Makefile` and lets
+`preapp_start()` start `CONFIG_USER_ENTRYPOINT`.  The decisions, the
+TizenRT-only differences (TD-13 to TD-23) and the results are in
+[NuttX-12.13.0-Migration-armv7.md](NuttX-12.13.0-Migration-armv7.md).
+
 ## Known gaps
 
-- Only qemu-armv7a, mps2-an521 and rtl8730e/tash (build only) are
-  ported.  The other TizenRT boards and chips still use the old arch
-  code and the old driver interfaces.
+- Ported: qemu-armv7a, mps2-an521, sabre-6quad, lm3s6965-ek,
+  mps2-an500, qemu-armv7r (QEMU) and rtl8730e/tash (build only).  The
+  other TizenRT boards and chips still use the old arch code and the old
+  driver interfaces; the old armv7-m/armv7-r chips (stm32, stm32l4,
+  stm32h745, imxrt, s5j, bcm4390x) do not build with the NuttX 12.13.0
+  cores.
 - Protected and kernel builds are not updated (`ProtectedLibs.mk`,
   `KernelLibs.mk`, the userspace linker scripts).
 - TizenRT code that is not built for the QEMU boards still includes

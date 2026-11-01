@@ -13,6 +13,15 @@ taken from NuttX 12.13.0 in any case; the chips `imx6`, `imxrt`,
 `stm32`, `stm32l4`, `tiva`, `stm32h745` and `os/arch/xtensa` (`xtensa`,
 `lx6`, `esp32`) are selected one by one.
 
+## Status
+
+Done on branch `DEV-12.13.0-LABEL-ARMV7` (see
+[NuttX-12.13.0-Migration-armv7.md](NuttX-12.13.0-Migration-armv7.md)):
+the cores `armv7-m` and `armv7-r` (with their libc parts) and the chips
+`imx6` and `tiva` are taken from NuttX 12.13.0; `sabre-6quad`,
+`lm3s6965-ek`, `mps2-an500` and `qemu-armv7r` run on QEMU.  The other
+chips of the table below are not changed.
+
 ## Decision rule (user)
 
 A chip directory can be overwritten with the NuttX 12.13.0 code when
@@ -92,8 +101,8 @@ checked with `-M help` / `-cpu help`:
 |---|---|---|---|
 | `armv7-a` | `qemu/qemu-armv7a` (`virt`, Cortex-A7) | yes | done (SMP too); `imx6/sabre-6quad` (`sabrelite`) also possible |
 | `armv8-m` | `mps/mps2-an521` (Cortex-M33) | yes | done; `mps/mps3-an547` (Cortex-M55) also possible |
-| `armv7-m` | `mps/mps2-an500` (Cortex-M7), `tiva/lm3s6965-ek` (Cortex-M3, `lm3s6965evb`) | yes, both | possible: the `mps` chip is already synced and has `ARCH_CHIP_MPS2_AN500`, so `mps2-an500` needs only the core and a board like `mps2-an521`; `lm3s6965-ek` also needs the `tiva` chip |
-| `armv7-r` | `qemu/qemu-armv7r` (`virt`, Cortex-R5) | **no** | needs a QEMU fork (below) |
+| `armv7-m` | `mps/mps2-an500` (Cortex-M7), `tiva/lm3s6965-ek` (Cortex-M3, `lm3s6965evb`) | yes, both | done: both ported (`DEV-12.13.0-LABEL-ARMV7`) |
+| `armv7-r` | `qemu/qemu-armv7r` (`virt`, Cortex-R5) | **no** | done on the OpenVela QEMU fork (`build/configs/qemu-armv7r/Dockerfile`) |
 | xtensa `lx6` | `esp32/esp32-devkitc:qemu_openeth` | **no** (no `qemu-system-xtensa`) | needs the Espressif QEMU fork, an esptool flash image (MCUboot format) and the `esp32` chip, which is under review |
 
 Taking `armv7-m` (or `armv7-r`) breaks the TizenRT chips on that core
@@ -131,10 +140,13 @@ until each is adapted, as `amebad` and `armino` on `armv8-m` today.
   QEMU does not support ARM Cortex-R virtual machine" and uses the
   OpenVela QEMU fork (source `open-vela/platform_external_qemu`, prebuilt
   `open-vela/prebuilts_qemu_linux-x86_64`).
-- Options, not done: add the OpenVela prebuilt QEMU to the Docker image
-  beside the upstream one (for example under its own prefix), or build
-  the fork from source.  Both need a decision on the image size and the
-  source of the binary.
+- Done (user decision): `build/configs/qemu-armv7r/Dockerfile` builds
+  the fork from source (QEMU 10.0.0 based, commit df9bdfe3, static
+  `arm-softmmu`) into `/opt/qemu-vela` of the image
+  `tizenrt/tizenrt:2.0.1-qemu-armv7r`, beside the upstream QEMU 8.2;
+  `tools/docker` is unchanged.  The NuttX 12.13.0 `armv7-r` core and the
+  `qemu-armv7r` board are taken, and `os/arch/arm/src/Makefile` selects
+  the core directory by architecture (Cortex-R5 was not known).
 
 ## Numbers
 
