@@ -2,6 +2,8 @@
 
 Branch: `claude/nuttx-tizenrt-migration-nqry9a` (TizenRT, NuttX, similarity repos).
 Only the TizenRT repository gets commits. Never push to `master`.
+Later steps: `DEV-12.13.0-LABEL-RTL8730E` (rtl8730e, below) and
+`DEV-12.13.0-LABEL-ARMV7` (armv7-m/armv7-r, imx6, tiva; last section).
 
 This file is updated after every step (work commit → HANDOFF commit).
 
@@ -252,10 +254,73 @@ changes of its own (test board).  docs/NuttX-12.13.0-Arch-Survey.md has
 the codesim comparison (NuttX 7.8, 11.0.0 and the release at import),
 the boards and the decision per chip: overwrite imx6, tiva (QEMU only)
 and stm32 (test boards); review stm32l4, imxrt, xtensa/esp32;
-stm32h745 is not NuttX code.  No code was imported.  QEMU per core and why Armv7-R has no QEMU
+stm32h745 is not NuttX code.  No code was imported in the survey;
+the cores, imx6 and tiva were taken later (DEV-12.13.0-LABEL-ARMV7,
+section "armv7-m / armv7-r").  QEMU per core and why Armv7-R has no QEMU
 board yet (upstream QEMU `virt` has no Cortex-R; OpenVela fork needed):
 section "QEMU per core and Armv7-R" of that document.  Work files:
 $S/survey (survey.py, report.py, classify.py, out/*.json).
+
+## armv7-m / armv7-r (branch DEV-12.13.0-LABEL-ARMV7, from DEV-12.13.0-LABEL-RTL8730E 111c4584)
+
+Details, commits, results and TD-13..TD-23:
+docs/NuttX-12.13.0-Migration-armv7.md.
+
+User decisions: cores armv7-m, armv7-r (+ libc machine/arm/armv7-m,
+armv7-r) and the QEMU-only chips imx6 (sabre-6quad) and tiva
+(lm3s6965-ek) from NuttX 12.13.0; the other chips untouched (known gap);
+TizenRT-only core items decided one by one (Samsung-only files kept and
+not built, up_unblocktask_withoutsavereg.c kept, up_switchcontext.S
+deleted, TizenRT code in NuttX-origin files overwritten, cache API/GIC
+replaced); build/configs/qemu renamed to lm3s6965-ek with the old
+configurations kept (not updated); sabre-6quad ostest/tash (SMP 4) and
+hello/hello_smp updated; preapp_start() starts CONFIG_USER_ENTRYPOINT
+(own commit); qemu-armv7r on the OpenVela QEMU with its Dockerfile in
+build/configs/qemu-armv7r; mps2-an500 added; every QEMU board has
+qemu_run.sh; NuttX optimization options restored and lm3s6965-ek built
+with DEBUG_FULLOPT; os/arch/arm/src/Makefile selects the core directory
+by architecture (approved with the plan).  Commit trailers for this
+branch: `Co-Authored-By: Cline SR` and `Signed-off-by: eunwoo-nam`.
+
+State: all steps of the plan are committed and pushed (last work
+commit 4d444db8, documents b0f3bdda).  QEMU: sabre-6quad ostest/tash/hello/
+hello_smp, lm3s6965-ek ostest/tash, mps2-an500 ostest/tash,
+qemu-armv7r ostest/tash pass (status 0); regression qemu-armv7a
+ostest/tash (SMP 2), mps2-an521 ostest/tash pass, rtl8730e/tash builds
+with post-build (km0_km4_ap_image_all.bin 1058998 bytes).  codesim
+366/366 identical.  Details: docs/NuttX-12.13.0-Migration-armv7.md.
+Next (ask the user first): port the other armv7-m/armv7-r chips (stm32
+is a candidate per the survey), the TizenRT-only features of TD-13..16
+on the NuttX cores, lm3s6965-ek old configurations.
+
+Tools of this step (scratchpad $S/tools, not committed):
+- `nxsync.py sync|verify|stale UNIT`: as described under Tools, with
+  the units armv7-m, armv7-r, libc-armv7, imx6, tiva, armv7-a, qemu,
+  mps and board-<name> (Kconfig, include, src of a NuttX board).  It
+  also renames `#include "nuttx/` and the Kconfig comment line, keeps
+  the Samsung block of an existing file and adds the 2026 header to new
+  files (license_manager functions).  Checked by re-syncing armv7-a,
+  qemu and mps: no diff.  Existing files without a Samsung header get
+  the year of their first git add by hand (GitHub list_commits with
+  the path; the clone is shallow).
+- `mkseed.py BASE OUT -r SYM.. -s LINE..`: seed = BASE .config without
+  the given symbols, plus the lines.  `olddef.sh BOARD SEED OUT`:
+  olddefconfig in docker with build/configs/BOARD/Make.defs.
+- `dbuild.sh BOARD/CFG [IMAGE] [make args]` → `build.sh` in docker:
+  configures first if .config is missing (distclean needs it), deletes
+  left-over *.o (never *.a: tracked prebuilt libraries), configure,
+  make.  Do not run olddef.sh between a build and a QEMU run.
+- `qrun.py BOARD TIMEOUT LOG [--image IMG] --send 'PROMPT=>CMD' --until TEXT`:
+  runs build/configs/BOARD/qemu_run.sh in docker and drives the console.
+- `ppnum.py`, `cpush.sh` (commit with the user identity, TZ=Asia/Seoul,
+  push DEV-12.13.0-LABEL-ARMV7 only).
+- OpenVela image: the proxy CA is not trusted in containers; build from
+  a copy of build/configs/qemu-armv7r/Dockerfile with
+  `COPY ccr-ca.crt /etc/ccr-ca.crt` + `ENV GIT_SSL_CAINFO=/etc/ccr-ca.crt`
+  in the build stage and `--build-arg HTTPS_PROXY=$HTTPS_PROXY
+  --network host` ($S/vela-ctx).
+- License tool: agent/261021_license-manager is now 90da78a4 (12777249
+  is gone); cformatter 51e698d9.
 
 ## Environment (recreate after a new session)
 
