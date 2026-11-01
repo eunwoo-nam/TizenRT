@@ -1974,6 +1974,44 @@ config FRAME_POINTER
 		larger and slower, but it gives very useful debugging information
 		in case of bugs.
 
+config ARCH_HAVE_CUSTOMOPT
+	bool
+	default n
+
+choice
+	prompt "Optimization Level"
+	default DEBUG_NOOPT if DEBUG_SYMBOLS
+	default DEBUG_FULLOPT if !DEBUG_SYMBOLS
+
+config DEBUG_NOOPT
+	bool "Suppress Optimization"
+	---help---
+		Build without optimization.  This is often helpful when debugging code.
+
+config DEBUG_CUSTOMOPT
+	bool "Custom Optimization"
+	depends on ARCH_HAVE_CUSTOMOPT
+	---help---
+		Select a custom debug level.  This is often helpful if you suspect an
+		optimization level error and want to lower the level of optimization.
+
+config DEBUG_FULLOPT
+	bool "Normal, Full optimization"
+	---help---
+		Build full optimization.  This is the normal case for production
+		firmware.
+
+endchoice # Optimization Level
+
+config DEBUG_OPTLEVEL
+	string "Custom Optimization Level"
+	default "/O2" if HOST_WINDOWS
+	default "-O2"
+	depends on DEBUG_CUSTOMOPT
+	---help---
+		This string represents the custom optimization level that will be
+		used if DEBUG_CUSTOMOPT.
+
 
 #
 # TizenRT debug options that NuttX does not have
