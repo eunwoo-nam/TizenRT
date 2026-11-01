@@ -53,34 +53,20 @@
 -include $(TOPDIR)/Make.defs
 -include chip/Make.defs
 
-ifeq ($(CONFIG_ARCH_CORTEXM3),y)   # Cortex-M3 is ARMv7-M
-ARCH_SUBDIR = armv7-m
-else
-ifeq ($(CONFIG_ARCH_CORTEXM4),y)   # Cortex-M4 is ARMv7E-M
-ARCH_SUBDIR = armv7-m
-else
-ifeq ($(CONFIG_ARCH_CORTEXM7),y)   # Cortex-M7 is ARMv7E-M
-ARCH_SUBDIR = armv7-m
-else
-ifeq ($(CONFIG_ARCH_CORTEXR4),y)   # Cortex-R4 is ARMv7-R
-ARCH_SUBDIR = armv7-r
-else
-ifeq ($(CONFIG_ARCH_CORTEXM33),y)   # Cortex-M33 is ARMv8-M
-ARCH_SUBDIR = armv8-m
-else
-ifeq ($(CONFIG_ARCH_CORTEXM55),y)   # Cortex-M55 is ARMv8-M
-ARCH_SUBDIR = armv8-m
-else
-ifeq ($(CONFIG_ARCH_ARMV7A),y)
+ifeq ($(CONFIG_ARCH_ARMV7A),y)          # ARMv7-A
 ARCH_SUBDIR = armv7-a
-else
+else ifeq ($(CONFIG_ARCH_ARMV7R),y)     # ARMv7-R
+ARCH_SUBDIR = armv7-r
+else ifeq ($(CONFIG_ARCH_ARMV8R),y)     # ARMv8-R
+ARCH_SUBDIR = armv8-r
+else ifeq ($(CONFIG_ARCH_ARMV7M),y)     # ARMv7-M
+ARCH_SUBDIR = armv7-m
+else ifeq ($(CONFIG_ARCH_ARMV8M),y)     # ARMv8-M
+ARCH_SUBDIR = armv8-m
+else ifeq ($(CONFIG_ARCH_ARMV6M),y)     # ARMv6-M
+ARCH_SUBDIR = armv6-m
+else                                    # ARM9, ARM7TDMI, etc.
 ARCH_SUBDIR = arm
-endif
-endif
-endif
-endif
-endif
-endif
 endif
 
 ifeq ($(CONFIG_WINDOWS_NATIVE),y)
