@@ -73,6 +73,69 @@ differ from NuttX.  The NuttX `qemu` chip is a third, different thing.
   `boards/arm/tiva/lm3s6965-ek`; whether `build/configs/qemu` is renamed
   to `lm3s6965-ek` is decided with that port.
 
+## QEMU per core and Armv7-R
+
+Core (common) arch directories:
+
+- In TizenRT: arm `armv7-a`, `armv8-m`, `armv7-m`, `armv7-r`; xtensa
+  `xtensa` (NuttX `common`) and `lx6`.  `armv7-a`, `armv8-m` are synced;
+  `armv7-m`, `armv7-r` will be taken (user decision).
+- Only in NuttX 12.13.0: `armv6-m`, `armv8-r`, `arm` (ARM7/9), xtensa
+  `lx7`.  None of them has a NuttX board that runs on our QEMU (`armv8-r`
+  uses the Arm FVP, `fvp-v8r-aarch32`).
+
+A QEMU board per core (review only, nothing ported).  "Our QEMU" is the
+QEMU 8.2 of `tizenrt/tizenrt:2.0.1-qemu` (`tools/docker/Dockerfile`),
+checked with `-M help` / `-cpu help`:
+
+| Core | NuttX 12.13.0 QEMU board | Our QEMU 8.2 | Result |
+|---|---|---|---|
+| `armv7-a` | `qemu/qemu-armv7a` (`virt`, Cortex-A7) | yes | done (SMP too); `imx6/sabre-6quad` (`sabrelite`) also possible |
+| `armv8-m` | `mps/mps2-an521` (Cortex-M33) | yes | done; `mps/mps3-an547` (Cortex-M55) also possible |
+| `armv7-m` | `mps/mps2-an500` (Cortex-M7), `tiva/lm3s6965-ek` (Cortex-M3, `lm3s6965evb`) | yes, both | possible: the `mps` chip is already synced and has `ARCH_CHIP_MPS2_AN500`, so `mps2-an500` needs only the core and a board like `mps2-an521`; `lm3s6965-ek` also needs the `tiva` chip |
+| `armv7-r` | `qemu/qemu-armv7r` (`virt`, Cortex-R5) | **no** | needs a QEMU fork (below) |
+| xtensa `lx6` | `esp32/esp32-devkitc:qemu_openeth` | **no** (no `qemu-system-xtensa`) | needs the Espressif QEMU fork, an esptool flash image (MCUboot format) and the `esp32` chip, which is under review |
+
+Taking `armv7-m` (or `armv7-r`) breaks the TizenRT chips on that core
+(`stm32`, `stm32l4`, `stm32h745`, `imxrt`, `tiva`; `s5j`, `bcm4390x`)
+until each is adapted, as `amebad` and `armino` on `armv8-m` today.
+
+### Armv7-R on QEMU
+
+- TizenRT never ran Armv7-R on QEMU.  In the whole TizenRT history the
+  QEMU commits are for `lm3s6965-ek` (`build/configs/qemu`, from 2017) and
+  `sabre-6quad` (2023) only.  The TizenRT `armv7-r` core (Cortex-R4, since
+  4fc385da0, 2016) is used by hardware boards: `s5j` (`artik053`,
+  `artik053s`, `artik055s`, `sidk_s5jt200`) and `bcm4390x` (`cy4390x`).
+- The Cortex-R5 code in TizenRT comes from this migration: the NuttX
+  `qemu` chip serves both `qemu-armv7a` and `qemu-armv7r`, and it was
+  synced as a whole for `qemu-armv7a` ([SYNC] a8b4c678).  It has
+  `ARCH_CHIP_QEMU_CORTEXR5` in `os/arch/arm/src/qemu/Kconfig` and the
+  `CONFIG_ARCH_ARMV7R` paths of `Make.defs` (`include armv7-r/Make.defs`)
+  and `qemu_boot.c`; it is the same as in NuttX 12.13.0 and is not used
+  (`# CONFIG_ARCH_CHIP_QEMU_CORTEXR5 is not set` in `qemu-armv7a`).
+- To use it, three things are missing:
+  1. the NuttX 12.13.0 `armv7-r` core: the old TizenRT `armv7-r/Kconfig`
+     has `ARMV7R_HAVE_GICv2` but no `ARMV7R_HAVE_PTM`, and there is no
+     `arm_timer.c` (generic timer) as in NuttX;
+  2. a `qemu-armv7r` board (`os/board`, `build/configs`) from NuttX
+     `boards/arm/qemu/qemu-armv7r` (`nsh`, `pnsh`);
+  3. a QEMU that runs Cortex-R on `virt`.
+- QEMU: `tools/docker/Dockerfile` builds the upstream QEMU 8.2 (Ubuntu
+  24.04 source package, `--target-list=arm-softmmu --static`).  Upstream
+  QEMU has the `cortex-r5f` CPU, but only inside SoC models such as the
+  ZynqMP RPU; its `virt` machine accepts only A-profile CPUs:
+  `qemu-system-arm -M virt -cpu cortex-r5f` gives `mach-virt: CPU type
+  cortex-r5f-arm-cpu not supported`.  This is not a QEMU version problem:
+  the NuttX 12.13.0 documentation of `qemu-armv7r` says "The upstream
+  QEMU does not support ARM Cortex-R virtual machine" and uses the
+  OpenVela QEMU fork (source `open-vela/platform_external_qemu`, prebuilt
+  `open-vela/prebuilts_qemu_linux-x86_64`).
+- Options, not done: add the OpenVela prebuilt QEMU to the Docker image
+  beside the upstream one (for example under its own prefix), or build
+  the fork from source.  Both need a decision on the image size and the
+  source of the binary.
+
 ## Numbers
 
 Average similarity is the mean codesim token similarity of the common

@@ -252,7 +252,9 @@ changes of its own (test board).  docs/NuttX-12.13.0-Arch-Survey.md has
 the codesim comparison (NuttX 7.8, 11.0.0 and the release at import),
 the boards and the decision per chip: overwrite imx6, tiva (QEMU only)
 and stm32 (test boards); review stm32l4, imxrt, xtensa/esp32;
-stm32h745 is not NuttX code.  No code was imported.  Work files:
+stm32h745 is not NuttX code.  No code was imported.  QEMU per core and why Armv7-R has no QEMU
+board yet (upstream QEMU `virt` has no Cortex-R; OpenVela fork needed):
+section "QEMU per core and Armv7-R" of that document.  Work files:
 $S/survey (survey.py, report.py, classify.py, out/*.json).
 
 ## Environment (recreate after a new session)
