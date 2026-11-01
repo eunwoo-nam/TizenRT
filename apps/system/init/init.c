@@ -55,6 +55,9 @@
 #include <semaphore.h>
 #include <errno.h>
 #endif
+#if defined(CONFIG_USER_ENTRYPOINT) && !defined(CONFIG_APP_BINARY_SEPARATION)
+#include <sched.h>
+#endif
 #ifdef CONFIG_LIBCXX_EXCEPTION
 extern void register_cxx_terminate_handler(void);
 #endif
@@ -71,6 +74,16 @@ extern void register_cxx_terminate_handler(void);
 
 #ifdef CONFIG_ENABLE_IOTJS
 extern void iotjs_register_cmds(void);
+#endif
+
+/* NuttX starts only CONFIG_INIT_ENTRYPOINT (this function); the user entry
+ * point that the old TizenRT os_bringup() started as "appmain" is started at
+ * the end of preapp_start().
+ */
+
+#if defined(CONFIG_USER_ENTRYPOINT) && !defined(CONFIG_APP_BINARY_SEPARATION)
+#define PREAPP_START_USER_ENTRY
+int CONFIG_USER_ENTRYPOINT(int argc, FAR char *argv[]);
 #endif
 
 /****************************************************************************
@@ -189,6 +202,14 @@ int preapp_start(int argc, char *argv[])
 
 #if defined(CONFIG_BLE_MANAGER)
 	(void)blemgr_run_msghandler();
+#endif
+
+#ifdef PREAPP_START_USER_ENTRY
+	/* Start the application main task, as the old os_bringup() did */
+
+	if (task_create("appmain", SCHED_PRIORITY_DEFAULT, CONFIG_INIT_STACKSIZE, (main_t)CONFIG_USER_ENTRYPOINT, (FAR char *const *)NULL) < 0) {
+		printf("Failed to start the application main task\n");
+	}
 #endif
 
 /***********************************************************************************
