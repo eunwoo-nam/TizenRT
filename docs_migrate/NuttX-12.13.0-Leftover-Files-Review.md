@@ -3,6 +3,7 @@
 | 항목 | 내용 |
 |---|---|
 | 작성일 | 2026-11-02 |
+| 갱신 | 2026-11-02 후속 결정 반영 (8장) |
 | 대상 브랜치 | `DEV-12.13.0-LABEL` (base `379c33e74`, upstream/master 파생) |
 | 리뷰 기준 트리 | `DEV-12.13.0-LABEL___NO_CHANGED` `485989868` — 마이그레이션 커밋이 추가/수정한 파일을 모두 뺀 트리(28842 files, [MOVE]로 위치만 바뀐 파일은 남김) |
 | 범위 | `os/libs` (40), `os/include` (154). 다른 영역은 이후 섹션으로 추가 |
@@ -42,11 +43,21 @@ NuttX에서 들어오면서 `os/libs/libxx/libxx_newlib_impure.c`는 쓸모가 �
 
 ## 4. 요약
 
+리뷰 당시 판정:
+
 | 영역 | 파일 | 삭제 | 별도 판정 필요 | 유지 (TD 연계) | 유지 |
 |---|---|---|---|---|---|
 | os/libs | 40 | 4 | 8 | 7 | 21 |
 | os/include | 154 | 1 | 1 | 10 | 142 |
 | 합계 | 194 | 5 | 9 | 17 | 163 |
+
+후속 결정(8장) 반영 후:
+
+| 영역 | 파일 | 삭제 | 이동 | sync됨 | 별도 판정 필요 | 유지 (TD 연계) | 유지 |
+|---|---|---|---|---|---|---|---|
+| os/libs | 40 | 10 | 0 | 4 | 2 | 3 | 21 |
+| os/include | 154 | 2 | 1 | 15 | 1 | 10 | 125 |
+| 합계 | 194 | 12 | 1 | 19 | 3 | 13 | 146 |
 
 삭제한 파일과 커밋:
 
@@ -55,6 +66,16 @@ NuttX에서 들어오면서 `os/libs/libxx/libxx_newlib_impure.c`는 쓸모가 �
 | `os/libs/libxx: Remove the files left over after the NuttX 12.13.0 sync [DEL_TR]` | `os/libs/libxx/libxx_newlib_impure.c`, `os/libs/libxx/libxx_cxa_guard.hxx` |
 | `os/libs/libc: Remove the files left over after the NuttX 12.13.0 sync [DEL_TR]` | `os/libs/libc/machine/arm/setjmp.S`, `os/libs/libc/stdlib/__randname.c` |
 | `os/include: Remove the header left over after the NuttX 12.13.0 sync [DEL_TR]` | `os/include/tinyara/endian.h` |
+| `os, apps: Remove the system debug (sysdbg) feature [DEL_TR]` (`0818e112b`, 후속 결정) | `os/include/tinyara/debug/sysdbg.h` (기능 전체 삭제) |
+| `os/libs/libm: Remove the Bessel functions left over after the NuttX 12.13.0 sync [DEL_TR]` (`119a92815`, 후속 결정) | `os/libs/libm/libm/lib_{j0,j0f,j1,j1f,jn,jnf}.c` |
+
+후속 결정으로 이동·sync된 파일:
+
+| 커밋 | 파일 |
+|---|---|
+| `os/drivers/audio: Move cJSON.h from os/include into the audio driver [MODI_TR]` (`e710928f0`) | `os/include/cJSON.h` → `os/drivers/audio/cJSON.h` |
+| `os/libs/libc/machine/arm: Sync armv7-m and armv7-r with NuttX 12.13.0 [SYNC]` (`30917f838`, ARMV7 cherry-pick) | `os/libs/libc/machine/arm/armv7-{m,r}/{Make.defs,arch_elf.c}` |
+| `os/include: Sync the USB headers with NuttX 12.13.0 [SYNC]` (`1c37bfac3`) | `os/include/tinyara/usb/*.h` 15개 |
 
 `DEV-12.13.0-LABEL___NO_CHANGED`에도 같은 5개 파일을 지우는 커밋을 485989868 위에 추가했습니다.
 
@@ -69,20 +90,20 @@ NuttX 대응은 NuttX 12.13.0의 `libs/` 기준입니다.
 | `libc/machine/arm/setjmp.S` | NetBSD 유래 (TizenRT 첫 커밋) | `libc/machine/arm/arch_setjmp.S` | 없음 | **삭제** | base `lib/libc/machine/arm/Make.defs`가 무조건 `ASRCS += setjmp.S`. sync된 Make.defs는 `CONFIG_ARCH_SETJMP_H`일 때 arch_setjmp.S를 빌드. 빌드 조건 변화는 TD-LIBS-07 |
 | `libc/stdlib/__randname.c` | musl 유래 (Samsung 2018) | 없음 (NuttX `lib_mktemp.c`가 이름을 직접 생성) | 호출 0 | **삭제** | 유일한 호출처인 구 `lib_mktemp.c`, `lib_mkstemp.c`가 NuttX 버전으로 교체, 선언하던 `lib/libc/lib_internal.h`도 없음 |
 | `libc/misc/lib_crc16_ccitt.c` | Samsung (2023) | 같은 계열 함수: `crc16xmodem`, `crc16ccitt`, `crc16h1021` (`tinyara/crc16.h`) | 미빌드. le_tc `tc_libc_misc.c`가 `crc16_ccitt_*` 42곳 사용 | **별도 판정 필요** (TD-LIBS-03) | 선언하던 `os/include/crc16.h`가 sync로 삭제, misc/Make.defs 미등록 |
-| `libm/libm/lib_j0.c` | musl/FreeBSD 유래 (Samsung 2017) | 없음 (NuttX libm/libm에 Bessel 없음, newlib libm에만 있음) | 미빌드. le_tc `tc_libc_math.c` 사용 | **별도 판정 필요** (TD-LIBS-04) | 선언하던 구 `tinyara/math.h`가 sync로 삭제, libm Make.defs 미등록 |
-| `libm/libm/lib_j0f.c` | 〃 | 〃 | 〃 | **별도 판정 필요** (TD-LIBS-04) | 〃 |
-| `libm/libm/lib_j1.c` | 〃 | 〃 | 〃 | **별도 판정 필요** (TD-LIBS-04) | 〃 |
-| `libm/libm/lib_j1f.c` | 〃 | 〃 | 〃 | **별도 판정 필요** (TD-LIBS-04) | 〃 |
-| `libm/libm/lib_jn.c` | 〃 | 〃 | 〃 | **별도 판정 필요** (TD-LIBS-04) | 〃 |
-| `libm/libm/lib_jnf.c` | 〃 | 〃 | 〃 | **별도 판정 필요** (TD-LIBS-04) | 〃 |
+| `libm/libm/lib_j0.c` | musl/FreeBSD 유래 (Samsung 2017) | 없음 (NuttX libm/libm에 Bessel 없음, newlib libm에만 있음) | 미빌드. le_tc `tc_libc_math.c` 사용 | **삭제** (후속 결정, `119a92815`) | 선언하던 구 `tinyara/math.h`가 sync로 삭제, libm Make.defs 미등록 |
+| `libm/libm/lib_j0f.c` | 〃 | 〃 | 〃 | **삭제** (후속 결정, `119a92815`) | 〃 |
+| `libm/libm/lib_j1.c` | 〃 | 〃 | 〃 | **삭제** (후속 결정, `119a92815`) | 〃 |
+| `libm/libm/lib_j1f.c` | 〃 | 〃 | 〃 | **삭제** (후속 결정, `119a92815`) | 〃 |
+| `libm/libm/lib_jn.c` | 〃 | 〃 | 〃 | **삭제** (후속 결정, `119a92815`) | 〃 |
+| `libm/libm/lib_jnf.c` | 〃 | 〃 | 〃 | **삭제** (후속 결정, `119a92815`) | 〃 |
 | `libc/zoneinfo/mk_opt_tzrule.py` | Samsung (2020) | 없음 | `zoneinfo/Makefile`이 `CONFIG_LIBC_OPTIMIZE_ZONEINFO_RULES`일 때 호출 | **별도 판정 필요** (TD-LIBS-05) | 그 Kconfig 심볼이 sync로 없어져 켤 수 없음 |
 | `libc/zoneinfo/Makefile` | Samsung (2020) | `libc/zoneinfo/Makefile` (동일 경로, 미sync) | libc Makefile이 `CONFIG_LIBC_ZONEINFO_ROMFS`일 때 호출 | 유지 (TD-LIBS-05) | 옛 경로 `$(TOPDIR)/../lib/libc/zoneinfo`, `zoneinfo.img`를 만드는데 sync된 `tzromfs.c`는 `romfs_zoneinfo.h`를 include → 켜면 빌드 불가 |
 | `libc/elf/libelf_cache.c` | Samsung (2019) | 없음 | 미빌드 (base `os/binfmt/libelf/Make.defs`의 `CONFIG_ELF_CACHE_READ` 블록 소실) | 유지 (TD-LIBS-01) | Samsung ELF cache. Kconfig와 elf init/read/uninit 훅이 sync로 사라짐. rtl8721csm, imxrt1050 loadable defconfig는 `=y` |
 | `libc/misc/lib_hashmap.c` | Samsung (2017) | 없음 | 미빌드 (`CONFIG_LIB_HASHMAP` Kconfig와 Make.defs 블록 소실) | 유지 (TD-LIBS-02) | `os/Kconfig`(SUPPORT_COMMON_BINARY), st_things가 여전히 `select LIB_HASHMAP`. 없어진 `lib_internal.h`를 include |
-| `libc/machine/arm/armv7-m/Make.defs` | NuttX 유래 | `libc/machine/arm/armv7-m/Make.defs` (동일 경로, 미sync) | `machine/arm/Make.defs`가 `CONFIG_ARCH_ARMV7M`일 때 include | 유지 (TD-LIBS-06) | machine/arm은 armv7-a, armv8-m만 sync. NuttX판은 `arch_mem*.S` 등도 빌드 |
-| `libc/machine/arm/armv7-m/arch_elf.c` | NuttX 유래 | 동일 경로 (미sync) | 위 Make.defs가 `CONFIG_LIBC_ARCH_ELF`일 때 빌드 | 유지 (TD-LIBS-06) | `up_relocate`/`up_relocateadd` 시그니처가 sync된 libc/elf(armv7-a판)와 다름 |
-| `libc/machine/arm/armv7-r/Make.defs` | NuttX 유래 | 동일 경로 (미sync) | `CONFIG_ARCH_ARMV7R`일 때 include | 유지 (TD-LIBS-06) | armv7-m과 같음 |
-| `libc/machine/arm/armv7-r/arch_elf.c` | NuttX 유래 | 동일 경로 (미sync) | 〃 | 유지 (TD-LIBS-06) | armv7-m과 같음 |
+| `libc/machine/arm/armv7-m/Make.defs` | NuttX 유래 | `libc/machine/arm/armv7-m/Make.defs` (동일 경로, 미sync) | `machine/arm/Make.defs`가 `CONFIG_ARCH_ARMV7M`일 때 include | sync됨 (`30917f838`) | machine/arm은 armv7-a, armv8-m만 sync. NuttX판은 `arch_mem*.S` 등도 빌드 |
+| `libc/machine/arm/armv7-m/arch_elf.c` | NuttX 유래 | 동일 경로 (미sync) | 위 Make.defs가 `CONFIG_LIBC_ARCH_ELF`일 때 빌드 | sync됨 (`30917f838`) | `up_relocate`/`up_relocateadd` 시그니처가 sync된 libc/elf(armv7-a판)와 다름 |
+| `libc/machine/arm/armv7-r/Make.defs` | NuttX 유래 | 동일 경로 (미sync) | `CONFIG_ARCH_ARMV7R`일 때 include | sync됨 (`30917f838`) | armv7-m과 같음 |
+| `libc/machine/arm/armv7-r/arch_elf.c` | NuttX 유래 | 동일 경로 (미sync) | 〃 | sync됨 (`30917f838`) | armv7-m과 같음 |
 | `libc/aio/Make.defs` | NuttX 유래 | 동일 경로 | libc Makefile include | 유지 | 본문이 NuttX와 같고 라이선스 헤더만 다름 |
 | `libc/inttypes/Make.defs` | NuttX 유래 | 동일 경로 | libc Makefile include | 유지 | 〃 |
 | `libc/libgen/Make.defs` | NuttX 유래 | 동일 경로 | libc Makefile include | 유지 | 〃 |
@@ -222,25 +243,25 @@ NuttX 대응은 NuttX 12.13.0의 `include/` 기준이고 `tinyara/`는 `nuttx/`�
 | `video/video_controls.h` | Sony(Spresense) 유래 | sys/video_controls.h | 1/1 | 유지 | lcd/video/mipidsi/input/sensors 미sync 영역 |
 | `video/video_halif.h` | Sony(Spresense) 유래 | - | 5/5 | 유지 | lcd/video/mipidsi/input/sensors 미sync 영역 |
 
-### USB (미sync 영역) (15)
+### USB (15, 후속 결정으로 sync됨)
 
 | 파일 (os/include/) | 출처 | NuttX 12.13.0 대응 (include/) | 참조 전체/os | 판정 | 근거 |
 |---|---|---|---|---|---|
-| `tinyara/usb/cdc.h` | NuttX 유래 | nuttx/usb/cdc.h (동일 경로) | 5/5 | 유지 | usb 미sync 영역 |
-| `tinyara/usb/cdcacm.h` | NuttX 유래 | nuttx/usb/cdcacm.h (동일 경로) | 9/8 | 유지 | usb 미sync 영역 |
-| `tinyara/usb/composite.h` | NuttX 유래 | nuttx/usb/composite.h (동일 경로) | 4/4 | 유지 | usb 미sync 영역 |
-| `tinyara/usb/ehci.h` | NuttX 유래 | nuttx/usb/ehci.h (동일 경로) | 1/1 | 유지 | usb 미sync 영역 |
-| `tinyara/usb/hub.h` | NuttX 유래 | nuttx/usb/hub.h (동일 경로) | 2/2 | 유지 | usb 미sync 영역 |
-| `tinyara/usb/ohci.h` | NuttX 유래 | nuttx/usb/ohci.h (동일 경로) | 1/1 | 유지 | usb 미sync 영역 |
-| `tinyara/usb/pl2303.h` | NuttX 유래 | nuttx/usb/pl2303.h (동일 경로) | 2/2 | 유지 | usb 미sync 영역 |
-| `tinyara/usb/storage.h` | NuttX 유래 | nuttx/usb/storage.h (동일 경로) | 4/4 | 유지 | usb 미sync 영역 |
-| `tinyara/usb/usb.h` | NuttX 유래 | nuttx/usb/usb.h (동일 경로) | 31/31 | 유지 | usb 미sync 영역 |
-| `tinyara/usb/usbdev.h` | NuttX 유래 | nuttx/usb/usbdev.h (동일 경로) | 21/21 | 유지 | usb 미sync 영역 |
-| `tinyara/usb/usbdev_trace.h` | NuttX 유래 | nuttx/usb/usbdev_trace.h (동일 경로) | 26/26 | 유지 | usb 미sync 영역 |
-| `tinyara/usb/usbhost.h` | NuttX 유래 | nuttx/usb/usbhost.h (동일 경로) | 29/29 | 유지 | usb 미sync 영역 |
-| `tinyara/usb/usbhost_devaddr.h` | NuttX 유래 | nuttx/usb/usbhost_devaddr.h (동일 경로) | 10/10 | 유지 | usb 미sync 영역 |
-| `tinyara/usb/usbhost_trace.h` | NuttX 유래 | nuttx/usb/usbhost_trace.h (동일 경로) | 7/7 | 유지 | usb 미sync 영역 |
-| `tinyara/usb/usbmsc.h` | NuttX 유래 | nuttx/usb/usbmsc.h (동일 경로) | 2/2 | 유지 | usb 미sync 영역 |
+| `tinyara/usb/cdc.h` | NuttX 유래 | nuttx/usb/cdc.h (동일 경로) | 5/5 | sync됨 (`1c37bfac3`) | 후속 결정으로 usb sync |
+| `tinyara/usb/cdcacm.h` | NuttX 유래 | nuttx/usb/cdcacm.h (동일 경로) | 9/8 | sync됨 (`1c37bfac3`) | 후속 결정으로 usb sync |
+| `tinyara/usb/composite.h` | NuttX 유래 | nuttx/usb/composite.h (동일 경로) | 4/4 | sync됨 (`1c37bfac3`) | 후속 결정으로 usb sync |
+| `tinyara/usb/ehci.h` | NuttX 유래 | nuttx/usb/ehci.h (동일 경로) | 1/1 | sync됨 (`1c37bfac3`) | 후속 결정으로 usb sync |
+| `tinyara/usb/hub.h` | NuttX 유래 | nuttx/usb/hub.h (동일 경로) | 2/2 | sync됨 (`1c37bfac3`) | 후속 결정으로 usb sync |
+| `tinyara/usb/ohci.h` | NuttX 유래 | nuttx/usb/ohci.h (동일 경로) | 1/1 | sync됨 (`1c37bfac3`) | 후속 결정으로 usb sync |
+| `tinyara/usb/pl2303.h` | NuttX 유래 | nuttx/usb/pl2303.h (동일 경로) | 2/2 | sync됨 (`1c37bfac3`) | 후속 결정으로 usb sync |
+| `tinyara/usb/storage.h` | NuttX 유래 | nuttx/usb/storage.h (동일 경로) | 4/4 | sync됨 (`1c37bfac3`) | 후속 결정으로 usb sync |
+| `tinyara/usb/usb.h` | NuttX 유래 | nuttx/usb/usb.h (동일 경로) | 31/31 | sync됨 (`1c37bfac3`) | 후속 결정으로 usb sync |
+| `tinyara/usb/usbdev.h` | NuttX 유래 | nuttx/usb/usbdev.h (동일 경로) | 21/21 | sync됨 (`1c37bfac3`) | 후속 결정으로 usb sync |
+| `tinyara/usb/usbdev_trace.h` | NuttX 유래 | nuttx/usb/usbdev_trace.h (동일 경로) | 26/26 | sync됨 (`1c37bfac3`) | 후속 결정으로 usb sync |
+| `tinyara/usb/usbhost.h` | NuttX 유래 | nuttx/usb/usbhost.h (동일 경로) | 29/29 | sync됨 (`1c37bfac3`) | 후속 결정으로 usb sync |
+| `tinyara/usb/usbhost_devaddr.h` | NuttX 유래 | nuttx/usb/usbhost_devaddr.h (동일 경로) | 10/10 | sync됨 (`1c37bfac3`) | 후속 결정으로 usb sync |
+| `tinyara/usb/usbhost_trace.h` | NuttX 유래 | nuttx/usb/usbhost_trace.h (동일 경로) | 7/7 | sync됨 (`1c37bfac3`) | 후속 결정으로 usb sync |
+| `tinyara/usb/usbmsc.h` | NuttX 유래 | nuttx/usb/usbmsc.h (동일 경로) | 2/2 | sync됨 (`1c37bfac3`) | 후속 결정으로 usb sync |
 
 ### 전원 / PM (미sync 결정 영역) (5)
 
@@ -256,7 +277,7 @@ NuttX 대응은 NuttX 12.13.0의 `include/` 기준이고 `tinyara/`는 `nuttx/`�
 
 | 파일 (os/include/) | 출처 | NuttX 12.13.0 대응 (include/) | 참조 전체/os | 판정 | 근거 |
 |---|---|---|---|---|---|
-| `cJSON.h` | cJSON 유래 | - | 25/2 | 유지 | drivers/audio/cJSON.c 등이 사용 |
+| `cJSON.h` | cJSON 유래 | - | 25/2 | 이동 (후속 결정, `e710928f0`) | 사용처는 os/drivers/audio의 cJSON.c, syu645b.c 둘뿐(다른 사용처는 external `<json/cJSON.h>`). `os/drivers/audio/cJSON.h`로 옮김 |
 | `tinyara/endian.h` | musl 유래 | endian.h, sys/endian.h (sync됨) | 0/0 | **삭제** | base 유일 사용처 lib/libc/math/libm.h가 NuttX libm으로 교체, endian.h·sys/endian.h sync됨. 참조 0 |
 | `tinyara/features.h` | musl 유래 | - | 1/0 | 유지 | external/include/grpc port_platform.h가 사용 (삭제한 endian.h도 include했음) |
 | `tinyara/fs/fs_utils.h` | NuttX 유래 | - | 9/0 | 유지 | TizenRT fs 유틸 API. apps 9개(fscmd, tash_script, fs 테스트 등)가 사용 |
@@ -279,7 +300,7 @@ NuttX 대응은 NuttX 12.13.0의 `include/` 기준이고 `tinyara/`는 `nuttx/`�
 | `tinyara/binfmt/compression/compress_read.h` | Samsung | - | 5/5 | 유지 | Samsung 기능, 사용 중 |
 | `tinyara/compression.h` | Samsung | - | 7/4 | 유지 | Samsung 기능, 사용 중 |
 | `tinyara/cpuload.h` | Samsung | - | 2/1 | 유지 | Samsung 기능, 사용 중 |
-| `tinyara/debug/sysdbg.h` | Samsung | - | 19/18 | 유지 | Samsung 기능, 사용 중 |
+| `tinyara/debug/sysdbg.h` | Samsung | - | 19/18 | **삭제** (후속 결정, `0818e112b`) | sysdbg 기능 폐기. sync로 커널 훅과 빌드 연결이 이미 끊겨 있었음 |
 | `tinyara/gpio.h` | Samsung | nuttx/ioexpander/gpio.h (sync됨, API 다름) | 27/19 | 유지 (TD-INC-01) | Samsung gpio upper-half(base drivers/gpio/gpio.c)가 [MOVE] 후 NuttX ioexpander/gpio.c로 덮어써져 gpio_register 구현 소실. chip lowerhalf 등이 사용 |
 | `tinyara/iotbus_pinmap.h` | - | - | 2/2 | 유지 | Samsung 기능, 사용 중 |
 | `tinyara/iotbus_sig.h` | Samsung | - | 6/3 | 유지 | Samsung 기능, 사용 중 |
@@ -327,3 +348,18 @@ NO_CHANGED 트리에서 아직 보지 않은 os 하위 영역과 파일 수입�
 | os/fs | 11 | |
 | os/binfmt | 7 | |
 | 그 밖의 os 파일 | 23 | audio, compression, syscall, userspace, 최상위 Makefile 등 |
+
+## 8. 후속 결정 반영 (2026-11-02)
+
+리뷰 뒤 사용자 결정으로 바뀐 판정입니다. 결정 전체와 TD 변화는 [NuttX-12.13.0-TD.md](NuttX-12.13.0-TD.md)의 "후속 결정"을 봅니다.
+
+| 대상 | 리뷰 판정 | 바뀐 판정 | 커밋 |
+|---|---|---|---|
+| `os/include/cJSON.h` | 유지 | 이동: `os/drivers/audio/cJSON.h` | `e710928f0` |
+| `os/include/tinyara/debug/sysdbg.h` | 유지 (Samsung 기능) | 삭제: sysdbg 기능 전체 폐기 (`os/kernel/debug/sysdbg.c`, `apps/system/sysdbg`, le_tc 포함) | `0818e112b` |
+| `os/libs/libm/libm/lib_{j0,j0f,j1,j1f,jn,jnf}.c` | 별도 판정 필요 (TD-LIBS-04) | 삭제: Bessel 함수는 `CONFIG_LIBM_TOOLCHAIN`의 툴체인 `libm.a`가 제공 | `119a92815` |
+| `os/libs/libc/machine/arm/armv7-{m,r}/{Make.defs,arch_elf.c}` | 유지 (TD-LIBS-06) | sync됨: `DEV-12.13.0-LABEL-ARMV7`의 armv7-m/r 커밋 cherry-pick | `30917f838` |
+| `os/include/tinyara/usb/*.h` 15개 | 유지 (usb 미sync 영역) | sync됨: usb 드라이버와 헤더 sync | `1c37bfac3` |
+
+audio 영역 헤더(오디오 10개)는 계속 미sync이고 판정은 그대로입니다(TD-INC-02).
+`DEV-12.13.0-LABEL___NO_CHANGED`는 이 결정들을 반영해 다시 만들었습니다. 이 문서의 3~6장 표와 "리뷰 기준 트리"는 리뷰 당시 기준입니다.

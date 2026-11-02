@@ -7,12 +7,21 @@ TizenRT.  The TizenRT build system, Kconfig and defconfig style, the
 `os/kernel` and `os/include/tinyara` names and the TizenRT apps,
 framework and external code are kept.
 
-The result is verified on two QEMU boards, FLAT build only:
+The result is verified on QEMU boards, FLAT build only.  The first two
+boards are from the first step; the other three, the SMP configuration
+of qemu-armv7a and the armv7-m/armv7-r cores come from
+`DEV-12.13.0-LABEL-ARMV7` (follow-up decisions of 2026-11-02).  Results
+of DEV-12.13.0-LABEL `536d8ae05` (clean build, then ostest on QEMU; in
+`tash` the `ostest` command is typed at the prompt; a test group is a
+`user_main: ... test` line):
 
-| Board | CPU | Configs | Result on QEMU 8.2 |
+| Board | CPU | Configs | Result |
 |---|---|---|---|
-| [qemu-armv7a](../build/configs/qemu-armv7a/README.md) | Cortex-A7, `virt`, GICv2, PL011 | `ostest`, `tash` | 33 test groups pass, `ostest_main: Exiting with status 0` |
-| [mps2-an521](../build/configs/mps2-an521/README.md) | Cortex-M33, MPS2 AN521, CMSDK UART | `ostest`, `tash` | 31 test groups pass, `ostest_main: Exiting with status 0` |
+| [qemu-armv7a](../build/configs/qemu-armv7a/README.md) | Cortex-A7 ×2 (SMP), `virt`, GICv2, PL011 | `ostest`, `tash` | 39 test groups pass (with `smp_call`), `ostest_main: Exiting with status 0` (QEMU 8.2) |
+| [mps2-an521](../build/configs/mps2-an521/README.md) | Cortex-M33, MPS2 AN521, CMSDK UART | `ostest`, `tash` | 36 test groups pass, status 0 (QEMU 8.2) |
+| [mps2-an500](../build/configs/mps2-an500/README.md) | Cortex-M7, MPS2 AN500, CMSDK UART | `ostest`, `tash` | 37 test groups pass, status 0 (QEMU 8.2) |
+| [lm3s6965-ek](../build/configs/lm3s6965-ek/README.md) | Cortex-M3, TI Stellaris LM3S6965 (tiva) | `ostest`, `tash` | 36 test groups pass, status 0 in 1 of 6 runs; in the others the round-robin test fails depending on the host speed and ostest stops there (TD-TEST-01). The binary of `536d8ae05` equals the passing one except the build time (QEMU 8.2) |
+| [qemu-armv7r](../build/configs/qemu-armv7r/README.md) | Cortex-R5F, `virt` of the OpenVela QEMU | `ostest`, `tash` | 38 test groups pass, status 0 (OpenVela QEMU, image from `build/configs/qemu-armv7r/Dockerfile`) |
 
 ## Layout
 
@@ -22,13 +31,12 @@ The result is verified on two QEMU boards, FLAT build only:
 | `include/nuttx/` | `os/include/tinyara/` | |
 | `include/` | `os/include/` | `debug.h` ends with a TizenRT macro block |
 | `libs/libc` | `os/libs/libc` | was `lib/libc`; `binfmt/libelf` → `libs/libc/elf`, `binfmt/libbuiltin` → `libs/libc/builtin`, user work queue → `libs/libc/wqueue` |
-| `libs/{libm,libxx,libbuiltin,libdsp,libnx}` | `os/libs/...` | `lib/libc/math` → `libs/libm/libm`, `lib/libxx` → `libs/libxx` |
-| `mm/`, `fs/`, `binfmt/`, `audio/`, `syscall/` | same under `os/` | `fs/driver/block` → `fs/driver`, `fs/driver/mtd` → `drivers/mtd` |
-| `graphics/`, `video/` | `os/graphics`, `os/video` | new |
-| `drivers/*` | `os/drivers/*` | driver files at the root of `os/drivers` moved to the NuttX subdirectories first |
-| `arch/arm/{src,include}/{common,armv7-a,armv8-m,qemu,mps}` | `os/arch/arm/...` | |
+| `libs/{libm,libxx,libbuiltin,libdsp}` | `os/libs/...` | `lib/libc/math` → `libs/libm/libm`, `lib/libxx` → `libs/libxx` |
+| `mm/`, `fs/`, `binfmt/`, `syscall/` | same under `os/` | `fs/driver/block` → `fs/driver`, `fs/driver/mtd` → `drivers/mtd` |
+| `drivers/*` | `os/drivers/*` | driver files at the root of `os/drivers` moved to the NuttX subdirectories first; the areas in "Not synced" keep the TizenRT drivers |
+| `arch/arm/{src,include}/{common,armv7-a,armv7-m,armv7-r,armv8-m,qemu,mps,tiva}` | `os/arch/arm/...` | armv7-m, armv7-r and tiva from `DEV-12.13.0-LABEL-ARMV7` |
 | `boards/boardctl.c` | `os/board/boardctl.c` | was `os/arch/boardctl.c` |
-| `boards/arm/{qemu/qemu-armv7a,mps/mps2-an521}` | `os/board/<board>/{Kconfig,include,src}` + `build/configs/<board>/{Make.defs,scripts,<config>/defconfig}` | |
+| `boards/arm/{qemu/qemu-armv7a,qemu/qemu-armv7r,mps/mps2-an500,mps/mps2-an521,tiva/lm3s6965-ek}` | `os/board/<board>/{Kconfig,include,src}` + `build/configs/<board>/{Make.defs,scripts,<config>/defconfig}` | `build/configs/qemu` was renamed to `lm3s6965-ek` |
 | nuttx-apps `testing/ostest` | `apps/examples/testcase/ostest` | |
 
 Directories and files were moved with `git mv` before the sync commits,
@@ -62,21 +70,23 @@ so `git log --follow` shows their TizenRT history.
 | pm: `drivers/power/pm`, pm headers | TizenRT keeps `os/pm` |
 | `wireless/` | not used |
 | `fs/nfs` | NFSv3 client on the NuttX network stack |
-| openamp: `openamp/`, `drivers/rpmsg`, `drivers/rptun`, `fs/rpmsgfs`, every `*rpmsg*`/`*rptun*` file, except 5 headers (below) | not used |
+| openamp: the top-level `openamp/` (OpenAMP library download and patches) and the `*rpmsg*` files of the areas that are not synced (net, usrsock, wireless, sensors, power; clk, reset, virtio and vhost do not exist in TizenRT) | `drivers/rpmsg`, `drivers/rptun`, `fs/rpmsgfs` and the other rpmsg files are synced with their options off (decision 2026-11-02); the options cannot be used without `openamp/` |
+| audio: `audio/`, `drivers/audio`, `include/nuttx/audio` | TizenRT keeps its audio drivers and headers (decision 2026-11-02) |
+| graphics: `graphics/`, `libs/libnx`, `include/nuttx/nx` | not taken in the rewritten history |
+| video: `video/`, `drivers/video`, `include/nuttx/video`, `include/sys/video*` | TizenRT keeps its video driver and headers |
+| driver areas `input`, `lcd`, `sensors`, `power` (except `pm`, which is listed above) | TizenRT keeps its drivers (8dd98470f) |
+| drivers TizenRT does not have | not added, except `note`, `rpmsg`, `rptun`, `usbmisc`, `usbmonitor` and what the QEMU boards need (`serial/uart_pl011`, `serial/serial_cmsdk`, `timers`) |
 | `crypto/`, `cmake/` | out of scope |
 | `tools/`, `dummy/`, `pass1/` | NuttX build system; TizenRT `os/tools` is kept |
-| drivers TizenRT does not have | not added, except `note` and what the QEMU boards need (`serial/uart_pl011`, `serial/serial_cmsdk`, `timers`) |
-| other arch and board directories | only the two QEMU boards are ported |
+| other arch and board directories | only the QEMU boards in the table above are ported |
 
-Five rpmsg headers that synced files include unconditionally are synced
-although openamp is not: `include/nuttx/drivers/rpmsgdev.h`,
-`rpmsgblk.h`, `include/nuttx/syslog/syslog_rpmsg.h`,
-`include/nuttx/rpmsg/rpmsg_port.h` and `fs/rpmsgfs/rpmsgfs.h`.  They only
-declare APIs under `CONFIG_` options and include headers that are synced,
-so `syslog_initialize.c`, `qemu_boot.c`, `qemu_bringup.c` and
-`fs_initialize.c` stay as in NuttX.  `net/rpmsgdrv.h` and
-`usrsock/usrsock_rpmsg.h` need the NuttX network headers and are not
-synced.
+The rpmsg and rptun area is synced since the follow-up decisions of
+2026-11-02 (`drivers/rpmsg`, `drivers/rptun`, `fs/rpmsgfs`,
+`include/nuttx/{rpmsg,rptun}` and the rpmsg files of the synced driver
+directories).  Before, only five rpmsg headers that synced files include
+unconditionally were synced.  `net/rpmsgdrv.h`,
+`usrsock/usrsock_rpmsg.h` and `netpacket/rpmsg.h` belong to the network
+area and are still not synced.
 
 The other NuttX files that include a header of a not-synced area
 unconditionally get an include guard with the option of that area, for
@@ -155,7 +165,7 @@ NuttX file (renames tinyara=nuttx, TinyAra=NuttX, TINYARA=NUTTX):
 | `os/drivers/serial/serial.c`, `os/drivers/timers/watchdog.c` | `power/pm.h` include guard |
 | `os/drivers/Kconfig`, `os/drivers/Makefile` | not-synced drivers dropped, TizenRT drivers added |
 | `os/drivers/power/{Kconfig,Make.defs}` | `pm` dropped |
-| `os/fs/{Kconfig,Makefile}` | `nfs`, `rpmsgfs` (and `socket` in the Makefile) dropped |
+| `os/fs/{Kconfig,Makefile}` | `nfs` (and `socket` in the Makefile) dropped |
 | `os/libs/libc/Kconfig` | `net`, `netdb` dropped |
 | `os/libs/libc/machine/Kconfig`, `os/libs/libc/machine/arm/Kconfig` | arch directories that are not synced dropped |
 | `os/arch/arm/src/Makefile` | links `build/output/bin/tinyara` from `build/output/libraries` |
@@ -178,6 +188,13 @@ scanned for numbers split at the exponent sign; none is left.
 - `apps/examples/testcase/ostest`: `Make.defs` in the TizenRT form with
   the conditions of the nuttx-apps Makefile; `fork.c` and `multiuser.c`
   (TizenRT additions) are kept but not built.
+- Follow-up decisions of 2026-11-02:
+  - `os/include/cJSON.h` moved to `os/drivers/audio/cJSON.h`, the only
+    user being the syu645b codec driver.
+  - The sysdbg feature (`CONFIG_DEBUG_SYSTEM`, `/dev/sysdbg`) is removed.
+  - The TizenRT Bessel functions of `os/libs/libm/libm` are removed.
+    Use `CONFIG_LIBM_TOOLCHAIN` (default; the toolchain newlib
+    `libm.a`, statically linked), which has `j0`..`ynf`.
 
 ## License headers
 
@@ -231,6 +248,15 @@ the third-party licensed files and the files without a license are in
   Kconfig.
 - A board with `CONFIG_PM` needs the NuttX `power/pm.h` and
   `drivers/power/pm`, which are not synced.
+- Only `CONFIG_LIBM_TOOLCHAIN` and `CONFIG_LIBM_NONE` build: the
+  TizenRT `os/libs/libm/Makefile` and the NuttX libm, newlib, openlibm
+  and libmcs `Make.defs` mix `context:` and `context::` rules (TD-LIBS-11
+  of [NuttX-12.13.0-TD.md](NuttX-12.13.0-TD.md)).
+- The rpmsg options need the OpenAMP library of `openamp/`, which is not
+  synced (TD-RPMSG-01).  The TizenRT USB host drivers `rtl8723d.c` and
+  `uvc/` are no longer wired after the USB sync (TD-USB-01).
+- The follow-up list of the reviews is
+  [NuttX-12.13.0-TD.md](NuttX-12.13.0-TD.md).
 - mps2-an521 has no `board_power_off()` in NuttX 12.13.0, so its ostest
   configuration cannot power QEMU off.
 - The apps preconfig regenerates `apps/examples/SoundPlayer/Kconfig`

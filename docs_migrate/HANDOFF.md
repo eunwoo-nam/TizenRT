@@ -270,3 +270,73 @@ split into reviewed commits on top of the same base (2d8977a26):
 - The old branchpoint and the previous heads are kept under
   refs/backup/261028/; nothing was pushed.
 
+
+## Follow-up decisions (2026-11-02, DEV-12.13.0-LABEL)
+
+Branch `DEV-12.13.0-LABEL` (the rewritten history).  The sections above
+describe the original history; its scope differs from LABEL (TD-DOC-01
+of docs_migrate/NuttX-12.13.0-TD.md).  LABEL does not take audio,
+graphics/libnx, video and the driver areas input, lcd, sensors and
+power (TizenRT drivers kept, 8dd98470f).
+
+User decisions after the leftover and unsynced file reviews (details
+and follow-ups: "후속 결정" of docs_migrate/NuttX-12.13.0-TD.md):
+
+| # | Decision | Commits |
+|---|---|---|
+| 7 | Take the armv7-m/armv7-r work of `DEV-12.13.0-LABEL-ARMV7`: QEMU SMP of qemu-armv7a, the armv7-m/armv7-r cores and libc machine, tiva/lm3s6965-ek, qemu-armv7r, mps2-an500, the optimization options and the core directory selection (20 cherry-picks, original messages).  Not taken: rtl8730e/amebasmart, imx6/sabre-6quad, e5f4a7452, the ARMV7 documents.  Applied first, so the sysdbg removal does not touch the replaced armv7-m/r files | `2b27d3f28`..`1d3c8e7f5` |
+| 1 | `os/include/cJSON.h` → `os/drivers/audio/cJSON.h` (only user: syu645b) | `e710928f0` |
+| 2 | Remove sysdbg (already disconnected by the sync) | `0818e112b` |
+| 3 | Math library: `CONFIG_LIBM_TOOLCHAIN` (toolchain newlib `libm.a`, static); remove the TizenRT Bessel files | `119a92815` |
+| 4 | audio stays not synced | - |
+| 5 | Sync rpmsg/rptun (options off); `openamp/` and the rpmsg files of not-synced areas stay out | `85dd59748`..`b8e765991` |
+| 6 | Sync the USB drivers (usbdev, usbhost, usbmisc, usbmonitor) and `include/nuttx/usb` | `1c37bfac3`..`536d8ae05` |
+
+Sync rules as before: NuttX file → mapped path, include path rename,
+cformatter of `agent/261022_improve-cformatter-tool` at 51e698d9f (the
+local WORK-261022 worktree is older; extract it with
+`git show 51e698d9f:tools/cformatter.py`), the Samsung block of an
+existing file kept, `license_manager.py` 2026 header for new files,
+codesim tokens identical.  Every sync commit: N of N identical.
+
+Results at `536d8ae05` (clean build + QEMU; tash runs `ostest` from the
+prompt; groups = `user_main: ... test` lines):
+
+| Config | Result |
+|---|---|
+| qemu-armv7a/ostest, tash (SMP 2) | status 0, 39 groups, `smp_call_test: Test success` |
+| mps2-an521/ostest, tash | status 0, 36 groups |
+| mps2-an500/ostest, tash | status 0, 37 groups |
+| qemu-armv7r/ostest, tash | status 0, 38 groups on the OpenVela QEMU (`tizenrt/tizenrt:2.0.1-qemu-armv7r`) |
+| lm3s6965-ek/ostest, tash | status 0, 36 groups in 1 of 6 runs; the round-robin test fails in the other runs (first thread done before the second starts) and ostest stops there.  The ARMV7 tip 9f080f29f fails the same way; the binaries differ only in the build time.  TD-TEST-01 |
+
+Build the OpenVela image behind the proxy: copy
+build/configs/qemu-armv7r/Dockerfile, add
+`COPY proxy-ca.crt /usr/local/share/ca-certificates/`,
+`RUN update-ca-certificates` and
+`ENV GIT_SSL_CAINFO=/etc/ssl/certs/ca-certificates.crt` before the git
+fetch (proxy-ca.crt = /usr/share/ca-certificates/samsung/DigitalCity.crt),
+and build with `--network host` and the proxy build args.
+
+Kconfig: `make oldconfig` of qemu-armv7a/tash shows no warning from the
+new Kconfig files; the full .config defconfigs are not refreshed (new
+symbols are off).
+
+Review branches (for review only, regenerated after this step; old
+heads under `refs/backup/261102/`, nothing pushed):
+- `DEV-12.13.0-LABEL___NO_CHANGED`: one commit on top of LABEL that
+  removes every file some commit of `master..LABEL` added or modified
+  (status A/M/T, or R below 100%), keeping files only moved.  The same
+  rule reproduces the previous tree 485989868 (3005 removed).
+- `nuttx-12.13.0___NO_SYNCED` (~/project/nuttx): b9b5d9afbf minus the
+  files LABEL took (the previous 2880 plus 502 of this step: files
+  written by the SYNC commits mapped back to NuttX paths, and the board
+  linker scripts copied unchanged), then minus the CMake files (921).
+  The worktree kept its uncommitted deletions (`git reset --keep`).
+
+Tools of this step (scratchpad, not committed): `nxsync.py` (sync a list
+of NuttX paths; `--check` compares with the tree), `nxverify.py`
+(codesim/bytes), `syncstep.sh` (sync + verify + license check + ppnum),
+`board_check.sh` + `qrun.py` (distclean, configure, dbuild, QEMU in
+docker; TASH gets `ostest`), `nosynced_set.py` (files taken by a commit
+range).  nxsync.py reproduces existing synced files byte for byte.

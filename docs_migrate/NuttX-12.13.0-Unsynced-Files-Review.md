@@ -3,6 +3,7 @@
 | 항목 | 내용 |
 |---|---|
 | 작성일 | 2026-11-02 |
+| 갱신 | 2026-11-02 후속 결정 반영 (8장) |
 | 대상 브랜치 | `DEV-12.13.0-LABEL` (`cf549f849` 기준) |
 | 리뷰 기준 트리 | `~/project/nuttx/nuttx-12.13.0___NO_SYNCED` 브랜치 `nuttx-12.13.0___NO_SYNCED` `9779f82204` — NuttX 12.13.0(`b9b5d9afbf`)에서 LABEL이 가져간 파일 2880개를 뺀 트리(22691 files) |
 | 범위 | `include/`, `libs/` (884) |
@@ -41,14 +42,14 @@
 |---|---|---|---|
 | CMake 파일 (`CMakeLists.txt`, `*.cmake`) | 95 | 제외 결정 | cmake 범위 밖 (Migration.md Not synced) |
 | 네트워크 | 141 | 제외 결정 | TizenRT 네트워크 스택 유지 |
-| openamp (`*rpmsg*`, `*rptun*`) | 19 | 제외 결정 | 사용 안 함 |
+| openamp (`*rpmsg*`, `*rptun*`) | 19 | 제외 결정 → **14개 sync됨** (후속 결정) | rpmsg/rptun sync, net·usrsock·wireless의 5개는 제외 유지 (8장) |
 | crypto (`include/crypto`, `include/nuttx/crypto`) | 25 | 제외 결정 | 범위 밖. `tea.h`만 sync |
 | wireless (`include/nuttx/wireless`) | 39 | 제외 결정 | 사용 안 함 |
 | pm (`include/nuttx/power/pm.h`) | 1 | 제외 결정 | TizenRT `os/pm` 유지 |
-| drivers 영역 헤더 (`audio`, `input`, `lcd`, `sensors`, `usb`, `video`, `power`, `uorb.h`, `sys/video*`) | 262 | 의도된 제외 | 재작성 히스토리에서 TizenRT 드라이버 유지 (8dd98470f). 문서 불일치는 TD-DOC-01 |
+| drivers 영역 헤더 (`audio`, `input`, `lcd`, `sensors`, `usb`, `video`, `power`, `uorb.h`, `sys/video*`) | 262 | 의도된 제외 → **usb 31개 sync됨** (후속 결정) | 재작성 히스토리에서 TizenRT 드라이버 유지 (8dd98470f). usb는 후속 결정으로 sync (8장). 문서 불일치는 TD-DOC-01 |
 | graphics (`libs/libnx`, `include/nuttx/nx`) | 173 | 의도된 제외 | 재작성 히스토리에서 제외. 문서 불일치는 TD-DOC-01 |
 | libc/machine: TizenRT에 없는 arch | 81 | 제외 | arm/arm, armv6-m, armv8-r, arm64, risc-v, sim, sparc, x86, x86_64, renesas |
-| libc/machine: TizenRT에 있는 arch (armv7-m, armv7-r, xtensa) | 34 | TD | TD-LIBS-06 |
+| libc/machine: TizenRT에 있는 arch (armv7-m, armv7-r, xtensa) | 34 | TD → **armv7-m/r 21개 sync됨** (후속 결정) | TD-LIBS-06 (xtensa 13개 남음) |
 | 라이브러리 Makefile | 6 | 부분 반영 | TizenRT 빌드 시스템 Makefile에 NuttX 소스 목록만 반영 |
 | TizenRT에 본문이 같은 파일이 있음 | 4 | 반영됨 | 라이선스 헤더만 다름 |
 | `libs/libc/zoneinfo/Makefile` | 1 | TD | TD-LIBS-05 |
@@ -68,8 +69,9 @@
 
 ## 5. 조치·확인 대상 파일 (48)
 
-armv7-m, armv7-r의 `libc/machine`은 `DEV-12.13.0-LABEL-ARMV7` 브랜치에서 sync 중입니다
-(`5611e3b35` "os/libs/libc/machine/arm: Sync armv7-m and armv7-r with NuttX 12.13.0", `f639b7316` Kconfig source 복원).
+armv7-m, armv7-r의 `libc/machine`은 `DEV-12.13.0-LABEL-ARMV7` 브랜치에서 sync했고, 후속 결정으로 LABEL에 cherry-pick했습니다
+(`30917f838` "os/libs/libc/machine/arm: Sync armv7-m and armv7-r with NuttX 12.13.0", `11f775a4a` Kconfig source 복원).
+아래 표의 armv7-m/armv7-r 21개는 이제 sync되어 있습니다.
 xtensa는 TizenRT의 esp32 보드를 포팅할 때 필요합니다.
 
 | 파일 (NuttX 12.13.0) | TizenRT 대응 | 판정 | 근거 |
@@ -88,27 +90,27 @@ xtensa는 TizenRT의 esp32 보드를 포팅할 때 필요합니다.
 | `libs/libc/aio/Make.defs` | `os/libs/libc/aio/Make.defs` | 반영됨 | 본문 동일, 라이선스 헤더만 다름 (1차 리뷰 "유지") |
 | `libs/libc/inttypes/Make.defs` | `os/libs/libc/inttypes/Make.defs` | 반영됨 | 〃 |
 | `libs/libc/libgen/Make.defs` | `os/libs/libc/libgen/Make.defs` | 반영됨 | 〃 |
-| `libs/libc/machine/arm/armv7-m/Kconfig` | 없음 | TD-LIBS-06 | TizenRT에 없음 |
-| `libs/libc/machine/arm/armv7-m/Make.defs` | `os/libs/libc/machine/arm/armv7-m/Make.defs` | TD-LIBS-06 | TizenRT 구버전 유지 (up_relocate 시그니처 불일치) |
-| `libs/libc/machine/arm/armv7-m/acle-compat.h` | 없음 | TD-LIBS-06 | TizenRT에 없음 |
-| `libs/libc/machine/arm/armv7-m/arch_elf.c` | `os/libs/libc/machine/arm/armv7-m/arch_elf.c` | TD-LIBS-06 | TizenRT 구버전 유지 (up_relocate 시그니처 불일치) |
-| `libs/libc/machine/arm/armv7-m/arch_memchr.S` | 없음 | TD-LIBS-06 | TizenRT에 없음 |
-| `libs/libc/machine/arm/armv7-m/arch_memcpy.S` | 없음 | TD-LIBS-06 | TizenRT에 없음 |
-| `libs/libc/machine/arm/armv7-m/arch_memmove.S` | 없음 | TD-LIBS-06 | TizenRT에 없음 |
-| `libs/libc/machine/arm/armv7-m/arch_memset.S` | 없음 | TD-LIBS-06 | TizenRT에 없음 |
-| `libs/libc/machine/arm/armv7-m/arch_strcmp.S` | 없음 | TD-LIBS-06 | TizenRT에 없음 |
-| `libs/libc/machine/arm/armv7-m/arch_strcpy.S` | 없음 | TD-LIBS-06 | TizenRT에 없음 |
-| `libs/libc/machine/arm/armv7-m/arch_strlen.S` | 없음 | TD-LIBS-06 | TizenRT에 없음 |
-| `libs/libc/machine/arm/armv7-r/Kconfig` | 없음 | TD-LIBS-06 | TizenRT에 없음 |
-| `libs/libc/machine/arm/armv7-r/Make.defs` | `os/libs/libc/machine/arm/armv7-r/Make.defs` | TD-LIBS-06 | TizenRT 구버전 유지 (up_relocate 시그니처 불일치) |
-| `libs/libc/machine/arm/armv7-r/acle-compat.h` | 없음 | TD-LIBS-06 | TizenRT에 없음 |
-| `libs/libc/machine/arm/armv7-r/arch_elf.c` | `os/libs/libc/machine/arm/armv7-r/arch_elf.c` | TD-LIBS-06 | TizenRT 구버전 유지 (up_relocate 시그니처 불일치) |
-| `libs/libc/machine/arm/armv7-r/arch_memchr.S` | 없음 | TD-LIBS-06 | TizenRT에 없음 |
-| `libs/libc/machine/arm/armv7-r/arch_memcpy.S` | 없음 | TD-LIBS-06 | TizenRT에 없음 |
-| `libs/libc/machine/arm/armv7-r/arch_memmove.S` | 없음 | TD-LIBS-06 | TizenRT에 없음 |
-| `libs/libc/machine/arm/armv7-r/arch_memset.S` | 없음 | TD-LIBS-06 | TizenRT에 없음 |
-| `libs/libc/machine/arm/armv7-r/arch_strcmp.S` | 없음 | TD-LIBS-06 | TizenRT에 없음 |
-| `libs/libc/machine/arm/armv7-r/arch_strlen.S` | 없음 | TD-LIBS-06 | TizenRT에 없음 |
+| `libs/libc/machine/arm/armv7-m/Kconfig` | 없음 | sync됨 (`30917f838`) | TizenRT에 없음 |
+| `libs/libc/machine/arm/armv7-m/Make.defs` | `os/libs/libc/machine/arm/armv7-m/Make.defs` | sync됨 (`30917f838`) | TizenRT 구버전 유지 (up_relocate 시그니처 불일치) |
+| `libs/libc/machine/arm/armv7-m/acle-compat.h` | 없음 | sync됨 (`30917f838`) | TizenRT에 없음 |
+| `libs/libc/machine/arm/armv7-m/arch_elf.c` | `os/libs/libc/machine/arm/armv7-m/arch_elf.c` | sync됨 (`30917f838`) | TizenRT 구버전 유지 (up_relocate 시그니처 불일치) |
+| `libs/libc/machine/arm/armv7-m/arch_memchr.S` | 없음 | sync됨 (`30917f838`) | TizenRT에 없음 |
+| `libs/libc/machine/arm/armv7-m/arch_memcpy.S` | 없음 | sync됨 (`30917f838`) | TizenRT에 없음 |
+| `libs/libc/machine/arm/armv7-m/arch_memmove.S` | 없음 | sync됨 (`30917f838`) | TizenRT에 없음 |
+| `libs/libc/machine/arm/armv7-m/arch_memset.S` | 없음 | sync됨 (`30917f838`) | TizenRT에 없음 |
+| `libs/libc/machine/arm/armv7-m/arch_strcmp.S` | 없음 | sync됨 (`30917f838`) | TizenRT에 없음 |
+| `libs/libc/machine/arm/armv7-m/arch_strcpy.S` | 없음 | sync됨 (`30917f838`) | TizenRT에 없음 |
+| `libs/libc/machine/arm/armv7-m/arch_strlen.S` | 없음 | sync됨 (`30917f838`) | TizenRT에 없음 |
+| `libs/libc/machine/arm/armv7-r/Kconfig` | 없음 | sync됨 (`30917f838`) | TizenRT에 없음 |
+| `libs/libc/machine/arm/armv7-r/Make.defs` | `os/libs/libc/machine/arm/armv7-r/Make.defs` | sync됨 (`30917f838`) | TizenRT 구버전 유지 (up_relocate 시그니처 불일치) |
+| `libs/libc/machine/arm/armv7-r/acle-compat.h` | 없음 | sync됨 (`30917f838`) | TizenRT에 없음 |
+| `libs/libc/machine/arm/armv7-r/arch_elf.c` | `os/libs/libc/machine/arm/armv7-r/arch_elf.c` | sync됨 (`30917f838`) | TizenRT 구버전 유지 (up_relocate 시그니처 불일치) |
+| `libs/libc/machine/arm/armv7-r/arch_memchr.S` | 없음 | sync됨 (`30917f838`) | TizenRT에 없음 |
+| `libs/libc/machine/arm/armv7-r/arch_memcpy.S` | 없음 | sync됨 (`30917f838`) | TizenRT에 없음 |
+| `libs/libc/machine/arm/armv7-r/arch_memmove.S` | 없음 | sync됨 (`30917f838`) | TizenRT에 없음 |
+| `libs/libc/machine/arm/armv7-r/arch_memset.S` | 없음 | sync됨 (`30917f838`) | TizenRT에 없음 |
+| `libs/libc/machine/arm/armv7-r/arch_strcmp.S` | 없음 | sync됨 (`30917f838`) | TizenRT에 없음 |
+| `libs/libc/machine/arm/armv7-r/arch_strlen.S` | 없음 | sync됨 (`30917f838`) | TizenRT에 없음 |
 | `libs/libc/machine/xtensa/Kconfig` | 없음 | TD-LIBS-06 | TizenRT에 없음 (esp32 보드용) |
 | `libs/libc/machine/xtensa/Make.defs` | 없음 | TD-LIBS-06 | TizenRT에 없음 (esp32 보드용) |
 | `libs/libc/machine/xtensa/arch_elf.c` | 없음 | TD-LIBS-06 | TizenRT에 없음 (esp32 보드용) |
@@ -158,14 +160,14 @@ Make.defs의 config 조건(`CONFIG_AUDIO`, `CONFIG_LIBC_KBDCODEC`, `CONFIG_LIBC_
 | `include/nuttx/power/pm.h` | **없음** | `os/drivers/drivers_initialize.c`<br>`os/drivers/serial/serial.c`<br>`os/drivers/timers/watchdog.c`<br>`os/include/tinyara/coresight/coresight.h`<br>`os/include/sys/boardctl.h`<br>`os/kernel/sched/sched_cpuload_oneshot.c`<br>`os/kernel/sched/sched_cpuload_period.c` | `#if defined(CONFIG_PM)`<br>`#ifdef CONFIG_PM`<br>**없음** | TD-INC-07 (coresight.h), 그 외 Migration.md Known gaps |
 | `include/nuttx/power/regulator.h` | **없음** | `os/drivers/drivers_initialize.c` | `#if defined(CONFIG_REGULATOR_RPMSG)` | 가드 안, 해당 config 미사용 |
 | `include/nuttx/sensors/sensor.h` | **없음** | `os/drivers/drivers_initialize.c` | `#if defined(CONFIG_USENSOR) \|\| defined(CONFIG_SENSORS_RPMSG) \|\|` | 가드 안, 해당 config 미사용 |
-| `include/nuttx/usb/adb.h` | **없음** | `os/board/boardctl.c` | `#ifdef CONFIG_BOARDCTL_USBDEVCTRL` | 가드 안, 해당 config 미사용 |
-| `include/nuttx/usb/audio.h` | **없음** | `os/libs/libc/audio/lib_buffer.c` | **없음** | TD-INC-02 |
-| `include/nuttx/usb/cdcacm.h` | 구버전 있음 | `os/board/boardctl.c`<br>`os/drivers/syslog/syslog_channel.c` | `#ifdef CONFIG_BOARDCTL_USBDEVCTRL`<br>`#ifdef CONFIG_SYSLOG_CDCACM` | TizenRT 구버전 헤더 사용 (미sync 영역) |
-| `include/nuttx/usb/composite.h` | 구버전 있음 | `os/board/boardctl.c` | `#ifdef CONFIG_BOARDCTL_USBDEVCTRL` | TizenRT 구버전 헤더 사용 (미sync 영역) |
-| `include/nuttx/usb/pl2303.h` | 구버전 있음 | `os/board/boardctl.c` | `#ifdef CONFIG_BOARDCTL_USBDEVCTRL` | TizenRT 구버전 헤더 사용 (미sync 영역) |
-| `include/nuttx/usb/usbdev_trace.h` | 구버전 있음 | `os/kernel/misc/assert.c` | **없음** | TizenRT 구버전 헤더 사용 (미sync 영역) |
-| `include/nuttx/usb/usbhost.h` | 구버전 있음 | `os/drivers/drivers_initialize.c` | **없음** | TizenRT 구버전 헤더 사용 (미sync 영역) |
-| `include/nuttx/usb/usbmsc.h` | 구버전 있음 | `os/board/boardctl.c` | `#ifdef CONFIG_BOARDCTL_USBDEVCTRL` | TizenRT 구버전 헤더 사용 (미sync 영역) |
+| `include/nuttx/usb/adb.h` | **없음** | `os/board/boardctl.c` | `#ifdef CONFIG_BOARDCTL_USBDEVCTRL` | sync됨 (`1c37bfac3`) |
+| `include/nuttx/usb/audio.h` | **없음** | `os/libs/libc/audio/lib_buffer.c` | **없음** | sync됨 (`1c37bfac3`) |
+| `include/nuttx/usb/cdcacm.h` | 구버전 있음 | `os/board/boardctl.c`<br>`os/drivers/syslog/syslog_channel.c` | `#ifdef CONFIG_BOARDCTL_USBDEVCTRL`<br>`#ifdef CONFIG_SYSLOG_CDCACM` | sync됨 (`1c37bfac3`) |
+| `include/nuttx/usb/composite.h` | 구버전 있음 | `os/board/boardctl.c` | `#ifdef CONFIG_BOARDCTL_USBDEVCTRL` | sync됨 (`1c37bfac3`) |
+| `include/nuttx/usb/pl2303.h` | 구버전 있음 | `os/board/boardctl.c` | `#ifdef CONFIG_BOARDCTL_USBDEVCTRL` | sync됨 (`1c37bfac3`) |
+| `include/nuttx/usb/usbdev_trace.h` | 구버전 있음 | `os/kernel/misc/assert.c` | **없음** | sync됨 (`1c37bfac3`) |
+| `include/nuttx/usb/usbhost.h` | 구버전 있음 | `os/drivers/drivers_initialize.c` | **없음** | sync됨 (`1c37bfac3`) |
+| `include/nuttx/usb/usbmsc.h` | 구버전 있음 | `os/board/boardctl.c` | `#ifdef CONFIG_BOARDCTL_USBDEVCTRL` | sync됨 (`1c37bfac3`) |
 | `include/nuttx/usrsock/usrsock_rpmsg.h` | **없음** | `os/drivers/drivers_initialize.c` | `#if defined(CONFIG_NET_USRSOCK_RPMSG_SERVER)` | 가드 안, 해당 config 미사용 |
 | `include/nuttx/video/vnc.h` | **없음** | `os/board/boardctl.c` | `#ifdef CONFIG_VNCSERVER` | 가드 안, 해당 config 미사용 |
 | `include/nuttx/wireless/bluetooth/bt_driver.h` | **없음** | `os/drivers/serial/uart_bth4.c`<br>`os/drivers/serial/uart_bth5.c`<br>`os/include/tinyara/serial/uart_bth4.h`<br>`os/include/tinyara/serial/uart_bth5.h` | **없음** | TD-INC-07 |
@@ -456,6 +458,9 @@ Make.defs의 config 조건(`CONFIG_AUDIO`, `CONFIG_LIBC_KBDCODEC`, `CONFIG_LIBC_
 
 ### openamp (`*rpmsg*`, `*rptun*`) (19)
 
+후속 결정(2026-11-02)으로 `include/nuttx/{ioexpander,rpmsg,rptun,serial,timers}`의 14개는 sync했습니다(`85dd59748`).
+`include/netpacket`, `include/nuttx/net`, `include/nuttx/usrsock`, `include/nuttx/wireless`의 5개는 net·usrsock·wireless 영역이라 계속 제외입니다.
+
 | 디렉터리 | 파일 |
 |---|---|
 | `include/netpacket` | 1 |
@@ -592,6 +597,8 @@ Make.defs의 config 조건(`CONFIG_AUDIO`, `CONFIG_LIBC_KBDCODEC`, `CONFIG_LIBC_
 </details>
 
 ### drivers 영역 헤더 (`audio`, `input`, `lcd`, `sensors`, `usb`, `video`, `power`, `uorb.h`, `sys/video*`) (262)
+
+후속 결정(2026-11-02)으로 `include/nuttx/usb`의 31개는 sync했습니다(`1c37bfac3`). 나머지 231개는 계속 제외입니다.
 
 | 디렉터리 | 파일 |
 |---|---|
@@ -1163,3 +1170,25 @@ Make.defs의 config 조건(`CONFIG_AUDIO`, `CONFIG_LIBC_KBDCODEC`, `CONFIG_LIBC_
 
 </details>
 
+## 8. 후속 결정 반영 (2026-11-02)
+
+리뷰 뒤 사용자 결정으로 sync한 파일입니다. 결정 전체는 [NuttX-12.13.0-TD.md](NuttX-12.13.0-TD.md)의 "후속 결정"을 봅니다.
+include/, libs/ 밖의 파일(드라이버, fs, arch, 보드)도 함께 sync했으므로 같이 적습니다.
+
+| 영역 | 이 리뷰 범위 (include/, libs/) | 그 밖에 함께 sync | 커밋 |
+|---|---|---|---|
+| rpmsg/rptun (openamp) | `include/nuttx/{rpmsg,rptun}` 10, `ioexpander/ioe_rpmsg.h`, `serial/uart_rpmsg{,_raw}.h`, `timers/rpmsg_rtc.h` (14) | `drivers/rpmsg` 19, `drivers/rptun` 5, `fs/rpmsgfs` 5, sync된 드라이버 폴더의 rpmsg 파일 19 | `85dd59748`..`b8e765991` |
+| usb | `include/nuttx/usb` 31 | `drivers/usbdev` 28, `drivers/usbhost` 29, `drivers/usbmisc` 6, `drivers/usbmonitor` 3 | `1c37bfac3`..`536d8ae05` |
+| armv7-m/armv7-r | `libs/libc/machine/arm/armv7-{m,r}` 21 | `arch/arm/{src,include}/armv7-{m,r}`, tiva, 보드 lm3s6965-ek·qemu-armv7r·mps2-an500 | `d9450e6f6`..`1d3c8e7f5` (ARMV7 cherry-pick) |
+
+계속 제외하는 것:
+- `openamp/`
+- 미sync 영역의 rpmsg 파일: net, usrsock, wireless, sensors, power, 그리고 TizenRT에 폴더가 없는 clk, reset, virtio, vhost (TD-RPMSG-01)
+- audio를 포함한 drivers 영역 헤더 231개
+- libc/machine xtensa 13개 (TD-LIBS-06)
+
+6장에서 바뀐 점:
+- `include/nuttx/usb/*`를 include하는 sync 파일(boardctl.c, syslog_channel.c, assert.c, drivers_initialize.c, lib_buffer.c)은 이제 NuttX 12.13.0 헤더를 씁니다.
+- `include/netpacket/rpmsg.h`(optee_socket.c, TD-INC-07), `include/nuttx/net/rpmsgdrv.h`, `include/nuttx/usrsock/usrsock_rpmsg.h`는 그대로입니다.
+
+`~/project/nuttx/nuttx-12.13.0___NO_SYNCED` 브랜치는 이 결정들을 반영해 다시 만들었습니다. 이 문서의 4~7장 수치는 리뷰 당시(`9779f82204`) 기준입니다.

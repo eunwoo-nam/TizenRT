@@ -3,6 +3,7 @@
 | 항목 | 내용 |
 |---|---|
 | 작성일 | 2026-11-02 |
+| 갱신 | 2026-11-02 후속 결정 반영 ([후속 결정](#후속-결정-2026-11-02)) |
 | 대상 브랜치 | `DEV-12.13.0-LABEL` |
 | 출처 | [NuttX-12.13.0-Leftover-Files-Review.md](NuttX-12.13.0-Leftover-Files-Review.md) (잔존 파일 리뷰: os/libs, os/include), [NuttX-12.13.0-Unsynced-Files-Review.md](NuttX-12.13.0-Unsynced-Files-Review.md) (미sync 파일 리뷰: NuttX include, libs) |
 | 함께 볼 문서 | [NuttX-12.13.0-Migration.md](NuttX-12.13.0-Migration.md)의 Known gaps (다른 보드, protected/kernel build, 옮겨진 NuttX 헤더 사용처, `NFILE_DESCRIPTORS` 사용처 등) |
@@ -22,22 +23,46 @@ Migration.md의 Known gaps에 이미 있는 내용은 여기에 다시 적지 �
 | TD-LIBS-01 | ELF cache 빌드 연결 소실 | `os/libs/libc/elf/libelf_cache.c` | 조치 필요 | 열림 |
 | TD-LIBS-02 | hashmap 빌드 연결 소실 | `os/libs/libc/misc/lib_hashmap.c`, `os/include/tinyara/hashmap.h` | 조치 필요 | 열림 |
 | TD-LIBS-03 | Samsung CRC16-CCITT API 존폐 | `os/libs/libc/misc/lib_crc16_ccitt.c` | 별도 판정 필요 | 열림 |
-| TD-LIBS-04 | Bessel 함수 존폐 | `os/libs/libm/libm/lib_{j0,j0f,j1,j1f,jn,jnf}.c` | 별도 판정 필요 | 열림 |
+| TD-LIBS-04 | Bessel 함수 존폐 | `os/libs/libm/libm/lib_{j0,j0f,j1,j1f,jn,jnf}.c` | 별도 판정 필요 | 닫힘 (삭제, `119a92815`) |
 | TD-LIBS-05 | zoneinfo ROMFS 빌드 깨짐, mk_opt_tzrule.py 존폐 | `os/libs/libc/zoneinfo/Makefile`, `mk_opt_tzrule.py` | 조치 필요 + 별도 판정 필요 | 열림 |
-| TD-LIBS-06 | armv7-m/armv7-r/xtensa machine 미sync | `os/libs/libc/machine/arm/armv7-{m,r}/`, `libs/libc/machine/xtensa/` | 조치 필요 | 진행 중 (armv7-m/r: DEV-12.13.0-LABEL-ARMV7) |
+| TD-LIBS-06 | armv7-m/armv7-r/xtensa machine 미sync | `os/libs/libc/machine/arm/armv7-{m,r}/`, `libs/libc/machine/xtensa/` | 조치 필요 | armv7-m/r 닫힘 (cherry-pick), xtensa 열림 |
 | TD-LIBS-07 | ARM setjmp 빌드 조건 변경 | `CONFIG_ARCH_SETJMP_H`, setjmp 사용처 | 조치 필요 | 열림 |
 | TD-LIBS-08 | libstdc++ 미sync로 `CONFIG_LIBSUPCXX` 빌드 불가 | NuttX `libs/libxx/libstdc++/`, `os/libs/libxx/Makefile` | 별도 판정 필요 (라이선스) | 열림 |
 | TD-LIBS-09 | libc kbd/slcd 코덱의 헤더 미sync | `os/libs/libc/misc/lib_{kbd,slcd}{en,de}code.c` | 조치 필요 | 열림 |
 | TD-LIBS-10 | `lib_crypt_r.c`의 `crypto/cryptodev.h` 미sync | `os/libs/libc/unistd/lib_crypt_r.c` | 조치 필요 (crypto sync 때) | 열림 |
 | TD-INC-01 | Samsung gpio upper-half 구현 소실 | `os/include/tinyara/gpio.h`, `os/drivers/ioexpander/gpio.c` | 조치 필요 | 열림 |
-| TD-INC-02 | 오디오 영역 부분 sync 불일치 (i2schar.c, libc/audio) | `os/include/tinyara/audio/{i2s,audio}.h`, `os/drivers/i2s/i2schar.c`, `os/libs/libc/audio/lib_buffer.c` | 조치 필요 | 열림 |
+| TD-INC-02 | 오디오 영역 부분 sync 불일치 (i2schar.c, libc/audio) | `os/include/tinyara/audio/{i2s,audio}.h`, `os/drivers/i2s/i2schar.c`, `os/libs/libc/audio/lib_buffer.c`, `os/drivers/audio/Make.defs` | 조치 필요 | 열림 (audio 미sync 유지 결정) |
 | TD-INC-03 | tools/nxfuse가 없어진 헤더 참조 | `tools/nxfuse/` | 조치 필요 | 열림 |
 | TD-INC-04 | 미sync 영역의 미사용 NuttX 헤더 | `power/relay.h`, `video/rgbcolors.h`, `net/{gmii,cs89x0,encx24j600}.h` | 조치 필요 (영역 sync 때) | 열림 |
 | TD-INC-05 | 구현 없는 iotdev 헤더 존폐 | `os/include/tinyara/iotdev.h` | 별도 판정 필요 | 열림 |
 | TD-INC-06 | smartfs 완료 후 smart_procfs.h 재검토 | `os/include/tinyara/fs/smart_procfs.h` | 조치 필요 (smartfs 완료 후) | 열림 |
 | TD-INC-07 | sync된 드라이버·헤더의 미sync 헤더 의존 | `uart_bth4/5`, `optee_socket.c`, `tinyara/coresight/coresight.h` | 조치 필요 | 열림 |
-| TD-DOC-01 | 마이그레이션 문서의 sync 범위가 LABEL과 다름 | `docs_migrate/{NuttX-12.13.0-Migration.md,NuttX-12.13.0-Migration-Report.md,HANDOFF.md}` | 조치 필요 | 열림 |
+| TD-DOC-01 | 마이그레이션 문서의 sync 범위가 LABEL과 다름 | `docs_migrate/{NuttX-12.13.0-Migration.md,NuttX-12.13.0-Migration-Report.md,HANDOFF.md}` | 조치 필요 | 부분 해결 (Migration.md, HANDOFF.md) |
 | TD-BUILD-01 | QEMU 보드에 `MKDEP` 정의 없음 (`.depend` 실패) | `build/configs/{qemu-armv7a,mps2-an521}/Make.defs`, `os/tools/Config.mk` | 조치 필요 | 열림 |
+| TD-LIBS-11 | NuttX libm·newlib·openlibm·libmcs를 고르면 빌드 불가 | `os/libs/libm/Makefile`, `os/libs/libm/{libm,newlib,openlibm,libmcs}/Make.defs`, `os/tools/Config.mk` | 조치 필요 | 열림 |
+| TD-USB-01 | USB sync로 끊긴 TizenRT usbhost 드라이버, chip USB 드라이버 영향 | `os/drivers/usbhost/{rtl8723d.c,uvc/}`, `os/arch/arm/src/{stm32,stm32l4,imxrt,amebasmart}` | 조치 필요 (보드 포팅 때) | 열림 |
+| TD-TEST-01 | lm3s6965-ek ostest의 round-robin 테스트가 실행 속도에 따라 실패 | `build/configs/lm3s6965-ek/{ostest,tash}/defconfig` | 조치 필요 | 열림 |
+| TD-RPMSG-01 | openamp 미sync로 rpmsg 옵션 사용 불가 | `os/drivers/{rpmsg,rptun}`, `os/fs/rpmsgfs`, sync된 폴더의 rpmsg 파일 | 조치 필요 (openamp sync 때) | 열림 |
+
+## 후속 결정 (2026-11-02)
+
+잔존 파일 리뷰와 미sync 파일 리뷰 뒤 사용자가 정한 내용과 반영 커밋입니다.
+
+| # | 결정 | 반영 커밋 (`DEV-12.13.0-LABEL`) | 관련 TD |
+|---|---|---|---|
+| 1 | `os/include/cJSON.h`는 유일한 사용처인 audio 드라이버로 옮김 (`os/drivers/audio/cJSON.h`, syu645b.c·cJSON.c가 `"cJSON.h"`로 include) | `e710928f0` | - |
+| 2 | sysdbg(`CONFIG_DEBUG_SYSTEM`, `/dev/sysdbg`, TASH `sysdbg`, le_tc)는 폐기. sync로 이미 훅이 끊긴 상태였음 | `0818e112b` | - |
+| 3 | 수학 라이브러리는 툴체인 newlib `libm.a` 정적 링크(`CONFIG_LIBM_TOOLCHAIN`, 기본값)를 씀. `os/libs/libm/libm`에 남은 Bessel `.c` 6개는 삭제 | `119a92815` | TD-LIBS-04 닫힘, TD-LIBS-11 |
+| 4 | audio(drivers/audio, audio 헤더, `os/audio`)는 계속 미sync | - | TD-INC-02 |
+| 5 | rpmsg/rptun은 sync(옵션은 끈 채로). top-level `openamp/`과 미sync 영역(net, usrsock, wireless, sensors, power)의 rpmsg 파일은 미sync | `85dd59748`..`b8e765991` (6개) | TD-RPMSG-01 |
+| 6 | USB 드라이버(usbdev, usbhost, usbmisc, usbmonitor)와 `tinyara/usb` 헤더 sync | `1c37bfac3`..`536d8ae05` (6개) | TD-USB-01, TD-INC-02 |
+| 7 | `DEV-12.13.0-LABEL-ARMV7`에서 armv7-m/armv7-r 코어, libc machine, tiva/lm3s6965-ek, qemu-armv7r, mps2-an500, qemu-armv7a SMP 커밋을 가져옴(cherry-pick 20개). rtl8730e/amebasmart, imx6/sabre-6quad, ARMV7 문서 커밋은 가져오지 않음 | `2b27d3f28`..`1d3c8e7f5` | TD-LIBS-06 |
+
+Bessel 함수 가이드 (3번):
+- `j0`, `j0f`, `j1`, `j1f`, `jn`, `jnf`, `y0`, `y0f`, `y1`, `y1f`, `yn`, `ynf`는 `CONFIG_LIBM_TOOLCHAIN`으로 정적 링크되는 툴체인 `libm.a`가 제공합니다.
+  `tizenrt/tizenrt:2.0.1-qemu`의 arm-none-eabi-gcc 10.3.1에서 QEMU 보드가 쓰는 multilib(v7ve+simd/hard, v8-m.main/nofp, v7-m/nofp, v7e-m+dp/hard, v7+fp/hard)의 `libm.a`에 모두 있는 것을 확인했습니다.
+- TizenRT에 Bessel 사본을 다시 두지 않습니다. NuttX libm(`CONFIG_LIBM`)에는 Bessel 함수가 없으므로 Bessel이 필요한 구성은 `CONFIG_LIBM_TOOLCHAIN`을 씁니다.
+- 레거시 defconfig는 아직 `CONFIG_LIBM=y`입니다. 보드를 포팅할 때 `CONFIG_LIBM_TOOLCHAIN`으로 바꿉니다(TD-LIBS-11).
 
 ## TD-LIBS-01 ELF cache 빌드 연결 소실
 
@@ -112,6 +137,10 @@ sync로 삭제되고 libm Make.defs에도 등록되지 않아 빌드되지 않�
 - A. 삭제: 6개 파일과 le_tc 테스트 삭제 (필요하면 `CONFIG_LIBM_NEWLIB`로 제공).
 - B. 유지: libm/libm/Make.defs에 등록하고 `math.h`에 TizenRT 확장으로 선언 추가.
 
+결정 (2026-11-02): A. 6개 파일을 삭제했습니다(`119a92815`). Bessel 함수는 `CONFIG_LIBM_TOOLCHAIN`의 툴체인 `libm.a`가 제공합니다
+([후속 결정](#후속-결정-2026-11-02)의 Bessel 가이드). le_tc `tc_libc_math.c`는 그대로 두었습니다. 이 테스트는 `depends on LIBM`이고
+없어진 헤더를 include하므로 TD-LIBS-11에서 함께 고칩니다.
+
 ## TD-LIBS-05 zoneinfo ROMFS 빌드 깨짐, mk_opt_tzrule.py 존폐
 
 | 항목 | 내용 |
@@ -137,7 +166,7 @@ sync로 삭제되고 libm Make.defs에도 등록되지 않아 빌드되지 않�
 |---|---|
 | 대상 | `os/libs/libc/machine/arm/armv7-m/{Make.defs,arch_elf.c}`, `armv7-r/{Make.defs,arch_elf.c}` (NuttX 유래, 미sync), NuttX `libs/libc/machine/arm/armv7-{m,r}/` 21개, `libs/libc/machine/xtensa/` 13개 |
 | 관련 커밋 | `2906710bc` (machine/arm/Kconfig에서 armv7-m, armv7-r 등의 `source` 제거) |
-| 진행 | `DEV-12.13.0-LABEL-ARMV7`(cf549f849 기반)의 `5611e3b35` "os/libs/libc/machine/arm: Sync armv7-m and armv7-r with NuttX 12.13.0", `f639b7316` (Kconfig `source` 복원) |
+| 진행 | armv7-m/armv7-r은 `DEV-12.13.0-LABEL-ARMV7`에서 cherry-pick: `d9450e6f6` (arch armv7-m), `b4cd04bb2` (arch armv7-r), `30917f838` (libc machine armv7-m/r, 원래 `5611e3b35`), `11f775a4a` (Kconfig `source` 복원, 원래 `f639b7316`). xtensa는 남음 |
 
 현상: machine/arm은 QEMU 보드에 필요한 armv7-a, armv8-m만 sync했습니다. armv7-m/armv7-r에는 TizenRT 구버전이 남아 있고,
 `arch_elf.c`의 `up_relocate`/`up_relocateadd`는 `arch_data` 인자가 없어 sync된 `tinyara/elf.h`(`..., uintptr_t addr, FAR void *arch_data)`)와
@@ -148,6 +177,12 @@ TizenRT에 esp32 보드(xtensa)도 있지만 `libc/machine/xtensa`는 sync하지
 
 제안 조치: armv7-m/armv7-r은 ARMV7 브랜치 작업을 LABEL에 합칠 때 닫음. xtensa는 esp32 보드를 포팅할 때 sync하고
 machine/Kconfig의 `source`를 복원 (SYNC + MODI_NX).
+
+상태 (2026-11-02): armv7-m/armv7-r은 위 커밋으로 닫혔습니다.
+- mps2-an500(Cortex-M7)은 QEMU에서 ostest를 통과합니다.
+- lm3s6965-ek(Cortex-M3)은 round-robin 테스트를 빼면 통과합니다. 이 테스트는 실행 속도에 따라 실패합니다(TD-TEST-01).
+- qemu-armv7r(Cortex-R5)은 빌드됩니다. 실행에는 OpenVela QEMU 이미지가 필요합니다.
+- xtensa는 그대로 열려 있습니다.
 
 ## TD-LIBS-07 ARM setjmp 빌드 조건 변경
 
@@ -245,6 +280,13 @@ Migration.md Known gaps의 crypto 항목은 `blake2s.h`, `crypto.h`, `se05x.h`�
 제안 조치: 오디오 영역(drivers/audio, audio 헤더, `os/audio`)을 sync할지, TizenRT 오디오를 유지하고 sync된 `i2schar.c`/`lib_buffer.c`를
 TizenRT 헤더에 맞출지 결정 (오디오 보드 포팅 전). 그 전까지 `AUDIO_I2SCHAR`는 미지원으로 막음.
 
+결정과 상태 (2026-11-02):
+- audio는 계속 미sync입니다(사용자 결정). 따라서 sync된 `i2schar.c`/`lib_buffer.c`를 TizenRT audio 헤더에 맞추거나 빌드에서 빼는 쪽으로 처리합니다.
+- USB sync(`1c37bfac3`)로 `<tinyara/usb/audio.h>`가 생겨 `lib_buffer.c`의 없는 헤더 문제는 풀렸습니다.
+  `lib_buffer.c`가 NuttX `audio.h` API를 전제로 하는 문제와, TizenRT `audio.h`가 `<queue.h>`를 include하는 문제는 남아 있습니다.
+- `os/drivers/audio/Make.defs`도 `CONFIG_AUDIO_I2SCHAR`일 때 `CSRCS += i2schar.c`를 합니다. 그런데 `i2schar.c`는 NuttX 위치인 `os/drivers/i2s/`로 옮겨졌고
+  `os/drivers/i2s/Make.defs`가 같은 조건으로 이미 넣습니다. 그래서 이 옵션을 켜면 같은 소스가 두 번 들어갑니다. audio Make.defs에서 이 줄을 빼야 합니다 (MODI_TR).
+
 ## TD-INC-03 tools/nxfuse가 없어진 헤더 참조
 
 | 항목 | 내용 |
@@ -313,6 +355,9 @@ TizenRT bluetooth 헤더는 `tinyara/bluetooth/`에 있어 NuttX 경로(`tinyara
 
 제안 조치: 각 영역(bluetooth, openamp, pm, coresight)을 sync할 때 함께 처리. 그 전까지 `UART_BTH4/5`, optee socket을 Kconfig에서 막는 것을 검토.
 
+참고 (2026-11-02): rpmsg를 sync했지만(`85dd59748`..`b8e765991`) `netpacket/rpmsg.h`는 net 영역이라 가져오지 않았습니다. 그래서 `optee_socket.c`는 그대로입니다.
+이 파일은 `DEV_OPTEE_LOCAL`(`NET_LOCAL`), `DEV_OPTEE_RPMSG`(`NET_RPMSG`)로만 빌드되는데 두 심볼 모두 TizenRT에 없습니다.
+
 ## TD-DOC-01 마이그레이션 문서의 sync 범위가 LABEL과 다름
 
 | 항목 | 내용 |
@@ -333,6 +378,11 @@ TizenRT bluetooth 헤더는 `tinyara/bluetooth/`에 있어 NuttX 경로(`tinyara
 제안 조치: Migration.md의 Layout·Not synced 표를 LABEL 기준으로 고치고(재작성에서 제외한 영역과 이유 추가),
 Migration-Report와 HANDOFF에는 "원래 히스토리 기준이며 LABEL에서는 제외"라는 주석을 추가 (DOC).
 
+상태 (2026-11-02): 부분 해결.
+- Migration.md: Layout과 Not synced 표를 LABEL 기준으로 고쳤습니다. 후속 결정(rpmsg·USB sync, audio·graphics·libnx·video 등 미sync)과 ARMV7 보드도 반영했습니다.
+- HANDOFF.md: LABEL 범위를 적은 섹션을 추가했습니다.
+- Migration-Report.md: 원래 히스토리의 리포트라 고치지 않았습니다.
+
 ## TD-BUILD-01 QEMU 보드에 `MKDEP` 정의 없음 (`.depend` 실패)
 
 | 항목 | 내용 |
@@ -351,3 +401,95 @@ Migration-Report와 HANDOFF에는 "원래 히스토리 기준이며 LABEL에서�
 
 제안 조치: QEMU 보드 `Make.defs`에 다른 TizenRT 보드처럼 `MKDEP = $(TOPDIR)/tools/mkdeps$(HOSTEXEEXT)`를 추가하거나,
 `os/tools/Config.mk`에 `MKDEP ?=` 기본값을 둠 (MODI_TR). 수정 후 빌드 로그에 `dep-path` 에러가 없는지, `Make.dep`이 생성되는지 확인.
+
+## TD-LIBS-11 NuttX libm·newlib·openlibm·libmcs를 고르면 빌드 불가
+
+| 항목 | 내용 |
+|---|---|
+| 대상 | `os/libs/libm/Makefile` (TizenRT 형식, `7215f3548`), `os/libs/libm/{libm,newlib,openlibm,libmcs}/Make.defs` (NuttX 그대로), `os/tools/Config.mk` |
+| 관련 config | `os/libs/libm/Kconfig`의 수학 라이브러리 선택: `LIBM_TOOLCHAIN`(기본값), `LIBM`, `LIBM_NEWLIB`, `LIBM_OPENLIBM`, `LIBM_LIBMCS`, `LIBM_NONE` |
+| 발견 | 후속 결정 3번(newlib) 조사 (2026-11-02) |
+
+현상: `LIBM_TOOLCHAIN`, `LIBM_NONE` 말고는 빌드되지 않습니다.
+1. `os/libs/libm/Makefile`은 `context:`, `distclean: clean`을 단일 콜론으로 정의합니다. 그런데 이 파일이 include하는 NuttX `Make.defs` 네 개는
+   `context::`, `distclean::`를 씁니다. 그래서 GNU Make가 `target file 'context' has both : and :: entries`로 멈춥니다. `CONFIG_LIBM=y`(NuttX libm)도 해당합니다.
+2. newlib, openlibm, libmcs는 `context` 단계에서 소스 tarball을 내려받습니다. 이때 쓰는 `DOWNLOAD`는 NuttX `tools/Config.mk`의 curl wrapper인데,
+   TizenRT에서는 일부 보드 `Make.defs`에만 있는 보드 flashing 매크로입니다.
+3. `os/tools/Config.mk`에 NuttX의 `include/{newlib,libmcs,openlibm}` ARCHINCLUDES 줄이 없습니다.
+
+영향:
+- QEMU 구성은 모두 `CONFIG_LIBM_TOOLCHAIN=y`라 영향이 없습니다. 레거시 defconfig 84개는 `CONFIG_LIBM=y`라서 그 보드를 포팅하면 위 1번에 걸립니다.
+- le_tc `tc_libc_math.c`(`TC_KERNEL_LIBC_MATH`, `depends on LIBM`)는 없어진 `tinyara/math.h`, `tinyara/float.h`를 include합니다.
+  NuttX libm에 없는 함수(Bessel, exp2, hypot, remquo 등)도 호출합니다.
+
+제안 조치:
+- 포팅하는 보드의 defconfig는 `CONFIG_LIBM_TOOLCHAIN`을 기본으로 합니다(후속 결정 3번).
+- NuttX libm 등을 지원하려면 `os/libs/libm/Makefile`의 `context`/`distclean`을 `::`로 맞추고(MODI_TR), newlib 계열은 `DOWNLOAD` 정의와 ARCHINCLUDES를 추가합니다.
+- le_tc 수학 테스트는 `LIBM_TOOLCHAIN` 기준으로 고칩니다.
+
+## TD-USB-01 USB sync로 끊긴 TizenRT usbhost 드라이버, chip USB 드라이버 영향
+
+| 항목 | 내용 |
+|---|---|
+| 대상 | `os/drivers/usbhost/rtl8723d.c` (Samsung 2019, USB WLAN), `os/drivers/usbhost/uvc/` (Samsung 2020, USB video class, 7개), `os/drivers/usbhost/.gitignore` |
+| 관련 커밋 | `51cb1ad80` (usbhost sync), `1c37bfac3` (USB 헤더 sync) |
+| 관련 config | `CONFIG_USBHOST_RTL8723D` (imxrt1020-evk/loadable_elf_apps, imxrt1050-evk/hello, helloxx에서 `=y`), `CONFIG_USBHOST_UVC`, `CONFIG_USBHOST_RTL8187` |
+
+현상: usbhost의 Kconfig·Make.defs가 NuttX 12.13.0 버전이 되면서 TizenRT 전용 옵션과 소스 줄이 빠졌습니다(`USBHOST_RTL8187`, `USBHOST_RTL8723D`, uvc Kconfig `source`, uvc Make.defs include).
+그래서 `rtl8723d.c`와 `uvc/`는 남아 있지만 선택할 수 없습니다. uvc는 Sony 유래 `os/include/video/*` API(`video_register()` 등)를 씁니다.
+
+USB 헤더가 NuttX 12.13.0 버전으로 바뀌어 다음 코드도 새 헤더를 봅니다. 모두 포팅되지 않은 보드의 코드입니다.
+- stm32, stm32l4, imxrt, amebasmart의 USB chip 드라이버(os/arch 21개)
+- stm32 보드의 `stm32_usb.c` 3개
+- `apps/shell/tash_init.c`(`CDCACM_CONSOLE`)
+- `os/drivers/wireless/realtek/platform/usb/usb_io_realtek.h`
+
+헤더는 대부분 함수가 늘어난 것이지만 TizenRT `cdcacm.h`의 `board_cdcclassobject`, `board_cdcuninitialize` 선언은 없어졌습니다.
+
+제안 조치: 해당 보드를 포팅할 때 결정합니다.
+- rtl8723d/uvc: NuttX usbhost Kconfig·Make.defs에 TizenRT 확장으로 다시 연결하거나(MODI_NX), 폐기합니다(DEL_TR). uvc는 video 영역 결정에 따릅니다.
+- chip USB 드라이버는 NuttX 12.13.0 usbdev/usbhost 인터페이스에 맞춥니다.
+
+## TD-RPMSG-01 openamp 미sync로 rpmsg 옵션 사용 불가
+
+| 항목 | 내용 |
+|---|---|
+| 대상 | `os/drivers/rpmsg/`, `os/drivers/rptun/`, `os/fs/rpmsgfs/`, sync된 폴더의 rpmsg 파일(misc, mtd, note, serial, syslog, timers, ioexpander), `os/include/tinyara/{rpmsg,rptun}/` |
+| 관련 커밋 | `85dd59748`, `a8f3c186b`, `2f6e63011`, `45d7b9ace`, `268675523`, `b8e765991` |
+
+현상:
+- rpmsg/rptun 파일은 NuttX 12.13.0과 같고 Kconfig·Makefile에도 연결되었지만 top-level `openamp/`(OpenAMP 라이브러리 다운로드와 패치)는 sync하지 않았습니다(사용자 결정).
+- `RPMSG`는 prompt가 없고, 이를 select하는 `RPTUN`, `RPMSG_VIRTIO_LITE`, `RPMSG_PORT_SPI_SLAVE` 등을 켜면 `<openamp/...>`, `<metal/...>` 헤더가 없어 컴파일에 실패합니다.
+  `OPENAMP`, `OPENAMP_CACHE` 같은 심볼도 정의되지 않습니다.
+- `rpmsg_port_spi.c`, `rpmsg_port_spi_slave.c`, `rpmsg_port_uart.c`, `rpmsg_virtio*.c`는 NuttX `power/pm.h`를 include합니다(pm 미sync).
+- 미sync 영역의 rpmsg 파일은 가져오지 않았습니다.
+  - net: `net/rpmsg`, `drivers/net/rpmsgdrv.c`, `include/nuttx/net/rpmsg*.h`, `include/netpacket/rpmsg.h`
+  - usrsock: `drivers/usrsock/usrsock_rpmsg*`, `include/nuttx/usrsock/usrsock_rpmsg.h`
+  - wireless: `bt_rpmsghci*`
+  - 그 밖: `sensor_rpmsg.c`, `regulator_rpmsg.c`
+  - TizenRT에 폴더가 없는 clk, reset, virtio, vhost의 rpmsg 파일
+- `drivers_initialize.c`의 rpmsg 이름 가드 4개(net/power/sensors/usrsock 헤더 보호)는 그대로입니다.
+
+영향: 지금 구성에는 영향이 없습니다(모든 rpmsg 옵션 꺼짐). QEMU 구성의 menuconfig에 `RPMSG_ROUTER`, `RPMSG_PORT_SPI_SLAVE`, `RPMSG_VIRTIO_LITE`, `RPTUN` prompt가 보입니다.
+
+제안 조치: AMP/원격 코어가 필요한 보드를 포팅할 때 `openamp/`를 sync하고(SYNC + TizenRT 빌드 연결), net 쪽 rpmsg는 net sync 때 처리합니다.
+
+## TD-TEST-01 lm3s6965-ek ostest의 round-robin 테스트가 실행 속도에 따라 실패
+
+| 항목 | 내용 |
+|---|---|
+| 대상 | `build/configs/lm3s6965-ek/{ostest,tash}/defconfig` (`CONFIG_RR_INTERVAL=200`, `CONFIG_TESTING_OSTEST_RR_RANGE=30000`, `CONFIG_TESTING_OSTEST_RR_RUNS=10`) |
+| 발견 | 후속 결정 7번(ARMV7 cherry-pick) 검증 (2026-11-02) |
+
+현상: QEMU `lm3s6965evb`에서 ostest의 round-robin 테스트가 `rr_test: Roundrobin Failed`, `Assertion failed ... ostest/roundrobin.c:278`로 끝날 때가 있습니다.
+- 실패한 실행에서는 첫 `get_primes_thread`가 두 번째 스레드가 시작하기 전에 10번을 다 끝냅니다. 즉 RR 간격(200 ms) 안에 계산이 끝나 선점이 일어나지 않습니다.
+- 2026-11-02 실행 6번 중 5번 실패, 1번 통과(`rr_test: Done`, 36 groups, status 0)했습니다.
+  - 실패: LABEL `1d3c8e7f5` ostest·tash, LABEL `536d8ae05` ostest·tash, `DEV-12.13.0-LABEL-ARMV7` 끝 `9f080f29f` ostest
+  - 통과: LABEL `1d3c8e7f5` ostest 재실행
+- 세 커밋의 ostest `tinyara.bin`은 빌드 시각 문자열만 다릅니다. 따라서 코드 변화가 아니라 실행 속도(호스트 부하)에 따른 문제입니다.
+- ARMV7 브랜치의 기록에는 통과(37 groups, 722 s)로 되어 있습니다. Kconfig 도움말은 이 테스트가 "적어도 수십 초"는 걸리도록 범위와 횟수를 잡으라고 합니다.
+- 다른 보드(qemu-armv7a, mps2-an521, mps2-an500, qemu-armv7r)는 통과합니다.
+
+영향: lm3s6965-ek 검증 결과가 실행마다 달라집니다. 커널 동작 문제로 보이지는 않습니다.
+
+제안 조치: lm3s6965-ek 구성의 `CONFIG_TESTING_OSTEST_RR_RUNS`를 늘려 테스트 시간을 RR 간격보다 충분히 길게 하거나(MODI_TR), QEMU를 `-icount`로 실행해 시간을 고정합니다.
