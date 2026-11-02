@@ -46,16 +46,6 @@ config ALLOW_BSD_COMPONENTS
 		Wireless
 		    Bluetooth LE support
 
-config ALLOW_GPL_COMPONENTS
-	bool "Use components that have GPL/LGPL licenses"
-	default n
-	---help---
-		When this option is enabled the project will allow the use
-		of components that have GPL/LGPL licenses.
-
-		NOTE: Please check that the license for each enabled
-		component matches your project license.
-
 config ALLOW_MIT_COMPONENTS
 	bool "Use components that have MIT licenses"
 	default n
@@ -280,28 +270,6 @@ config APPS_DIR
 		example, to include makefile fragments (e.g., .config or Make.defs)
 		or to set up include file paths.
 
-config BASE_DEFCONFIG
-	string "Base Configuration"
-	default ""
-	---help---
-		This will be automatically be updated by the configuration
-		script. This is the base configuration file that was used to create the
-		current configuration. It is useful for getting the current configuration
-		on runtime.
-
-config MODULES
-	bool
-	option modules
-	---help---
-		Automatically selected if KERNEL build is selected.
-		This selection marks the implementation of Kconfig
-		to enable the module build function, and is used to
-		enable 'm' in the triate state. Its semantics are
-		consistent with Kernel. This selection also effects
-		the behavior of the 'make export' target and currently
-		has no effect unless you wish to build loadable applications
-		in a FLAT build.
-
 choice
 	prompt "Memory organization"
 	default BUILD_FLAT
@@ -377,16 +345,6 @@ config PASS1_TARGET
 		can be specific build target, a special build target (all, default, etc.)
 		or may just be left undefined.
 
-config PASS1_BUILDIR
-	string "Pass one build directory"
-	default "build"
-	---help---
-		The path, relative to the top NuttX build
-		directory to directory that contains the Makefile to build the
-		first pass object.  The Makefile must support the following targets:
-		The special target PASS1_TARGET (if defined)
-		and the usual depend, clean, and distclean targets.
-
 config PASS1_OBJECT
 	string "Pass one object"
 	default ""
@@ -437,12 +395,6 @@ config RAW_BINARY
 		different loaders using the GNU objcopy program.  This option
 		should not be selected if you are not using the GNU toolchain.
 
-config RAW_DISASSEMBLY
-	bool "Create a disassembly file"
-	default n
-	---help---
-		Create the nuttx.asm in the disassembly format using the objdump program.
-
 menuconfig UBOOT_UIMAGE
 	bool "U-Boot uImage"
 	select RAW_BINARY
@@ -462,40 +414,6 @@ config UIMAGE_ENTRY_POINT
 
 endif # UBOOT_UIMAGE
 
-menuconfig DFU_BINARY
-	bool "DFU binary format"
-	select RAW_BINARY
-	---help---
-		Create the dfu binary used with dfu-utils.
-
-if DFU_BINARY
-
-config DFU_BASE
-	hex "Address DFU image is loaded to"
-
-config DFU_VID
-	hex "VID to use for DFU image"
-
-config DFU_PID
-	hex "PID to use for DFU image"
-
-endif # DFU_BINARY
-
-config OUTPUT_STRIP_PATHS
-	bool "Strip absolute paths from binaries"
-	default y
-	depends on ARCH_TOOLCHAIN_GNU
-	---help---
-		Cmake build provide absolute paths to compile files. If __FILE__
-		macros are used in the source code(ASSERT), the binary will contain
-		many invalid paths.
-		This saves some memory, stops exposing build systems locations in binaries,
-		make failure logs more deterministic and most importantly makes builds more
-		failure logs more deterministic and most importantly makes builds more
-		deterministic.
-		Debuggers usually have a path mapping feature to ensure the files are
-		still found.
-
 endmenu # Binary Output Formats
 
 menu "Customize Header Files"
@@ -512,7 +430,7 @@ config ARCH_STDINT_H
 	default n
 	depends on ARCH_HAVE_STDINT_H
 	---help---
-		The stdint.h header file can be found at nuttx/include/stdint.h.
+		The stdint.h header file can be found at tinyara/include/stdint.h.
 		However, that header includes logic to redirect the inclusion of an
 		architecture specific header file like:
 
@@ -523,7 +441,7 @@ config ARCH_STDINT_H
 			#endif
 
 		Recall that that include path, include/arch, is a symbolic link and
-		will refer to a version of stdint.h at nuttx/arch/<architecture>/include/stdint.h.
+		will refer to a version of stdint.h at tinyara/arch/<architecture>/include/stdint.h.
 
 config ARCH_HAVE_STDBOOL_H
 	bool
@@ -537,7 +455,7 @@ config ARCH_STDBOOL_H
 	default n
 	depends on ARCH_HAVE_STDBOOL_H
 	---help---
-		The stdbool.h header file can be found at nuttx/include/stdbool.h.
+		The stdbool.h header file can be found at tinyara/include/stdbool.h.
 		However, that header includes logic to redirect the inclusion of an
 		architecture specific header file like:
 
@@ -548,7 +466,7 @@ config ARCH_STDBOOL_H
 			#endif
 
 		Recall that that include path, include/arch, is a symbolic link and
-		will refer to a version of stdbool.h at nuttx/arch/<architecture>/include/stdbool.h.
+		will refer to a version of stdbool.h at tinyara/arch/<architecture>/include/stdbool.h.
 
 config ARCH_HAVE_MATH_H
 	bool
@@ -563,12 +481,12 @@ config ARCH_MATH_H
 	default n
 	---help---
 		There is also a re-directing version of math.h in the source tree.
-		However, it resides out-of-the-way at include/nuttx/lib/math.h because it
+		However, it resides out-of-the-way at include/tinyara/lib/math.h because it
 		conflicts too often with the system math.h. If ARCH_MATH_H=y is
 		defined, however, the top-level makefile will copy the redirecting
-		math.h header file from include/nuttx/lib/math.h to include/math.h. math.h
+		math.h header file from include/tinyara/lib/math.h to include/math.h. math.h
 		will then include the architecture-specific version of math.h that you
-		must provide at nuttx/arch/>architecture</include/math.h.
+		must provide at tinyara/arch/>architecture</include/math.h.
 
 			#ifdef CONFIG_ARCH_MATH_H
 			#  include <arch/math.h>
@@ -577,7 +495,7 @@ config ARCH_MATH_H
 		So for the architectures that define ARCH_MATH_H=y, include/math.h
 		will be the redirecting math.h header file; for the architectures
 		that don't select ARCH_MATH_H, the redirecting math.h header file
-		will stay out-of-the-way in include/nuttx/.
+		will stay out-of-the-way in include/tinyara/.
 
 config ARCH_FLOAT_H
 	bool "float.h"
@@ -611,19 +529,19 @@ config ARCH_STDARG_H
 	default n
 	---help---
 		There is a redirecting version of stdarg.h in the source tree. It
-		resides out-of-the-way at include/nuttx/lib/stdarg.h.  This is
+		resides out-of-the-way at include/tinyara/lib/stdarg.h.  This is
 		because you should normally use your toolchain's stdarg.h file. But
 		sometimes, your toolchain's stdarg.h file may have other header
 		file dependencies and so may not be usable in the NuttX build
 		environment. In those cases, you may have to create a architecture-
-		specific stdarg.h header file at nuttx/arch/<architecture>/include/stdarg.h
+		specific stdarg.h header file at tinyara/arch/<architecture>/include/stdarg.h
 
 		If ARCH_STDARG_H=y is defined, the top-level makefile will copy the
-		re-directing stdarg.h header file from include/nuttx/lib/stdarg.h to
+		re-directing stdarg.h header file from include/tinyara/lib/stdarg.h to
 		include/stdarg.h. So for the architectures that cannot use their
 		toolchain's stdarg.h file, they can use this alternative by defining
 		ARCH_STDARG_H=y and providing. If ARCH_STDARG_H, is not defined, then
-		the stdarg.h header file will stay out-of-the-way in include/nuttx/.
+		the stdarg.h header file will stay out-of-the-way in include/tinyara/.
 
 config ARCH_HAVE_STDBIT_H
 	bool
@@ -637,7 +555,7 @@ config ARCH_STDBIT_H
 	depends on ARCH_HAVE_STDBIT_H
 	default n
 	---help---
-		Redirecting stdbit.h lives at include/nuttx/lib/stdbit.h. When
+		Redirecting stdbit.h lives at include/tinyara/lib/stdbit.h. When
 		this is set, the build copies it to include/stdbit.h and it
 		includes arch/stdbit.h if the architecture provides one.
 
@@ -646,7 +564,7 @@ config LIBC_STDBIT_GENERIC
 	default n
 	---help---
 		Use generic C23 stdbit implementation. When set, copy
-		include/nuttx/lib/stdbit.h to include/stdbit.h. No arch
+		include/tinyara/lib/stdbit.h to include/stdbit.h. No arch
 		header is used; builtins (e.g. __builtin_clz) must be
 		available (see CONFIG_HAVE_BUILTIN_* in compiler.h).
 
@@ -660,19 +578,19 @@ config ARCH_SETJMP_H
 	depends on ARCH_HAVE_SETJMP
 	---help---
 		There is a redirecting version of setjmp.h in the source tree. It
-		resides out-of-the-way at include/nuttx/lib/setjmp.h.  This is
+		resides out-of-the-way at include/tinyara/lib/setjmp.h.  This is
 		because you should normally use your toolchain's setjmp.h file. But
 		sometimes, your toolchain's setjmp.h file may have other header
 		file dependencies and so may not be usable in the NuttX build
 		environment. In those cases, you may have to create a architecture-
-		specific setjmp.h header file at nuttx/arch/<architecture>/include/setjmp.h
+		specific setjmp.h header file at tinyara/arch/<architecture>/include/setjmp.h
 
 		If ARCH_SETJMP_H=y is defined, the top-level makefile will copy the
-		re-directing setjmp.h header file from include/nuttx/lib/setjmp.h to
+		re-directing setjmp.h header file from include/tinyara/lib/setjmp.h to
 		include/setjmp.h. So for the architectures that cannot use their
 		toolchain's setjmp.h file, they can use this alternative by defining
 		ARCH_SETJMP_H=y and providing. If ARCH_SETJMP_H, is not defined, then
-		the setjmp.h header file will stay out-of-the-way in include/nuttx/.
+		the setjmp.h header file will stay out-of-the-way in include/tinyara/.
 
 choice
 	prompt "debug.h selection"

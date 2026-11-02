@@ -95,7 +95,6 @@ static const char *dequote_list[] = {
 	"CONFIG_INIT_ENTRYPOINT",	/* Name of entry point function */
 	"CONFIG_LIBC_ELF_SYMTAB_ARRAY",	/* Symbol table array used by elf functions */
 	"CONFIG_LIBC_ELF_NSYMBOLS_VAR",	/* Variable holding number of symbols in the table */
-	"CONFIG_PASS1_BUILDIR",		/* Pass1 build directory */
 	"CONFIG_TTY_LAUNCH_ENTRYPOINT",	/* Name of entry point from tty launch */
 	"CONFIG_TTY_LAUNCH_ARGS",	/* Argument list of entry point from tty launch */
 	"CONFIG_BOARD_MEMORY_RANGE",	/* Memory range for board */
