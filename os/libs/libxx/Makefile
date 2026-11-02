@@ -57,9 +57,7 @@
 ASRCS =
 CSRCS =
 
-ifeq ($(CONFIG_UCLIBCXX),y)
-include uClibc++/Make.defs
-else ifeq ($(CONFIG_LIBCXX),y)
+ifeq ($(CONFIG_LIBCXX),y)
 include libcxx/Make.defs
 endif
 
