@@ -92,6 +92,8 @@ include syslog/Make.defs
 include timers/Make.defs
 include usbdev/Make.defs
 include usbhost/Make.defs
+include usbmisc/Make.defs
+include usbmonitor/Make.defs
 include video/Make.defs
 include wireless/Make.defs
 
