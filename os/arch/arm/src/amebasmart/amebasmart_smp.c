@@ -16,9 +16,12 @@
 #include "psci.h"
 #include "smp.h"
 #include "amebasmart_smp.h"
+#include <arch/barriers.h>
 #include <errno.h>
 
-#define SECONDARY_CORE_ID     1
+#define SECONDARY_CORE_ID              1
+#define CPU_PSCI_POLL_COUNT            200
+#define CPU_PSCI_POLL_INTERVAL_USEC    50
 
 #ifndef CONFIG_PLATFORM_TIZENRT_OS
 #include "task.h"
@@ -103,7 +106,8 @@ void rtk_core1_power_off(void)
  *   cpu - The CPU ID to power on
  *
  * Returned Value:
- *   OK (0) on success, negated error no on failure
+ *   OK (0) on success, negated error no on failure.  -EBUSY means that PSCI
+ *   does not report the CPU off; its power is then left untouched.
  *
  * Assumptions:
  *   - Called from CPU0
@@ -113,10 +117,23 @@ void rtk_core1_power_off(void)
 
 int cpu_core_poweron(int cpu)
 {
+	int state;
+
 	/* Currently only supports CPU1 */
 	if (cpu != 1) {
 		smplldbg("%s only supports CPU1, got CPU%d\n", __func__, cpu);
 		return -ENOTSUP;
+	}
+
+	/* If psci_cpu_on is called more than once, the CPU may not function
+	 * properly.  Start only a CPU that PSCI reports off; the target enters the
+	 * scheduler on its own once it is booted, so a CPU that cannot be booted
+	 * must be reported as a failure.
+	 */
+	state = psci_affinity_info(cpu, 0);
+	if (state != AFF_STATE_OFF) {
+		smplldbg("CPU%d is not off, affinfo: %d\n", cpu, state);
+		return -EBUSY;
 	}
 
 	/* turn on CPU1's power domain, require time to stabilize */
@@ -144,11 +161,12 @@ int cpu_core_poweron(int cpu)
  *   cpu - The CPU ID to start
  *
  * Returned Value:
- *   OK (0) on success, negated error no on failure
+ *   OK (0) on success, negated error no on failure.  On failure the power
+ *   of the core is turned off again.
  *
  * Assumptions:
  *   - Called from CPU0
- *   - Target CPU core has been powered on
+ *   - Target CPU core has been powered on by cpu_core_poweron()
  *
  ****************************************************************************/
 
@@ -156,89 +174,41 @@ int vPortSecondaryBoot(int cpu)
 {
 	BaseType_t err;
 	int state;
-	int count = 10;
-
-	/* If psci_cpu_on is called more than once, the CPU may not function properly. */
-	if (psci_affinity_info(cpu, 0) == AFF_STATE_OFF) {
-		err = psci_cpu_on(cpu, (unsigned long)__cpu1_start);
-		DEBUGASSERT(err >= 0);
-
-		/* await for PSCI to report cpu state */
-		do {
-			state = psci_affinity_info(cpu, 0);
-			if (state == AFF_STATE_ON) {
-				break;
-			}
-
-			DelayUs(50);
-		} while (count--);
-
-		if (count <= 0) {
-			smplldbg("Secondary core boot timeout affinfo: %d\n", state);
-			return -ETIMEDOUT;
-		}
-	}
-
-	return OK;
-}
-
-/****************************************************************************
- * Name: up_cpu_up
- *
- * Description:
- *   Board hook of up_cpu_on(): power on and boot a CPU core.  Cold boot
- *   uses it to bring the secondary core up; the hot-plug path (currently
- *   parked behind CONFIG_CPU_HOTPLUG) is meant to reuse it once that
- *   option is revived.  It enables the CPU power domain and cold-boots
- *   the core via PSCI.  The PSCI CPU_ON request carries the entry point,
- *   so no CPUSTART SGI is sent afterwards.
- *
- * Input Parameters:
- *   cpu - The index of the CPU to power on
- *
- * Returned Value:
- *   Zero (OK) on success; a negated errno value on failure
- *
- * Assumptions:
- *   - Called from CPU0
- *   - Target CPU is currently powered off
- *   - System is ready to bring additional CPU online
- *
- ****************************************************************************/
-
-int up_cpu_up(int cpu)
-{
+	int count;
 	int ret;
 
-	if (cpu <= 0 || cpu >= CONFIG_SMP_NCPUS) {
-		smplldbg("cpu number out of range\n");
-		return -EINVAL;
+	err = psci_cpu_on(cpu, (unsigned long)__cpu1_start);
+	if (err < 0) {
+		smplldbg("PSCI CPU_ON failed for CPU%d: %d\n", cpu, (int)err);
+		ret = -EIO;
+		goto errout_poweroff;
 	}
 
-	/* Power on the CPU core */
-	ret = cpu_core_poweron(cpu);
-	if (ret != OK) {
-		smplldbg("Failed to power on CPU%d: errno = %d\n", cpu, ret);
-		return ret;
+	/* await for PSCI to report cpu state */
+	for (count = 0; count < CPU_PSCI_POLL_COUNT; count++) {
+		state = psci_affinity_info(cpu, 0);
+		if (state == AFF_STATE_ON) {
+			return OK;
+		}
+
+		DelayUs(CPU_PSCI_POLL_INTERVAL_USEC);
 	}
 
-	smpllvdbg("Booting secondary core... \n");
+	smplldbg("Secondary core boot timeout affinfo: %d\n", state);
+	ret = -ETIMEDOUT;
 
-	/* cold-boot the core via PSCI */
-	ret = vPortSecondaryBoot(cpu);
-	if (ret != OK) {
-		smplldbg("Failed to boot CPU%d: %d\n", cpu, ret);
-		return ret;
-	}
-
-	smpllvdbg("Secondary core booted successfully\n");
-	return OK;
+errout_poweroff:
+	/* The target is not handed to the scheduler.  Do not leave a partially
+	 * booted core powered while the kernel records it as offline.
+	 */
+	rtk_core1_power_off();
+	return ret;
 }
 
-/* CPU hot-plug of the old TizenRT (CONFIG_CPU_HOTPLUG, selected with SMP and
- * PM).  The Kconfig option is not defined in the NuttX 12.13.0 tree and
- * up_cpu_up/down/die() have no callers yet; keep the code for the PM port,
- * which will wire it through sched_cpuoff()/up_cpu_off().
+/* CPU hotplug operations.  The target calls up_cpu_die() from its IDLE
+ * loop after it has accepted the OFF request (see sched_cpuoff()), and
+ * up_cpu_stop() runs on the requester to wake the target, wait for its
+ * PSCI CPU_OFF and cut its power.
  */
 
 #ifdef CONFIG_CPU_HOTPLUG
@@ -254,7 +224,8 @@ int up_cpu_up(int cpu)
  *   cpu - The CPU ID to power down
  *
  * Returned Value:
- *   OK (0) on success, negated error no on failure
+ *   OK (0) on success, negated error no on failure.  -ETIMEDOUT means that
+ *   PSCI did not report the CPU off in time; its power is left on.
  *
  * Assumptions:
  *   - CPU has already been hot-plugged
@@ -264,7 +235,7 @@ int up_cpu_up(int cpu)
 
 int cpu_core_powerdown(int cpu)
 {
-	int count = 10; // 10 * 50us = 500us
+	int count;
 	int state;
 
 	/* Currently only supports CPU1 */
@@ -274,7 +245,7 @@ int cpu_core_powerdown(int cpu)
 	}
 
 	/* wait for PSCI to report that CPU1 is now safe to power off */
-	do {
+	for (count = 0; count < CPU_PSCI_POLL_COUNT; count++) {
 		state = psci_affinity_info(cpu, 0);
 		if (state == AFF_STATE_OFF) {
 			/* turn off CPU1's power domain */
@@ -282,10 +253,15 @@ int cpu_core_powerdown(int cpu)
 			return OK;
 		}
 
-		DelayUs(50);
-	} while (count--);
+		DelayUs(CPU_PSCI_POLL_INTERVAL_USEC);
+	}
 
-	smplldbg("Core powerdown timeout for CPU%d, affinfo: %d\n", cpu, state);
+	/* Not an error by itself: a target that has not taken the OFF request
+	 * yet makes sched_cpuoff() withdraw it.  sched_cpuoff() reports the
+	 * cases that are errors.
+	 */
+
+	smpllvdbg("Core powerdown timeout for CPU%d, affinfo: %d\n", cpu, state);
 	return -ETIMEDOUT;
 }
 
@@ -306,69 +282,66 @@ int cpu_core_powerdown(int cpu)
  *   None
  *
  * Returned Value:
- *   Does not return to the caller.
+ *   Does not return on success; a negated errno value on failure.
  *
  * Assumptions:
- *   - Called from the target CPU that needs to shut down
- *   - CPU has already completed all necessary cleanup and state saving
- *   - Task scheduling has been disabled for this CPU
- *   - All interrupts have been properly handled on this CPU
+ *   - Called from the IDLE loop of the target CPU with interrupts disabled
+ *   - The CPU holds no kernel lock and has been removed from the scheduler
+ *   - The CPU restarts from its IDLE entry point when it is powered on
  *
  ****************************************************************************/
 
-void up_cpu_die(void)
+int up_cpu_die(void)
 {
-	/* MINOR: PSCI is a general interface for controlling power of cortex-A cores
-	It is one of the feature in arm-trusted-firmware (ie. Trustzone-A)
-	Currently, the definitions are provided by chip specific arch layer
-	If the cpu off operation failed, we should face a problem during wakeup
-	booting the secondary core, thus we can ignore the return value here first
-	*/
+	/* PSCI CPU_OFF does not return on success.  Propagate firmware errors so
+	 * that the scheduler can keep this CPU online.
+	 */
 
-	/* Shut down the cpu */
-	(void)psci_cpu_off();
+	return psci_cpu_off();
 }
 
 /****************************************************************************
- * Name: up_cpu_down
+ * Name: up_cpu_stop
  *
  * Description:
- *   Power down a CPU core by turning off its power domain. This function
- *   waits for the target CPU to enter OFF state via PSCI affinity info,
- *   then completely cuts power to the CPU domain.
+ *   Stop a CPU which has a pending OFF request and cut its power.  SEV
+ *   wakes the target from the WFE of its up_idle() (or makes its next WFE
+ *   return at once), so that it reaches its IDLE loop, accepts the request
+ *   and calls up_cpu_die().  A SEV lost on the CA32 cluster is covered by
+ *   the generic timer event stream (amebasmart_enable_evtstrm()).  This
+ *   function then waits until PSCI reports the target off and turns its
+ *   power domain off.
+ *
+ *   It takes no kernel lock, so the target makes progress while the caller
+ *   holds the critical section.
  *
  * Input Parameters:
- *   cpu - The index of the CPU to power down
+ *   cpu - The index of the CPU to stop (1 .. CONFIG_SMP_NCPUS-1)
  *
  * Returned Value:
- *   Zero (OK) on success; a negated errno value on failure
+ *   Zero (OK) on success; -ETIMEDOUT if the target was not off in time, or
+ *   another negated errno value on failure.
  *
  * Assumptions:
- *   - Called from CPU0
- *   - Target CPU has been hot-plugged out
- *   - All tasks have been migrated away from target CPU
+ *   - Called from another CPU, after sched_cpuoff() published the request
  *
  ****************************************************************************/
 
-int up_cpu_down(int cpu)
+int up_cpu_stop(int cpu)
 {
-	int ret;
-
-	if (cpu <= 0 || cpu >= CONFIG_SMP_NCPUS) {
-		smplldbg("cpu number out of range\n");
+	if (cpu <= 0 || cpu >= CONFIG_SMP_NCPUS || cpu == up_cpu_index()) {
+		smplldbg("Invalid CPU index: %d\n", cpu);
 		return -EINVAL;
 	}
 
-	smpllvdbg("Starting core powerdown for CPU%d\n", cpu);
+	/* Make the published request visible before the target wakes up */
 
-	ret = cpu_core_powerdown(cpu);
-	if (ret < 0) {
-		smplldbg("Failed to powerdown CPU%d, errno: %d\n", cpu, ret);
-		return ret;
-	}
+	UP_DSB();
+	UP_SEV();
 
-	smpllvdbg("Secondary core CPU%d powerdown complete\n", cpu);
-	return OK;
+	/* Wait for PSCI CPU_OFF of the target and cut its power */
+
+	return cpu_core_powerdown(cpu);
 }
 
 #endif /* CONFIG_CPU_HOTPLUG */

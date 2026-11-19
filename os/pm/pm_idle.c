@@ -91,7 +91,7 @@ static void resume_devices(void)
 	(void)pm_changestate(PM_NORMAL);
 }
 
-#ifdef CONFIG_SMP
+#if defined(CONFIG_SMP) && defined(CONFIG_CPU_HOTPLUG)
 /****************************************************************************
  * Name: disable_secondary_cpus
  *

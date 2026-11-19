@@ -46,6 +46,7 @@
 #include <tinyara/config.h>
 
 #include <stdint.h>
+#include <stdbool.h>
 #include <debug.h>
 
 #include <arch/barriers.h>
@@ -56,6 +57,18 @@
 #include "cp15_cacheops.h"
 #include "sctlr.h"
 #include "amebasmart_enablesmp.h"
+
+/****************************************************************************
+ * Private Data
+ ****************************************************************************/
+
+/* Set when a CPU has reported its event stream setting.  A CPU turned off by
+ * CPU hotplug comes back through this path on every power cycle, and one
+ * report per CPU is enough for the boot log.  Each CPU writes only its own
+ * entry.
+ */
+
+static bool g_evtstrm_reported[CONFIG_SMP_NCPUS];
 
 /****************************************************************************
  * Public Functions
@@ -153,8 +166,11 @@ void amebasmart_enable_evtstrm(int cpu)
 						 : "=r"(check) : : "memory");
 	}
 
-	lowsyslog("[CPU%d] evtstrm: mode=0x%x reg=0x%08x\n",
-			  cpu, (unsigned int)(cpsr & 0x1f), (unsigned int)check);
+	if (!g_evtstrm_reported[cpu]) {
+		g_evtstrm_reported[cpu] = true;
+		lowsyslog("[CPU%d] evtstrm: mode=0x%x reg=0x%08x\n",
+				  cpu, (unsigned int)(cpsr & 0x1f), (unsigned int)check);
+	}
 }
 
 /****************************************************************************

@@ -379,6 +379,20 @@ config SMP
 
 if SMP
 
+config CPU_HOTPLUG
+	bool "CPU Hotplug"
+	default n
+	depends on ARCH_CHIP_AMEBASMART
+	---help---
+		Enable secondary CPU hotplug support used by PM sleep transitions.
+
+config SCHED_MIGRATE
+	bool "Scheduler Migration Support"
+	default n
+	---help---
+		Enable support for task migration between CPUs when a CPU is taken
+		offline.
+
 config SMP_NCPUS
 	int "Number of CPUs"
 	default 4

@@ -104,6 +104,15 @@ void nx_idle_trampoline(void)
 	sinfo("CPU%d: Beginning Idle Loop\n", this_cpu());
 
 	for (;;) {
+#ifdef CONFIG_CPU_HOTPLUG
+		/* Leave the scheduler here if an OFF request is pending.  The IDLE
+		 * loop holds no kernel lock, so the CPU can accept the request even
+		 * while the requester keeps the critical section.
+		 */
+
+		nxsched_process_cpuoff();
+#endif
+
 		/* Perform any processor-specific idle state operations */
 
 		up_idle();

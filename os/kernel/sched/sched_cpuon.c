@@ -19,9 +19,9 @@
  * kernel/sched/sched_cpuon.c
  *
  * Description:
- *   This file implements the CPU control's power on function  which handles
- *   CPU on operations both from user applications (via CPU driver) and
- *   from the PM idle logic.
+ *   This file implements the CPU control's power on function which starts
+ *   the secondary CPUs at boot (nx_smp_start()) and turns on again a CPU
+ *   that was turned off, e.g. from the PM idle logic.
  *
  ****************************************************************************/
 /****************************************************************************
@@ -54,12 +54,51 @@
  * Private Data
  ****************************************************************************/
 
- /* Spinlock for synchronizing access to global hotplug state */
+/* Spinlock for synchronizing access to global hotplug state */
+
 volatile spinlock_t g_state_transition_lock = SP_UNLOCKED;
 
 /****************************************************************************
  * Private Functions
  ****************************************************************************/
+
+#ifdef CONFIG_CPU_HOTPLUG
+/****************************************************************************
+ * Name: __reset_idle_task
+ *
+ * Description:
+ *   Prepare the IDLE task of an offline CPU to restart from its entry point.
+ *   A CPU leaves the scheduler from its IDLE loop and never resumes that
+ *   context: up_cpu_start() boots it again through arm_cpu_boot() into
+ *   nx_idle_trampoline(), exactly as at cold boot.  At cold boot the IDLE
+ *   task is already in that state.
+ *
+ * Input Parameters:
+ *   cpu - The index of the offline CPU.
+ *
+ * Returned Value:
+ *   None
+ *
+ * Assumptions:
+ *   Called inside the critical section while the CPU is offline.
+ *
+ ****************************************************************************/
+
+static void __reset_idle_task(int cpu)
+{
+	FAR struct tcb_s *tcb = current_task(cpu);
+
+	DEBUGASSERT(is_idle_task(tcb));
+
+	/* nx_idle_trampoline() starts with the scheduler locked once */
+
+	tcb->lockcount = 1;
+	up_initial_state(tcb);
+
+	g_delivertasks[cpu] = SWITCH_NONE;
+	nxsched_cpuoff_reset(cpu);
+}
+#endif /* CONFIG_CPU_HOTPLUG */
 
 /****************************************************************************
  * Public Functions
@@ -87,14 +126,15 @@ volatile spinlock_t g_state_transition_lock = SP_UNLOCKED;
 int sched_cpuon(int cpu)
 {
 	irqstate_t flags;
-	int ret = OK;
-	
+	int ret;
+
 	if (cpu == this_cpu()) {
 		smplldbg("Cannot turn on this CPU from itself: %d\n", cpu);
 		return -EINVAL;
 	}
 
 	/* Validate CPU index */
+
 	if (cpu <= 0 || cpu >= CONFIG_SMP_NCPUS) {
 		smplldbg("Invalid CPU number: %d\n", cpu);
 		return -EINVAL;
@@ -104,26 +144,41 @@ int sched_cpuon(int cpu)
 		return -EBUSY;
 	}
 
+	/* Lock the scheduler and disable interrupts to ensure atomicity
+	 * throughout this critical operation.
+	 */
 
-	if (!CPU_ISSET(cpu, &g_active_cpus_mask)) {
-		/* Lock the scheduler and disable interrupts to ensure atomicity
-		 * throughout this critical operation.
-		 */
-		flags = enter_critical_section();
-		ret = up_cpu_on(cpu);
-		if (ret == 0) {
-			smpllvdbg("CPU%d is turned on succesfully\n", cpu);
-			/* Update the active CPUs mask to indicate that the offline CPU is active again */
-			CPU_SET(cpu, &g_active_cpus_mask);
-		} else {
-			smplldbg("Failed to turn on CPU%d\n", cpu);
-		}
-		leave_critical_section(flags);
-	} else {
+	flags = enter_critical_section();
+
+	if (CPU_ISSET(cpu, &g_active_cpus_mask)) {
 		smplldbg("Already desired state (ON), operation not supported\n");
 		ret = -ENOTSUP;
+		goto errout_with_lock;
 	}
+
+#ifdef CONFIG_CPU_HOTPLUG
+	__reset_idle_task(cpu);
+#endif
+
+	/* Start the CPU.  The architecture powers the core on as needed and
+	 * the CPU enters its IDLE task on its own.
+	 */
+
+	ret = up_cpu_start(cpu);
+	if (ret == OK) {
+		smpllvdbg("CPU%d is turned on successfully\n", cpu);
+
+		/* Update the active CPUs mask to indicate that the offline CPU is
+		 * active again
+		 */
+
+		CPU_SET(cpu, &g_active_cpus_mask);
+	} else {
+		smplldbg("Failed to turn on CPU%d: %d\n", cpu, ret);
+	}
+
+errout_with_lock:
+	leave_critical_section(flags);
 	spin_unlock(&g_state_transition_lock);
 	return ret;
 }
-

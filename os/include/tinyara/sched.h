@@ -1351,8 +1351,10 @@ int nxsched_get_affinity(pid_t pid, size_t cpusetsize, FAR cpu_set_t *mask);
  * Name: sched_cpuon
  *
  * Description:
- *   Request to bring a CPU to the powered-on state.  Calls the board
- *   up_cpu_on() hook and marks the CPU active in g_active_cpus_mask.
+ *   Request to bring a CPU to the powered-on state.  nx_smp_start() uses
+ *   it to start the secondary CPUs at boot, and the PM uses it to turn on
+ *   again a CPU that sched_cpuoff() turned off.  It starts the CPU with
+ *   up_cpu_start() and marks it active in g_active_cpus_mask.
  *   A CPU cannot turn itself on, CPU 0 is always on and a CPU that is
  *   already active is not touched again.
  *
@@ -1370,6 +1372,14 @@ int nxsched_get_affinity(pid_t pid, size_t cpusetsize, FAR cpu_set_t *mask);
 
 #ifdef CONFIG_SMP
 int sched_cpuon(int cpu);
+#endif
+
+#ifdef CONFIG_CPU_HOTPLUG
+int sched_cpuoff(int cpu);
+#endif
+
+#ifdef CONFIG_SMP
+cpu_set_t sched_getactivecpu(void);
 #endif
 
 /****************************************************************************

@@ -210,6 +210,16 @@ extern FAR struct tcb_s *g_assignedtasks[CONFIG_SMP_NCPUS];
 
 extern cpu_set_t g_active_cpus_mask;
 
+/* Serializes CPU power transitions between sched_cpuon() and sched_cpuoff(). */
+
+extern volatile spinlock_t g_state_transition_lock;
+
+#ifdef CONFIG_CPU_HOTPLUG
+#  define nxsched_cpu_online(cpu)  CPU_ISSET((cpu), &g_active_cpus_mask)
+#else
+#  define nxsched_cpu_online(cpu)  (true)
+#endif
+
 /* g_delivertasks is used to indicate that a task switch is scheduled for
  * another cpu to be processed.
  */
@@ -424,6 +434,11 @@ void nxsched_checkstackoverflow(FAR struct tcb_s *tcb);
 #ifdef CONFIG_SMP
 bool nxsched_switch_running(int cpu, bool switch_equal);
 void nxsched_process_delivered(int cpu);
+bool nxsched_smp_call_pending(int cpu);
+#  ifdef CONFIG_CPU_HOTPLUG
+void nxsched_process_cpuoff(void);
+void nxsched_cpuoff_reset(int cpu);
+#  endif
 #else
 #  define nxsched_select_cpu(a)     (0)
 #endif
@@ -563,7 +578,11 @@ nxsched_deliver_task(int cpu, int target_cpu,
 	if (g_delivertasks[target_cpu] != priority) {
 		if (cpu == target_cpu) {
 			ret = nxsched_switch_running(cpu, priority == SWITCH_EQUAL);
-		} else {
+		} else if (nxsched_cpu_online(target_cpu)) {
+			/* An offline CPU takes no request.  The task then stays in the
+			 * ready-to-run list and is picked up when the CPU restarts.
+			 */
+
 			g_delivertasks[target_cpu] = priority;
 			up_send_smp_sched(target_cpu);
 		}
@@ -584,7 +603,7 @@ static inline_function int nxsched_select_cpu(cpu_set_t affinity)
 	for (i = 0; i < CONFIG_SMP_NCPUS; i++) {
 		/* Is the thread permitted to run on this CPU? */
 
-		if ((affinity & (1 << i)) != 0) {
+		if ((affinity & (1 << i)) != 0 && nxsched_cpu_online(i)) {
 			FAR struct tcb_s *rtcb = current_task(i);
 
 			/* If this CPU is executing its IDLE task, then use it.  The
@@ -605,6 +624,22 @@ static inline_function int nxsched_select_cpu(cpu_set_t affinity)
 			}
 		}
 	}
+
+#ifdef CONFIG_CPU_HOTPLUG
+	if (cpu == 0xff) {
+		/* No CPU in the affinity mask is online.  Keep the task for the
+		 * first allowed CPU; nxsched_deliver_task() does not wake an offline
+		 * CPU, so the task waits in the ready-to-run list until that CPU
+		 * is restarted.
+		 */
+
+		for (i = 0; i < CONFIG_SMP_NCPUS; i++) {
+			if ((affinity & (1 << i)) != 0) {
+				return i;
+			}
+		}
+	}
+#endif
 
 	DEBUGASSERT(cpu != 0xff);
 	return cpu;

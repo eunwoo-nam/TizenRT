@@ -73,12 +73,13 @@ static spinlock_t g_smp_call_lock;
  * Public Data
  ****************************************************************************/
 
-/* CPUs on which the scheduler may run tasks.  nx_smp_start() marks CPU0
- * and sched_cpuon() adds a CPU as it brings it up.  sched_getactivecpu()
- * returns the mask to the PM code; that source is not in the build yet.
+/* CPUs on which the scheduler may run tasks.  nx_smp_start() marks CPU0,
+ * sched_cpuon() adds a CPU as it brings it up and sched_cpuoff() removes it
+ * before the CPU leaves the scheduler.  sched_getactivecpu() returns the
+ * mask to the PM code.
  */
 
-cpu_set_t g_active_cpus_mask;
+cpu_set_t g_active_cpus_mask = 1;
 
 /****************************************************************************
  * Private Functions
@@ -171,6 +172,32 @@ int nxsched_smp_call_handler(int irq, FAR void *context,
 }
 
 /****************************************************************************
+ * Name: nxsched_smp_call_pending
+ *
+ * Description:
+ *   Check whether SMP calls are queued for a CPU.
+ *
+ * Input Parameters:
+ *   cpu - Target cpu id
+ *
+ * Returned Value:
+ *   true if the CPU has a call to process.
+ *
+ ****************************************************************************/
+
+bool nxsched_smp_call_pending(int cpu)
+{
+	irqstate_t flags;
+	bool pending;
+
+	flags = spin_lock_irqsave(&g_smp_call_lock);
+	pending = !sq_empty(&g_smp_call_queue[cpu]);
+	spin_unlock_irqrestore(&g_smp_call_lock, flags);
+
+	return pending;
+}
+
+/****************************************************************************
  * Name: nxsched_smp_call_init
  *
  * Description:
@@ -250,6 +277,13 @@ int nxsched_smp_call(cpu_set_t cpuset, nxsched_smp_call_t func,
 	/* Cannot wait in interrupt context. */
 
 	DEBUGASSERT(!up_interrupt_context());
+
+#ifdef CONFIG_CPU_HOTPLUG
+	/* An offline CPU never answers; do not wait for it */
+
+	cpuset &= g_active_cpus_mask;
+#endif
+
 	nxsched_smp_call_init(&data, func, arg);
 	cookie.error = 0;
 	nxsem_init(&cookie.sem, 0, 0);
@@ -325,6 +359,14 @@ int nxsched_smp_call_async(cpu_set_t cpuset,
 	int cpucnt;
 	int ret = OK;
 	int i;
+
+#ifdef CONFIG_CPU_HOTPLUG
+	/* An offline CPU cannot run the call.  It is not queued, so that the
+	 * CPU does not find a stale request when it is restarted.
+	 */
+
+	cpuset &= g_active_cpus_mask;
+#endif
 
 	/* Prevent reschedule on another processor */
 

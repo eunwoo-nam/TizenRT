@@ -44,6 +44,7 @@
 #include "scu.h"
 #include "gic.h"
 #include "amebasmart_enablesmp.h"
+#include "amebasmart_smp.h"
 #include "mmu.h"
 
 #ifdef CONFIG_SMP
@@ -58,11 +59,12 @@
  * Description:
  *   Continues the C-level initialization started by the assembly language
  *   __cpu[n]_start function (NuttX armv7-a arm_cpuhead.S).  CPU0 brings
- *   CPUn up with up_cpu_on() -> up_cpu_up() (amebasmart_smp.c: power-on
- *   and PSCI CPU_ON at __cpu1_start), reached through sched_cpuon().  Like
- *   the NuttX qemu chip, this function enables the cache coherency, the
- *   FPU and the GIC CPU interface of CPUn, then enters the IDLE task of
- *   CPUn with nx_idle_trampoline().  The system tick stays on CPU0.
+ *   CPUn up with up_cpu_start() (power-on and PSCI CPU_ON at __cpu1_start),
+ *   reached through sched_cpuon() both at boot and when a CPU is turned on
+ *   again.  Like the NuttX qemu chip, this function enables the cache
+ *   coherency, the FPU and the GIC CPU interface of CPUn, then enters the
+ *   IDLE task of CPUn with nx_idle_trampoline().  The system tick stays on
+ *   CPU0.
  *
  * Input Parameters:
  *   cpu - The CPU index.  This is the same value that would be obtained by
@@ -92,6 +94,62 @@ void arm_cpu_boot(int cpu)
   /* Then transfer control to the IDLE task */
 
   nx_idle_trampoline();
+}
+
+/****************************************************************************
+ * Name: up_cpu_start
+ *
+ * Description:
+ *   Power on CPUn and boot it through PSCI CPU_ON at __cpu1_start.  The
+ *   PSCI request carries the entry point and arm_cpu_boot() enters the IDLE
+ *   task with nx_idle_trampoline(), so no CPUSTART SGI follows.
+ *   sched_cpuon() calls this function both at boot and when a CPU that
+ *   sched_cpuoff() turned off is turned on again.
+ *
+ *   This board implementation replaces the weak one of armv7-a
+ *   (arm_cpustart.c).  It is kept in this file, which every SMP link pulls
+ *   in through the arm_cpu_boot() reference of arm_cpuhead.S: in an archive
+ *   member that nothing else references, the weak default would satisfy
+ *   the reference and this function would be silently left out.
+ *
+ * Input Parameters:
+ *   cpu - The index of the CPU being started (1 .. CONFIG_SMP_NCPUS-1)
+ *
+ * Returned Value:
+ *   Zero on success; a negated errno value on failure.
+ *
+ * Assumptions:
+ *   - Called from another CPU, inside the critical section of sched_cpuon()
+ *   - The target CPU is powered off
+ *
+ ****************************************************************************/
+
+int up_cpu_start(int cpu)
+{
+	int ret;
+
+	DEBUGASSERT(cpu > 0 && cpu < CONFIG_SMP_NCPUS && cpu != this_cpu());
+
+#ifdef CONFIG_SCHED_INSTRUMENTATION
+	/* Notify of the start event */
+
+	sched_note_cpu_start(this_task(), cpu);
+#endif
+
+	/* Power the core on, then boot it at __cpu1_start through PSCI */
+
+	ret = cpu_core_poweron(cpu);
+	if (ret != OK) {
+		smplldbg("Failed to power on CPU%d: %d\n", cpu, ret);
+		return ret;
+	}
+
+	ret = vPortSecondaryBoot(cpu);
+	if (ret != OK) {
+		smplldbg("Failed to boot CPU%d: %d\n", cpu, ret);
+	}
+
+	return ret;
 }
 
 #endif /* CONFIG_SMP */

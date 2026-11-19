@@ -59,7 +59,7 @@
 
 #include <tinyara/config.h>
 #include <semaphore.h>
-#include <queue.h>
+#include <tinyara/queue.h>
 #include <tinyara/clock.h>
 #include <tinyara/wqueue.h>
 #include <tinyara/pm/pm.h>
@@ -103,7 +103,7 @@ struct pm_global_s {
 
 	/* Timer to decrease state */
 
-	WDOG_ID wdog;
+	FAR struct wdog_s *wdog;
 
 	/* No. of Registered Domains */
 	uint16_t ndomains;

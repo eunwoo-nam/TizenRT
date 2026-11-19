@@ -114,7 +114,11 @@ CSRCS += sched_dumponexit.c
 endif
 
 ifeq ($(CONFIG_SMP),y)
-CSRCS += sched_smp.c sched_cpuon.c
+CSRCS += sched_smp.c sched_cpuon.c sched_getactivecpu.c
+endif
+
+ifeq ($(CONFIG_CPU_HOTPLUG),y)
+CSRCS += sched_cpuoff.c
 endif
 
 # Include sched build support
