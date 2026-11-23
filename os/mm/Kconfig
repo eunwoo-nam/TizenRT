@@ -168,6 +168,28 @@ config MM_FREE_DELAYCOUNT_MAX
 		the value decides the maximum number of memory nodes that
 		will be delayed to free.
 
+config MM_ALLOC_LARGE_FROM_BACK
+	bool "Allocate large chunks from the back of free chunks"
+	default n
+	depends on MM_DEFAULT_MANAGER
+	---help---
+		Reduce heap fragmentation by separating small and large
+		allocations. When enabled, malloc carves chunks whose size
+		(requested size + allocation header, aligned to the memory
+		granule) is greater than or equal to MM_LARGE_ALLOC_THRESHOLD
+		from the high-address end of the selected free chunk, while
+		smaller chunks continue to be carved from the low-address end.
+
+config MM_LARGE_ALLOC_THRESHOLD
+	int "Large allocation threshold (bytes)"
+	default 1048576
+	depends on MM_ALLOC_LARGE_FROM_BACK
+	---help---
+		Chunks whose size (requested size + allocation header, aligned
+		to the memory granule) is greater than or equal to this value
+		are placed at the back of the selected free chunk. Default is
+		1MB.
+
 config MM_HEAP_BIGGEST_COUNT
 	int "The largest malloc element dump count"
 	default 30

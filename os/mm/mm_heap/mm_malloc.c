@@ -289,6 +289,31 @@ FAR void *mm_malloc(FAR struct mm_heap_s *heap, size_t size)
 		 */
 
 		remaining = nodesize - alignsize;
+#ifdef CONFIG_MM_ALLOC_LARGE_FROM_BACK
+		if (remaining >= MM_MIN_CHUNK &&
+		    alignsize >= CONFIG_MM_LARGE_ALLOC_THRESHOLD) {
+			/* Carve a large chunk from the back of the free node and keep
+			 * the front part as the remainder, so that large chunks stay
+			 * apart from small ones.
+			 */
+
+			remainder = node;
+			remainder->size = remaining | (remainder->size & MM_MASK_BIT);
+
+			node = (FAR struct mm_freenode_s *)
+			  (((FAR char *)remainder) + remaining);
+			node->size = alignsize | MM_PREVFREE_BIT;
+			node->preceding = remaining;
+
+			/* The previous node of next is the allocated chunk now */
+
+			next->size &= ~MM_PREVFREE_BIT;
+
+			/* Add the remainder back into the nodelist */
+
+			mm_addfreechunk(heap, remainder);
+		} else
+#endif
 		if (remaining >= MM_MIN_CHUNK) {
 			/* Create the remainder node */
 
