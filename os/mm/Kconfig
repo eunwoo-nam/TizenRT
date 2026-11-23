@@ -190,6 +190,16 @@ config MM_LARGE_ALLOC_THRESHOLD
 		are placed at the back of the selected free chunk. Default is
 		1MB.
 
+config REALLOC_DISABLE_NEIGHBOR_EXTENSION
+	bool "Disable Realloc Neighbor Extension"
+	default n
+	depends on MM_DEFAULT_MANAGER
+	---help---
+		If enabled, realloc will not expand from old node to neighbor freenode.
+		Instead, realloc will do "malloc new node, memcpy, free old node" which is safe,
+		but waste of time and memory space. And it will be one of debugging
+		features, especially when you modify existing malloc/free logic.
+
 config MM_HEAP_BIGGEST_COUNT
 	int "The largest malloc element dump count"
 	default 30

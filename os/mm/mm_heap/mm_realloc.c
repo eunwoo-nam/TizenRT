@@ -178,6 +178,12 @@ FAR void *mm_realloc(FAR struct mm_heap_s *heap, FAR void *oldmem,
 	 */
 
 	next = (FAR struct mm_freenode_s *)((FAR char *)oldnode + oldsize);
+
+	/* With the neighbor extension disabled, both sizes stay 0 and the data
+	 * is always moved to a new chunk.
+	 */
+
+#ifndef CONFIG_REALLOC_DISABLE_NEIGHBOR_EXTENSION
 	if (MM_NODE_IS_FREE(next)) {
 		DEBUGASSERT(MM_PREVNODE_IS_ALLOC(next));
 		nextsize = MM_SIZEOF_NODE(next);
@@ -189,6 +195,7 @@ FAR void *mm_realloc(FAR struct mm_heap_s *heap, FAR void *oldmem,
 		DEBUGASSERT(MM_NODE_IS_FREE(prev));
 		prevsize = MM_SIZEOF_NODE(prev);
 	}
+#endif
 
 	/* Now, check if we can extend the current allocation or not */
 
