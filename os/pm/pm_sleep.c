@@ -51,33 +51,35 @@
  * Included Files
  ************************************************************************/
 
+#include <tinyara/config.h>
 #include <tinyara/pm/pm.h>
 #include <tinyara/irq.h>
 #include <tinyara/wdog.h>
 #include <tinyara/clock.h>
 #include <tinyara/sched.h>
+#include <tinyara/semaphore.h>
 #include <errno.h>
 #include <debug.h>
-/************************************************************************
- * Pre-processor Definitions
- ************************************************************************/
 
-/************************************************************************
- * Private Type Declarations
- ************************************************************************/
-
-/************************************************************************
- * Private Variables
- ************************************************************************/
+#include "pm.h"
 
 /************************************************************************
  * Public Functions
  ************************************************************************/
 
-static void pm_timer_callback(int argc, uint32_t sem)
+/************************************************************************
+ * Name: pm_sleep_timeout
+ *
+ * Description:
+ *   Expiry function of the pm_sleep() watchdog.  It also identifies the
+ *   watchdog as a wake-up source: pm_idle() looks up the earliest active
+ *   watchdog with this expiry function to program the wake-up timer.
+ *
+ ************************************************************************/
+
+void pm_sleep_timeout(wdparm_t arg)
 {
-	/* As the timer is expired, give back the semaphore to unlock the thread */
-	sem_post((sem_t *)sem);
+	(void)nxsem_post((FAR sem_t *)arg);
 }
 
 /************************************************************************
@@ -88,7 +90,7 @@ static void pm_timer_callback(int argc, uint32_t sem)
  *   When this function is called, it is expected that board will sleep for
  *   given duration of time. But for some cases board might not go
  *   to sleep instantly if :
- * 	1. system is in pm lock (pm state transition is locked)
+ *      1. system is in pm lock (pm state transition is locked)
  *      2. Other threads(other than idle) are running
  *      3. NORMAL to SLEEP state threshold time is large
  *
@@ -103,14 +105,11 @@ static void pm_timer_callback(int argc, uint32_t sem)
 
 int pm_sleep(int milliseconds)
 {
-	sem_t pm_sem;
+	FAR struct tcb_s *rtcb;
 	irqstate_t flags;
-	int delay;
-	int ret = ERROR;
-	/* TODO - Since PM & Kernel are separate, we should not use tcb inside pm.
-	 * We need to remove tcb in future.
-	 */
-	FAR struct tcb_s *rtcb = sched_self();
+	sclock_t delay;
+	sem_t pm_sem;
+	int ret;
 
 	if (milliseconds < 0) {
 		set_errno(EINVAL);
@@ -126,45 +125,44 @@ int pm_sleep(int milliseconds)
 		delay = 1;
 	}
 
-	/* Initialize the timer semaphore. It is used to block until the
-	 * wakeup timer expires.
+	/* The semaphore only signals the expiry of the wake-up timer */
+
+	nxsem_init(&pm_sem, 0, 0);
+
+	/* Use the timed-wait watchdog of the calling thread, as the kernel timed
+	 * waits do.  The thread is blocked on pm_sem while the watchdog runs, so
+	 * no other timed wait can use it, and nxtask_recover() cancels it if the
+	 * thread is deleted while it sleeps.
+	 *
+	 * TODO - Since PM & Kernel are separate, we should not use tcb inside pm.
 	 */
-	ret = sem_init(&pm_sem, 0, 0);
-	if (ret != OK) {
+
+	rtcb = nxsched_self();
+
+	flags = enter_critical_section();
+
+	ret = wd_start(&rtcb->waitdog, delay, pm_sleep_timeout, (wdparm_t)&pm_sem);
+	if (ret < 0) {
+		pmdbg("pm_sleep: wd_start failed: %d\n", ret);
+		goto errout;
+	}
+
+	/* Wait until the timer expires */
+
+	ret = nxsem_wait_uninterruptible(&pm_sem);
+
+	/* Stop the timer if the wait ended for another reason */
+
+	wd_cancel(&rtcb->waitdog);
+
+errout:
+	leave_critical_section(flags);
+	nxsem_destroy(&pm_sem);
+
+	if (ret < 0) {
+		set_errno(-ret);
 		return ERROR;
 	}
-	flags = enter_critical_section();
-	DEBUGASSERT(rtcb->waitdog == NULL);
-	/* Create wakeup timer */
-	rtcb->waitdog = wd_create();
-	if (!rtcb->waitdog) {
-		set_errno(EAGAIN);
-		pmdbg("Error creating wdog timer\n");
-		goto errout;
-	}
-	/* set this timer as wakeup source */
-	if (wd_setwakeupsource(rtcb->waitdog) != OK) {
-		pmdbg("Error setting wakeup flag to wdog timer\n");
-		wd_delete(rtcb->waitdog);
-		goto errout;
-	}
-	/* before going into sleep start the wakeup timer */
-	ret = wd_start(rtcb->waitdog, delay, (wdentry_t)pm_timer_callback, 1, (uint32_t)&pm_sem);
-	if (ret != OK) {
-		pmdbg("pm_sleep: wd_start failed\n");
-		wd_delete(rtcb->waitdog);
-		goto errout;
-	}
-	/* sem_wait untill the timer expires */
-	do {
-		ret = sem_wait(&pm_sem);
-		DEBUGASSERT(ret == 0 || errno == EINTR);
-	} while (ret < 0);
-	/* When the semaphore is freed, make the pm timer free */
-	wd_delete(rtcb->waitdog);
-errout:
-	rtcb->waitdog = NULL;
-	leave_critical_section(flags);
-	sem_destroy(&pm_sem);
-	return ret;
+
+	return OK;
 }

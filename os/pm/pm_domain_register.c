@@ -27,6 +27,7 @@
 #include <string.h>
 #include <debug.h>
 #include <tinyara/arch.h>
+#include <tinyara/kmalloc.h>
 
 #include "pm.h"
 
@@ -97,6 +98,7 @@ FAR struct pm_domain_s *pm_domain_find(FAR const char *domain_name)
 FAR struct pm_domain_s *pm_domain_register(FAR const char *domain)
 {
 	FAR struct pm_domain_s *new_domain = NULL;
+	FAR struct pm_domain_s *found;
 	irqstate_t flags;
 	int length;
 
@@ -136,7 +138,6 @@ FAR struct pm_domain_s *pm_domain_register(FAR const char *domain)
 	strncpy(new_domain->name, domain, CONFIG_PM_DOMAIN_NAME_SIZE - 1);
 	new_domain->name[CONFIG_PM_DOMAIN_NAME_SIZE - 1] = '\0'; /* Ensure null termination */
 	new_domain->suspend_count = 0;
-	new_domain->wdog = NULL;
 #ifdef CONFIG_PM_METRICS
 	new_domain->stime = 0;
 	new_domain->blocking_board_sleep_ticks = 0;
@@ -144,6 +145,15 @@ FAR struct pm_domain_s *pm_domain_register(FAR const char *domain)
 #endif
 
 	flags = enter_critical_section();
+
+	/* Another thread may have registered the same name meanwhile */
+	found = pm_domain_find(domain);
+	if (found != NULL) {
+		leave_critical_section(flags);
+		kmm_free(new_domain);
+		return found;
+	}
+
 	/* Add the new domain to the global list */
 	dq_addlast(&new_domain->node, &g_pmglobals.domains);
 	g_pmglobals.ndomains++;

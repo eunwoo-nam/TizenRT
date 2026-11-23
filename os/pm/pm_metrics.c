@@ -20,7 +20,9 @@
 #include <tinyara/pm/pm.h>
 #include <tinyara/kmalloc.h>
 #include <time.h>
-#include <queue.h>
+#include <tinyara/queue.h>
+#include <tinyara/atomic.h>
+#include <tinyara/irq.h>
 #include <debug.h>
 #include <errno.h>
 #include <string.h>
@@ -43,8 +45,14 @@ struct pm_metric_s {
 
 typedef struct pm_metric_s pm_metric_t;
 
+/* g_pm_metrics and g_pm_metrics_running are accessed inside the critical
+ * section by the PM hooks.  g_pm_metrics_busy admits a single pm_metrics()
+ * caller at a time, so that the buffer is allocated and freed only once.
+ */
+
 static pm_metric_t *g_pm_metrics;
 static bool g_pm_metrics_running = false;
+static atomic_t g_pm_metrics_busy;
 
 static double pm_metrics_percent(double numerator, double denominator)
 {
@@ -121,7 +129,7 @@ static void pm_print_metrics(double total_time)
 void pm_metrics_update_domain(FAR struct pm_domain_s *domain)
 {
 	if (g_pm_metrics_running && domain) {
-		domain->stime = clock_systimer();
+		domain->stime = clock_systime_ticks();
 		domain->suspend_ticks = 0;
 	}
 }
@@ -143,7 +151,7 @@ void pm_metrics_update_domain(FAR struct pm_domain_s *domain)
 void pm_metrics_update_suspend(FAR struct pm_domain_s *domain)
 {
 	if (g_pm_metrics_running && domain && (domain->suspend_count == 0)) {
-		domain->stime = clock_systimer();
+		domain->stime = clock_systime_ticks();
 	}
 }
 
@@ -164,7 +172,7 @@ void pm_metrics_update_suspend(FAR struct pm_domain_s *domain)
 void pm_metrics_update_resume(FAR struct pm_domain_s *domain)
 {
 	if (g_pm_metrics_running && domain && (domain->suspend_count == 1)) {
-		domain->suspend_ticks += clock_systimer() - domain->stime;
+		domain->suspend_ticks += clock_systime_ticks() - domain->stime;
 	}
 }
 
@@ -219,7 +227,7 @@ void pm_metrics_update_changestate(void)
 {
 	clock_t now;
 	if (g_pm_metrics_running) {
-		now = clock_systimer();
+		now = clock_systime_ticks();
 		g_pm_metrics->state_metrics.state_accum_ticks[g_pmglobals.state] += now - g_pm_metrics->state_metrics.stime;
 		g_pm_metrics->state_metrics.stime = now;
 	}
@@ -294,39 +302,44 @@ int pm_metrics(int milliseconds)
 	int index;
 	FAR struct pm_domain_s *domain;
 	FAR dq_entry_t *entry;
+	FAR pm_metric_t *metrics;
+	int32_t expected = 0;
 
 	if (milliseconds < 0) {
 		set_errno(EINVAL);
 		return ERROR;
 	}
 
-	/* If PM Metrics already running then notify other thread */
-	if (g_pm_metrics) {
-		pmdbg("PM Metrics already running\n");
-		return OK;
-	}
 	/* There is no need to do measurement if PM is not ready to state change */
-	if (!g_pmglobals.is_running) {
+	if (!pm_is_running()) {
 		pmdbg("Please Start PM to enable PM Metrics\n");
 		return OK;
 	}
 
+	/* If PM Metrics already running then notify other thread */
+	if (!atomic_cmpxchg(&g_pm_metrics_busy, &expected, 1)) {
+		pmdbg("PM Metrics already running\n");
+		return OK;
+	}
+
 	/* Allocate memory for initializing PM Metrics measurements */
-	g_pm_metrics = (pm_metric_t *)kmm_calloc(1, sizeof(pm_metric_t));
-	if (g_pm_metrics == NULL) {
+	metrics = (FAR pm_metric_t *)kmm_calloc(1, sizeof(pm_metric_t));
+	if (metrics == NULL) {
+		atomic_set_release(&g_pm_metrics_busy, 0);
 		set_errno(ENOMEM);
-		pmdbg("Unable to initialize pm_metrics, error = %d\n", get_errno());
+		pmdbg("Unable to initialize pm_metrics, error = %d\n", ENOMEM);
 		return ERROR;
 	}
 
 	flags = enter_critical_section();
+	g_pm_metrics = metrics;
 
 	/* PM Metrics Initialization */
 	for (index = 0; index < PM_COUNT; index++) {
 		g_pm_metrics->state_metrics.state_accum_ticks[index] = 0;
 	}
 
-	start_time = clock_systimer();
+	start_time = clock_systime_ticks();
 	g_pm_metrics->state_metrics.stime = start_time;
 	g_pm_metrics_running = true;
 
@@ -338,7 +351,7 @@ int pm_metrics(int milliseconds)
 	leave_critical_section(flags);
 
 	/* Suspend for given time interval */
-	elapsed = clock_systimer() - start_time;
+	elapsed = clock_systime_ticks() - start_time;
 	remaining_ticks = MSEC2TICK(milliseconds);
 	if (elapsed < remaining_ticks) {
 		pm_sleep(TICK2MSEC(remaining_ticks - elapsed));
@@ -347,7 +360,7 @@ int pm_metrics(int milliseconds)
 	/* PM Metrics post calculations for consistent result */
 	flags = enter_critical_section();
 	g_pm_metrics_running = false;
-	end_time = clock_systimer();
+	end_time = clock_systime_ticks();
 
 	/* Finalize suspend ticks for domains that are still suspended */
 	for (entry = dq_peek(&g_pmglobals.domains); entry != NULL; entry = dq_next(entry)) {
@@ -359,11 +372,16 @@ int pm_metrics(int milliseconds)
 	g_pm_metrics->state_metrics.state_accum_ticks[g_pmglobals.state] += end_time - g_pm_metrics->state_metrics.stime;
 	leave_critical_section(flags);
 
-	/* Show PM Metrics Results */
+	/* Show PM Metrics Results.  The hooks no longer touch the buffer. */
 	pm_print_metrics((double)(end_time - start_time));
+
 	/* Free allocated memory */
-	kmm_free(g_pm_metrics);
+	flags = enter_critical_section();
 	g_pm_metrics = NULL;
+	leave_critical_section(flags);
+	kmm_free(metrics);
+
+	atomic_set_release(&g_pm_metrics_busy, 0);
 
 	return OK;
 }

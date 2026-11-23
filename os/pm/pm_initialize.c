@@ -56,7 +56,6 @@
 
 #include <tinyara/config.h>
 #include <stdlib.h>
-#include <semaphore.h>
 #include <debug.h>
 #include <tinyara/pm/pm.h>
 #include <time.h>
@@ -99,8 +98,9 @@ const char *wakeup_src_name[PM_WAKEUP_SRC_COUNT] = {"UNKNOWN", "BLE", "WIFI", "L
  *
  ****************************************************************************/
 
-void pm_start(void) {
-	g_pmglobals.is_running = true;
+void pm_start(void)
+{
+	atomic_set_release(&g_pmglobals.is_running, 1);
 }
 
 /****************************************************************************
@@ -123,8 +123,6 @@ void pm_start(void) {
  ****************************************************************************/
 void pm_initialize(struct pm_sleep_ops *sleep_ops)
 {
-	sem_init(&g_pmglobals.regsem, 0, 1);
-
 	/* Initialize the PM registry and domains queues */
 	dq_init(&g_pmglobals.registry);
 	dq_init(&g_pmglobals.domains);

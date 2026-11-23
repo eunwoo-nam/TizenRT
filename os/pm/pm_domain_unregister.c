@@ -23,6 +23,9 @@
 #include <tinyara/config.h>
 #include <assert.h>
 #include <tinyara/pm/pm.h>
+#include <tinyara/irq.h>
+#include <tinyara/kmalloc.h>
+#include <tinyara/wdog.h>
 #include <errno.h>
 #include <debug.h>
 
@@ -54,13 +57,10 @@ int pm_domain_unregister(struct pm_domain_s *domain)
 
 	flags = enter_critical_section();
 
-	/* This enter_critical_section ensures that the pm_timedsuspend's
-	 * timeout executes correctly
+	/* The timed suspend watchdog expires inside the critical section, so
+	 * after this cancel it can no longer reference the domain.
 	 */
-	if (domain->wdog) {
-		wd_delete(domain->wdog);
-		domain->wdog = NULL;
-	}
+	(void)wd_cancel(&domain->wdog);
 
 	/* If domain is in suspended_domains queue, remove it */
 	if (domain->suspend_count > 0) {
@@ -75,10 +75,10 @@ int pm_domain_unregister(struct pm_domain_s *domain)
 
 	pmvdbg("Domain '%s' unregistered successfully\n", domain->name);
 
-	/* At this point, the domain has been removed from all queues and wdog has
-	 * been deleted. It is safe to free the domain structure memory.
+	/* At this point, the domain has been removed from all queues and its
+	 * watchdog is inactive.  It is safe to free the domain structure memory.
 	 */
-	free(domain);
+	kmm_free(domain);
 
 	return OK;
 }

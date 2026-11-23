@@ -22,10 +22,14 @@
 
 #include <tinyara/config.h>
 #include <assert.h>
+#include <debug.h>
+#include <errno.h>
 #include <tinyara/pm/pm.h>
 #include <tinyara/clock.h>
 #include <tinyara/irq.h>
 #include <tinyara/arch.h>
+#include <tinyara/wdog.h>
+#include "../kernel/clock/clock.h"
 #include "../kernel/sched/sched.h"
 
 #include "pm.h"
@@ -36,13 +40,33 @@
  * Pre-processor Definitions
  ****************************************************************************/
 #define PM_DEBUG_STR "."
+
+/* enter_sleep() prints PM_DEBUG_STR after each stage and the wakeup reason
+ * in between, so one sleep/wakeup cycle takes one console line and a hang
+ * shows the last stage that was reached.  The NuttX syslog prepends the CPU
+ * and the function name to every message and ends it with a newline, so
+ * this trace writes to the low-level console instead.
+ */
+
+#ifdef CONFIG_DEBUG_ERROR
+#  define pm_trace lowsyslog
+#else
+#  define pm_trace _none
+#endif
+
 /****************************************************************************
  * Private Variables
  ****************************************************************************/
 
 static clock_t stime;
 
+#if defined(CONFIG_SMP) && defined(CONFIG_CPU_HOTPLUG)
+/* Secondary CPUs which were online when the current sleep cycle started.
+ * Only these are turned off for the sleep and turned on again afterwards.
+ */
+
 static cpu_set_t g_active_cpu_snapshot;
+#endif
 
 /****************************************************************************
  * Private Functions
@@ -96,26 +120,37 @@ static void resume_devices(void)
  * Name: disable_secondary_cpus
  *
  * Description:
- *   This function disables all secondary CPUs by sending a hotplug signal.
- *   It waits until each secondary CPU enters the CPU_HOTPLUG state.
- *   This is called before entering sleep mode in an SMP system.
+ *   This function turns off the secondary CPUs of the snapshot before
+ *   entering sleep mode.  sched_cpuoff() makes the final idle check of each
+ *   CPU inside the critical section and returns -EBUSY when the CPU cannot
+ *   leave the scheduler now; the sleep is then skipped for this cycle.
  *
  * Input Parameters:
  *   None
  *
  * Returned Value:
- *   OK on success.
+ *   OK on success; a negated errno value if a CPU could not be turned off.
+ *   The CPUs turned off before the failure stay off until
+ *   enable_secondary_cpus() is called.
  *
  ****************************************************************************/
 static int disable_secondary_cpus(void)
 {
-	/* Send signal to shutdown other cores here */
-	for (int cpu = 1; cpu < CONFIG_SMP_NCPUS; cpu++) {
-		if (CPU_ISSET(cpu, &g_active_cpu_snapshot)) {
-			if (sched_cpuoff(cpu) != OK) {
-				pmlldbg("CPU%d shutdown failed! Unable to shutdown secondary core for sleep mode\n", cpu);
-				return ERROR;
-			}
+	int cpu;
+	int ret;
+
+	for (cpu = 1; cpu < CONFIG_SMP_NCPUS; cpu++) {
+		if (!CPU_ISSET(cpu, &g_active_cpu_snapshot)) {
+			continue;
+		}
+
+		ret = sched_cpuoff(cpu);
+		if (ret == -EBUSY) {
+			pmllvdbg("Sleep abort! CPU%d is busy\n", cpu);
+			return ret;
+		} else if (ret < 0) {
+			pmlldbg("CPU%d shutdown failed: %d\n", cpu, ret);
+			return ret;
 		}
 	}
 
@@ -126,7 +161,9 @@ static int disable_secondary_cpus(void)
  * Name: enable_secondary_cpus
  *
  * Description:
- *   This function enables all secondary CPUs after waking up from sleep.
+ *   This function turns on again the secondary CPUs of the snapshot which
+ *   are offline now, i.e. the CPUs that disable_secondary_cpus() turned off
+ *   in this cycle, including after a partial failure.
  *
  * Input Parameters:
  *   None
@@ -137,12 +174,18 @@ static int disable_secondary_cpus(void)
  ****************************************************************************/
 static void enable_secondary_cpus(void)
 {
-	for (int cpu = 1; cpu < CONFIG_SMP_NCPUS; cpu++) {
-		if (CPU_ISSET(cpu, &g_active_cpu_snapshot)) {
-			if (sched_cpuon(cpu) != OK) {
-				pmlldbg("CPU%d power on failed!\n", cpu);
-				return;
-			}
+	cpu_set_t online = sched_getactivecpu();
+	int cpu;
+	int ret;
+
+	for (cpu = 1; cpu < CONFIG_SMP_NCPUS; cpu++) {
+		if (!CPU_ISSET(cpu, &g_active_cpu_snapshot) || CPU_ISSET(cpu, &online)) {
+			continue;
+		}
+
+		ret = sched_cpuon(cpu);
+		if (ret < 0) {
+			pmlldbg("CPU%d power on failed: %d\n", cpu, ret);
 		}
 	}
 }
@@ -152,9 +195,11 @@ static void enable_secondary_cpus(void)
  *
  * Description:
  *   This function checks if all secondary CPUs are idle and ready for sleep.
- *   If any CPU is not idle, it aborts the sleep.
- *   It also saves a snapshot of active CPUs to g_active_cpu_snapshot,
- *   which is later used by disable/enable_secondary_cpus functions.
+ *   If any CPU is not idle, it aborts the sleep before the devices are
+ *   suspended.  It also saves a snapshot of the online CPUs to
+ *   g_active_cpu_snapshot, which is later used by disable/enable_secondary
+ *   _cpus functions.  The result is stable because the caller holds the
+ *   critical section.
  *
  * Input Parameters:
  *   None
@@ -165,13 +210,8 @@ static void enable_secondary_cpus(void)
  ****************************************************************************/
 static int check_secondary_cpus_idle(void)
 {
-	int cpu;
 	FAR struct tcb_s *tcb;
-
-	/* For SMP case, we need to check secondary core status
-	 * If secondary core status is not in idle thread, abort
-	 * the sleep and check again on next cycle
-	 */
+	int cpu;
 
 	g_active_cpu_snapshot = sched_getactivecpu();
 
@@ -181,8 +221,7 @@ static int check_secondary_cpus_idle(void)
 		}
 
 		tcb = current_task(cpu);
-		/* Check if current cpu is in idle thread */
-		if (tcb->pid != cpu) {
+		if (!is_idle_task(tcb)) {
 			pmllvdbg("Sleep abort! CPU%d task: %s!\n", cpu, tcb->name);
 			return ERROR;
 		}
@@ -241,23 +280,21 @@ static void enable_and_compensate_systick(void)
 
 	missing_tick = sleep_ops->get_missingtick();
 
-	pmllvdbg("missing_tick: %llu\n", missing_tick);
+	pmllvdbg("missing_tick: %llu\n", (unsigned long long)missing_tick);
 	pm_metrics_update_missing_tick(missing_tick);
 
 	if (missing_tick > 0) {
-		/* Correcting for missed system ticks in sleep. */
-		clock_timer_nohz(missing_tick);
-
-		/* Compensate wd timer for missing ticks by pm sleep.
-		 * But to guarantee fast execution of interrupt service routine after wakeup,
-		 * expiration of wd_timer is not done here
+		/* Correct the system time for the ticks missed in sleep.  Watchdogs
+		 * keep absolute expiry ticks, so no watchdog is adjusted here: the
+		 * next tick interrupt expires every watchdog that became due during
+		 * the sleep, after the wake-up interrupt has been serviced.
 		 *
 		 *     WAKE UP -> HW IRQ ISR -> THREAD -> TICK ISR
 		 *           |              |          |           |
 		 *           +--------------+----------+-----------+
 		 *     (corrects tick)                       (expire timer)
 		 */
-		wd_timer_nohz(missing_tick);
+		clock_increase_sched_ticks(missing_tick);
 	}
 
 enable_timer:
@@ -285,14 +322,14 @@ static int get_next_wakeup_time(void)
 {
 	clock_t delay;
 
-	/* get wakeup timer */
-	delay = wd_getwakeupdelay();
+	/* Get the delay of the earliest pm_sleep() wake-up timer */
+	delay = wd_getwakeupdelay(pm_sleep_timeout);
 	if ((delay > 0) && (delay < MSEC2TICK(CONFIG_PM_SLEEP_ENTRY_WAIT_MS))) {
-		pmllvdbg("Wdog Timer Delay: %ldms is less than SLEEP_ENTRY_WAIT: %ldms\n", TICK2MSEC(delay), CONFIG_PM_SLEEP_ENTRY_WAIT_MS);
+		pmllvdbg("Wdog Timer Delay: %ldms is less than SLEEP_ENTRY_WAIT: %dms\n", (long)TICK2MSEC(delay), CONFIG_PM_SLEEP_ENTRY_WAIT_MS);
 		return ERROR;
 	}
 
-	return delay;
+	return (int)delay;
 }
 
 /****************************************************************************
@@ -313,7 +350,7 @@ static int set_pm_wakeup_timer(int delay)
 {
 	if (delay > 0) {
 		/* set wakeup timer */
-		pmllvdbg("Setting timer and board will wake up after %ld millisecond\n", delay);
+		pmllvdbg("Setting timer and board will wake up after %ld millisecond\n", (long)TICK2MSEC(delay));
 		return g_pmglobals.sleep_ops->set_timer(TICK2USEC(delay));
 	}
 
@@ -349,7 +386,7 @@ static void update_wakeup_reason(void)
 			wakeup_src = PM_WAKEUP_UNKNOWN;
 		}
 
-		lldbg_noarg(": %s", wakeup_src_name[wakeup_src]);
+		pm_trace(": %s", wakeup_src_name[wakeup_src]);
 		pm_metrics_update_wakeup_reason(wakeup_src);
 	}
 }
@@ -409,12 +446,12 @@ static void enter_sleep(void)
 		return;
 	}
 
-	lldbg_noarg(PM_DEBUG_STR);
+	pm_trace(PM_DEBUG_STR);
 	if (suspend_devices() != OK) {
 		goto DEVICES_RESUME;
 	}
 
-	lldbg_noarg(PM_DEBUG_STR);
+	pm_trace(PM_DEBUG_STR);
 	if (disable_secondary_cpus() != OK) {
 		goto CPUS_ENABLE;
 	}
@@ -427,7 +464,7 @@ static void enter_sleep(void)
 		goto SYSTICK_ENABLE;
 	}
 
-	lldbg_noarg(PM_DEBUG_STR);
+	pm_trace(PM_DEBUG_STR);
 	if (sleep_ops->sleep && sleep_ops->sleep() != 0) {
 		goto SYSTICK_ENABLE;
 	}
@@ -436,15 +473,15 @@ static void enter_sleep(void)
 
 SYSTICK_ENABLE:
 	enable_and_compensate_systick();
-	lldbg_noarg(PM_DEBUG_STR);
+	pm_trace(PM_DEBUG_STR);
 
 CPUS_ENABLE:
 	enable_secondary_cpus();
-	lldbg_noarg(PM_DEBUG_STR);
+	pm_trace(PM_DEBUG_STR);
 
 DEVICES_RESUME:
 	resume_devices();
-	lldbg_noarg(PM_DEBUG_STR"\n");
+	pm_trace(PM_DEBUG_STR"\n");
 }
 
 /****************************************************************************
@@ -472,11 +509,11 @@ void pm_idle(void)
 	irqstate_t flags;
 	clock_t now;
 	/* State change only if PM is ready to state change */
-	if (!g_pmglobals.is_running) {
+	if (!pm_is_running()) {
 		return;
 	}
 
-	now = clock_systimer();
+	now = clock_systime_ticks();
 	/* We need to check and change PM state transition only if one tick time has been passed,
 	 * because state transition only happens when CPU receive TICK INTERRUPT. So checking pm state
 	 * multiple times within one tick is waste of CPU clocks and we should avoid it.
@@ -494,7 +531,7 @@ void pm_idle(void)
 		enter_sleep();
 	}
 
-	stime = clock_systimer();
+	stime = clock_systime_ticks();
 
 	sched_unlock();
 	leave_critical_section(flags);

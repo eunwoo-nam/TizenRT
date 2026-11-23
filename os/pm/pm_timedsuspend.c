@@ -53,48 +53,36 @@
 
 #include <tinyara/config.h>
 #include <tinyara/pm/pm.h>
+#include <tinyara/irq.h>
 #include <tinyara/wdog.h>
-#include <tinyara/sched.h>
+#include <tinyara/clock.h>
 #include <errno.h>
 #include <debug.h>
-#include <assert.h>
 
 #include "pm.h"
-
-/************************************************************************
- * Pre-processor Definitions
- ************************************************************************/
-
-/************************************************************************
- * Private Type Declarations
- ************************************************************************/
-
-/************************************************************************
- * Private Variables
- ************************************************************************/
 
 /************************************************************************
  * Private Functions
  ************************************************************************/
 
-static void timer_timeout(int argc, uint32_t domain_ptr)
+/************************************************************************
+ * Name: __pm_timedsuspend_timeout
+ *
+ * Description:
+ *   Expiry function of the timed suspend watchdog of a domain.  It runs
+ *   from the timer interrupt inside the critical section, so the domain
+ *   cannot be unregistered concurrently: pm_domain_unregister() cancels
+ *   the watchdog inside the critical section before it frees the domain.
+ *
+ ************************************************************************/
+
+static void __pm_timedsuspend_timeout(wdparm_t arg)
 {
-	FAR struct pm_domain_s *domain = (FAR struct pm_domain_s *)((uintptr_t)domain_ptr);
+	FAR struct pm_domain_s *domain = (FAR struct pm_domain_s *)arg;
 
-	DEBUGASSERT(domain != NULL && domain->wdog != NULL);
-
-	/* This timeout function is executed within enter_critical_section.
-	 * This protects it from memory release caused by pm_domain_unregister.
-	 */
-
-	/* PM transition will be resume here */
 	if (pm_resume(domain) != OK) {
 		pmlldbg("Unable to resume domain: %s\n", domain->name);
 	}
-
-	(void)wd_delete(domain->wdog);
-	domain->wdog = NULL;
-
 }
 
 /************************************************************************
@@ -108,6 +96,10 @@ static void timer_timeout(int argc, uint32_t domain_ptr)
  *   This function locks PM state transition for a specific duration.
  *   This function can be called from IRQ context.
  *
+ *   The domain holds one suspend reference while its timed suspend
+ *   watchdog is active.  A new request only extends the remaining time,
+ *   and a zero duration cancels the timed suspend immediately.
+ *
  * Parameters:
  *   domain      - Pointer to the domain structure
  *   milliseconds - expected lock duration in millisecond
@@ -118,74 +110,58 @@ static void timer_timeout(int argc, uint32_t domain_ptr)
  *
  ************************************************************************/
 
-int pm_timedsuspend(struct pm_domain_s *domain, unsigned int milliseconds)
+int pm_timedsuspend(FAR struct pm_domain_s *domain, unsigned int milliseconds)
 {
 	irqstate_t flags;
-	WDOG_ID wdog;
-	int tick_remain;
-	int ret = ERROR;
-	int delay;
+	sclock_t delay;
+	int ret = OK;
 
 	if (domain == NULL) {
 		set_errno(EINVAL);
-		return ret;
+		return ERROR;
 	}
 
-	delay = MSEC2TICK(milliseconds);
-
 	flags = enter_critical_section();
-	wdog = domain->wdog;
 
-	/* A zero-millisecond timeout means that the timed suspend should be
-	 * cancelled immediately. Non-zero timeouts are rounded up to at least one
-	 * tick so they do not get misinterpreted as a cancel request.
-	 */
 	if (milliseconds == 0) {
-		if (wdog) {
-			/* Manually trigger timeout to resume and cleanup */
-			timer_timeout(0, (uint32_t)((uintptr_t)domain));
+		/* Cancel the timed suspend and drop its suspend reference */
+
+		if (wd_cancel(&domain->wdog) == OK) {
+			__pm_timedsuspend_timeout((wdparm_t)domain);
 		}
-		ret = OK;
+
 		goto exit;
 	}
 
+	/* Round up to one tick so that the request is not taken as a cancel */
+
+	delay = MSEC2TICK(milliseconds);
 	if (delay <= 0) {
 		delay = 1;
 	}
 
-	/* If timer is not there, then create a timer & suspend domain */
-	if (!wdog) {
-		wdog = wd_create();
-		if (wdog == NULL) {
-			set_errno(EAGAIN);
-			goto exit;
-		}
+	if (!WDOG_ISACTIVE(&domain->wdog)) {
+		/* Take the suspend reference of the timed suspend */
 
-		/* Unable to suspend domain, so delete the timer */
 		if (pm_suspend(domain) != OK) {
-			(void)wd_delete(wdog);
+			ret = ERROR;
 			goto exit;
 		}
-		domain->wdog = wdog;
-	}
+	} else if (delay <= wd_gettime(&domain->wdog)) {
+		/* The running timed suspend already lasts longer */
 
-	/* New delay is less than running timer ticks left, no need to do anything */
-	tick_remain = wd_gettime(wdog);
-	if (delay <= tick_remain) {
-		ret = OK;
 		goto exit;
 	}
 
-	/* Start the timer */
-	/* Pass domain pointer as argument to timer_timeout */
-	if (wd_start(wdog, delay, (wdentry_t)timer_timeout, 1, (uint32_t)((uintptr_t)domain)) != OK) {
-		set_errno(EAGAIN);
-		/* Manually trigger timeout to resume and cleanup on failure to start */
-		timer_timeout(0, (uint32_t)((uintptr_t)domain));
-		goto exit;
-	}
+	ret = wd_start(&domain->wdog, delay, __pm_timedsuspend_timeout, (wdparm_t)domain);
+	if (ret < 0) {
+		if (!WDOG_ISACTIVE(&domain->wdog)) {
+			(void)pm_resume(domain);
+		}
 
-	ret = OK;
+		set_errno(-ret);
+		ret = ERROR;
+	}
 
 exit:
 	leave_critical_section(flags);

@@ -58,12 +58,11 @@
  ****************************************************************************/
 
 #include <tinyara/config.h>
-#include <semaphore.h>
+#include <tinyara/atomic.h>
 #include <tinyara/queue.h>
 #include <tinyara/clock.h>
-#include <tinyara/wqueue.h>
-#include <tinyara/pm/pm.h>
 #include <tinyara/wdog.h>
+#include <tinyara/pm/pm.h>
 
 #ifdef CONFIG_PM
 
@@ -75,16 +74,22 @@
 
 /* This structure encapsulates all of the global data used by the PM module */
 
+/* Locking:
+ *
+ *   The registry, the domain lists and the suspend counts are protected by
+ *   the critical section.  They are updated from interrupt handlers and
+ *   watchdog callbacks (pm_suspend(), pm_resume(), pm_timedsuspend()), the
+ *   state change callbacks run while the registry is walked, and the sleep
+ *   decision in pm_idle() must see all of them stable together with the
+ *   state of the other CPUs.  A PM specific lock would have to nest with the
+ *   critical section in both orders, so none is used.
+ *
+ *   is_running is written once and read lock-free with acquire semantics.
+ */
+
 struct pm_global_s {
-	/* This semaphore manages mutually exclusive access to the power management
-	 * registry.  It must be initialized to the value 1.
-	 */
-
-	sem_t regsem;
-
 	/* registry is a doubly-linked list of registered power management
-	 * callback structures.  To ensure mutually exclusive access, this list
-	 * must be locked by calling pm_lock() before it is accessed.
+	 * callback structures.  It is protected by the critical section.
 	 */
 
 	dq_queue_t registry;
@@ -101,15 +106,11 @@ struct pm_global_s {
 
 	uint8_t state;
 
-	/* Timer to decrease state */
-
-	FAR struct wdog_s *wdog;
-
 	/* No. of Registered Domains */
 	uint16_t ndomains;
 
-	/* Indicates Board is Ready to State Change */
-	bool is_running;
+	/* Indicates Board is Ready to State Change (set once by pm_start()) */
+	atomic_t is_running;
 
 	/* Sleep ops structure */
 	struct pm_sleep_ops *sleep_ops;
@@ -135,6 +136,12 @@ extern "C" {
 /* All PM global data: */
 
 EXTERN struct pm_global_s g_pmglobals;
+
+/* Whether pm_start() has been called.  The acquire pairs with the release in
+ * pm_start(), so that a reader also sees the initialized PM state.
+ */
+
+#define pm_is_running()  (atomic_read_acquire(&g_pmglobals.is_running) != 0)
 
 /************************************************************************************
  * Public Function Prototypes
@@ -221,6 +228,25 @@ int pm_changestate(enum pm_state_e newstate);
  ****************************************************************************/
 #ifdef CONFIG_PM_TICKSUPPRESS
 void pm_wakehandler(clock_t missing_tick, pm_wakeup_reason_code_t wakeup_src);
+#endif
+
+/****************************************************************************
+ * Name: pm_sleep_timeout
+ *
+ * Description:
+ *   Expiry function of the pm_sleep() wake-up timer.  pm_idle() passes it
+ *   to wd_getwakeupdelay() to find the next timed wake-up.
+ *
+ * Input parameters:
+ *   arg - The semaphore that the sleeping thread waits on.
+ *
+ * Returned value:
+ *   None
+ *
+ ****************************************************************************/
+
+#ifdef CONFIG_PM_TIMEDWAKEUP
+void pm_sleep_timeout(wdparm_t arg);
 #endif
 
 #ifdef CONFIG_PM_METRICS

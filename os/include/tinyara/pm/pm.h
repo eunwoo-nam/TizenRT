@@ -276,8 +276,10 @@ struct pm_domain_s {
 	/* The power state lock count for this domain */
 	uint16_t suspend_count;
 
-	/* Watchdog timer for timed suspend operations */
-	FAR struct wdog_s *wdog;
+	/* Watchdog timer for timed suspend operations.  The domain holds one
+	 * suspend reference while it is active (see pm_timedsuspend()).
+	 */
+	struct wdog_s wdog;
 
 #ifdef CONFIG_PM_METRICS
 	/* Domain-specific metrics data */
