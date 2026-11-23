@@ -71,9 +71,6 @@
 #include <tinyara/cancelpt.h>
 #include <tinyara/serial/serial.h>
 #include <tinyara/fs/ioctl.h>
-#if defined(CONFIG_PM)
-#  include <tinyara/power/pm.h>
-#endif
 #include <tinyara/wqueue.h>
 #include <tinyara/kthread.h>
 
@@ -2021,17 +2018,6 @@ void uart_datareceived(FAR uart_dev_t *dev)
 	/* Is there a thread waiting for read data?  */
 
 	uart_wakeup(&dev->recvsem);
-
-#if defined(CONFIG_PM) && defined(CONFIG_SERIAL_CONSOLE)
-	/* Call pm_activity when characters are received on the console device */
-
-	if (dev->isconsole) {
-#  if CONFIG_SERIAL_PM_ACTIVITY_PRIORITY > 0
-		pm_activity(CONFIG_SERIAL_PM_ACTIVITY_DOMAIN,
-		            CONFIG_SERIAL_PM_ACTIVITY_PRIORITY);
-#  endif
-	}
-#endif
 }
 
 /****************************************************************************

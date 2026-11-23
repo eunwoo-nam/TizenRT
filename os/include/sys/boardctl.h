@@ -49,10 +49,6 @@
 
 #include <tinyara/fs/ioctl.h>
 
-#ifdef CONFIG_PM
-#  include <tinyara/power/pm.h>
-#endif
-
 #ifdef CONFIG_VNCSERVER
 #  include <tinyara/nx/nx.h>
 #endif
@@ -107,10 +103,8 @@
  * DEPENDENCIES:  Board logic must provide the board_reset() interface.
  *
  * CMD:           BOARDIOC_PM_CONTROL
- * DESCRIPTION:   Manage power state transition and query
- * ARG:           A pointer to an instance of struct boardioc_pm_ctrl_s
- * CONFIGURATION: CONFIG_PM
- * DEPENDENCIES:  None
+ * DESCRIPTION:   Reserved.  The TizenRT power management is controlled
+ *                through the /dev/pm driver (see <tinyara/pm/pm.h>).
  *
  * CMD:           BOARDIOC_UNIQUEID
  * DESCRIPTION:   Return a unique ID associated with the board (such as a
@@ -254,28 +248,6 @@
  ****************************************************************************/
 
 /* Structures used with IOCTL commands */
-
-#ifdef CONFIG_PM
-/* Arguments passed with the BOARDIOC_PM_CONTROL command */
-
-enum boardioc_action_e {
-	BOARDIOC_PM_ACTIVITY = 0,
-	BOARDIOC_PM_STAY,
-	BOARDIOC_PM_RELAX,
-	BOARDIOC_PM_STAYCOUNT,
-	BOARDIOC_PM_QUERYSTATE,
-	BOARDIOC_PM_CHANGESTATE,
-	BOARDIOC_PM_CHECKSTATE
-};
-
-struct boardioc_pm_ctrl_s {
-	uint32_t action;
-	uint32_t domain;
-	uint32_t state;
-	uint32_t count;
-	uint32_t priority;
-};
-#endif
 
 #ifdef CONFIG_BOARDCTL_MKRD
 /* Describes the RAM disk to be created */
