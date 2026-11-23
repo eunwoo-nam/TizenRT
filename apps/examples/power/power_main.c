@@ -41,6 +41,13 @@
 
 #define PM_DRVPATH "/dev/pm"
 
+/* The NuttX 12.13.0 kernel carves the TLS area and the copied argv strings
+ * out of the task stack, so the 1 KiB stack the old kernel accepted leaves
+ * too little room for printf, open, ioctl and pthread_create.
+ */
+
+#define PM_TEST_STACKSIZE 2048
+
 /****************************************************************************
  * Private Functions
  ****************************************************************************/
@@ -273,7 +280,7 @@ int power_main(int argc, char *argv[])
 
 		is_running = true;
 
-		pid = task_create("start_pm_test", 100, 1024, start_pm_test, argv + 1);
+		pid = task_create("start_pm_test", 100, PM_TEST_STACKSIZE, start_pm_test, argv + 1);
 		if (pid < 0) {
 			printf("Fail to create start_pm_test task(errno %d)\n", get_errno());
 			is_running = false;
