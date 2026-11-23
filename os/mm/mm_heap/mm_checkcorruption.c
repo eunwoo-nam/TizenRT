@@ -68,12 +68,18 @@ static void checkcorruption_handler(FAR struct mm_allocnode_s *node,
 
 		ASSERT(nodesize >= MM_MIN_CHUNK);
 		ASSERT(fnode->blink->flink == fnode);
-		ASSERT(MM_SIZEOF_NODE(fnode->blink) <= nodesize);
+		ASSERT(MM_SIZEOF_NODE(fnode->blink) == 0 ||
+		       MM_SIZEOF_NODE(fnode->blink) >= nodesize);
 		ASSERT(fnode->flink == NULL ||
 		       fnode->flink->blink == fnode);
 		ASSERT(fnode->flink == NULL ||
-		       MM_SIZEOF_NODE(fnode->flink) == 0 ||
-		       MM_SIZEOF_NODE(fnode->flink) >= nodesize);
+		       MM_SIZEOF_NODE(fnode->flink) <= nodesize);
+
+		/* The free lists of the bins are not linked together */
+
+		ASSERT(fnode->flink == NULL ||
+		       mm_size2ndx(MM_SIZEOF_NODE(fnode->flink)) ==
+		       mm_size2ndx(nodesize));
 	}
 }
 

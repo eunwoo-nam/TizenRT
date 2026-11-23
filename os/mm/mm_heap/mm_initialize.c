@@ -252,7 +252,6 @@ mm_initialize_heap(FAR const struct mm_heap_config_s *config)
 	FAR const char *name = config->name;
 	FAR void *heapstart = config->start;
 	size_t heapsize = config->size;
-	int i;
 
 	minfo("Heap: name=%s, start=%p size=%zu\n", name, heapstart, heapsize);
 	if (heap == NULL) {
@@ -276,17 +275,12 @@ mm_initialize_heap(FAR const struct mm_heap_config_s *config)
 		}
 	}
 
-	/* Set up global variables */
+	/* Set up global variables.  This also leaves the list head of each bin
+	 * in the node array empty, as the free lists are not linked together.
+	 */
 
 	memset(heap, 0, sizeof(struct mm_heap_s));
 	heap->mm_nokasan = config->nokasan;
-
-	/* Initialize the node array */
-
-	for (i = 1; i < MM_NNODES; i++) {
-		heap->mm_nodelist[i - 1].flink = &heap->mm_nodelist[i];
-		heap->mm_nodelist[i].blink     = &heap->mm_nodelist[i - 1];
-	}
 
 	/* Initialize the malloc mutex to one (to support one-at-
 	 * a-time access to private data sets).

@@ -228,28 +228,36 @@ FAR void *mm_malloc(FAR struct mm_heap_s *heap, size_t size)
 
 	ndx = mm_size2ndx(alignsize);
 
-	/* Search for a large enough chunk in the list of nodes. This list is
-	 * ordered by size, but will have occasional zero sized nodes as we visit
-	 * other mm_nodelist[] entries.
+	/* Each bin keeps its free nodes sorted by size in descending order, so
+	 * the first node of a bin is the largest one.  If even that node is too
+	 * small, the bin cannot satisfy the request and the search moves to the
+	 * next non-empty bin, all of whose nodes are large enough.
 	 */
 
-	for (node = heap->mm_nodelist[ndx].flink; node; node = node->flink) {
-		DEBUGASSERT(node->blink->flink == node);
-		nodesize = MM_SIZEOF_NODE(node);
-		if (nodesize >= alignsize) {
-			break;
-		}
+	node = heap->mm_nodelist[ndx].flink;
+	if (node == NULL || MM_SIZEOF_NODE(node) < alignsize) {
+		node = NULL;
+		while (++ndx < MM_NNODES &&
+		       (node = heap->mm_nodelist[ndx].flink) == NULL);
 	}
 
-	/* If we found a node with non-zero size, then this is one to use. Since
-	 * the list is ordered, we know that it must be the best fitting chunk
-	 * available.
+	/* If we found a node, walk down the bin to the exact fit or to the
+	 * smallest node that is still large enough: this is the best fitting
+	 * chunk available.
 	 */
 
 	if (node) {
 		FAR struct mm_freenode_s *remainder;
 		FAR struct mm_freenode_s *next;
 		size_t remaining;
+
+		while (MM_SIZEOF_NODE(node) > alignsize && node->flink &&
+		       MM_SIZEOF_NODE(node->flink) >= alignsize) {
+			node = node->flink;
+		}
+
+		DEBUGASSERT(node->blink->flink == node);
+		nodesize = MM_SIZEOF_NODE(node);
 
 		/* Remove the node.  There must be a predecessor, but there may not be
 		 * a successor node.

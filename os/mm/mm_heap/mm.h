@@ -258,9 +258,10 @@ struct mm_heap_s {
 	int mm_nregions;
 #endif
 
-	/* All free nodes are maintained in a doubly linked list.  This
-	 * array provides some hooks into the list at various points to
-	 * speed up searching of free nodes.
+	/* Free nodes are kept in one doubly linked list per size bin, see
+	 * mm_size2ndx().  Each list is sorted by size in descending order, so
+	 * the first node of a bin is its largest one.  This array holds the
+	 * zero sized head of each list; the lists are not linked to each other.
 	 */
 
 	struct mm_freenode_s mm_nodelist[MM_NNODES];
@@ -353,11 +354,13 @@ static inline_function void mm_addfreechunk(FAR struct mm_heap_s *heap,
 
 	ndx = mm_size2ndx(nodesize);
 
-	/* Now put the new node into the next */
+	/* Now put the new node into the list of its bin, which is sorted by size
+	 * in descending order.
+	 */
 
 	for (prev = &heap->mm_nodelist[ndx],
 	     next = heap->mm_nodelist[ndx].flink;
-	     next && next->size && MM_SIZEOF_NODE(next) < nodesize;
+	     next && MM_SIZEOF_NODE(next) > nodesize;
 	     prev = next, next = next->flink);
 
 	/* Does it go in mid next or at the end? */

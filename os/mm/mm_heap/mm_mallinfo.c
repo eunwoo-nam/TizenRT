@@ -83,12 +83,12 @@ static void mallinfo_handler(FAR struct mm_allocnode_s *node, FAR void *arg)
 
 		DEBUGASSERT(nodesize >= MM_MIN_CHUNK);
 		DEBUGASSERT(fnode->blink->flink == fnode);
-		DEBUGASSERT(MM_SIZEOF_NODE(fnode->blink) <= nodesize);
+		DEBUGASSERT(MM_SIZEOF_NODE(fnode->blink) == 0 ||
+		            MM_SIZEOF_NODE(fnode->blink) >= nodesize);
 		DEBUGASSERT(fnode->flink == NULL ||
 		            fnode->flink->blink == fnode);
 		DEBUGASSERT(fnode->flink == NULL ||
-		            MM_SIZEOF_NODE(fnode->flink) == 0 ||
-		            MM_SIZEOF_NODE(fnode->flink) >= nodesize);
+		            MM_SIZEOF_NODE(fnode->flink) <= nodesize);
 
 		info->ordblks++;
 		info->fordblks += nodesize;
@@ -213,14 +213,18 @@ size_t mm_heapfree(FAR struct mm_heap_s *heap)
 size_t mm_heapfree_largest(FAR struct mm_heap_s *heap)
 {
 	FAR struct mm_freenode_s *node;
+	int ndx;
 
 	mm_free_delaylist(heap);
 
-	for (node = heap->mm_nodelist[MM_NNODES - 1].blink; node;
-	     node = node->blink) {
-		size_t nodesize = MM_SIZEOF_NODE(node);
-		if (nodesize != 0) {
-			return nodesize;
+	/* The free list of each bin is sorted in descending order, so the first
+	 * node of the highest non-empty bin is the largest free chunk.
+	 */
+
+	for (ndx = MM_NNODES - 1; ndx >= 0; ndx--) {
+		node = heap->mm_nodelist[ndx].flink;
+		if (node != NULL) {
+			return MM_SIZEOF_NODE(node);
 		}
 	}
 

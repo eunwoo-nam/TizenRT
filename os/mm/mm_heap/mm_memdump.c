@@ -209,12 +209,12 @@ static void memdump_handler(FAR struct mm_allocnode_s *node, FAR void *arg)
 
 		DEBUGASSERT(nodesize >= MM_MIN_CHUNK);
 		DEBUGASSERT(fnode->blink->flink == fnode);
-		DEBUGASSERT(MM_SIZEOF_NODE(fnode->blink) <= nodesize);
+		DEBUGASSERT(MM_SIZEOF_NODE(fnode->blink) == 0 ||
+		            MM_SIZEOF_NODE(fnode->blink) >= nodesize);
 		DEBUGASSERT(fnode->flink == NULL ||
 		            fnode->flink->blink == fnode);
 		DEBUGASSERT(fnode->flink == NULL ||
-		            MM_SIZEOF_NODE(fnode->flink) == 0 ||
-		            MM_SIZEOF_NODE(fnode->flink) >= nodesize);
+		            MM_SIZEOF_NODE(fnode->flink) <= nodesize);
 
 		priv->info.aordblks++;
 		priv->info.uordblks += nodesize;
