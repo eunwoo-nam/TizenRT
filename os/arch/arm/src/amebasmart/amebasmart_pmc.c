@@ -58,6 +58,7 @@
 #include <task.h>
 #include "freertos_pmu.h"
 #endif
+#include <debug.h>
 /* Include header for DVFS implementation */
 #include <tinyara/pm/pm.h>
 #include "ameba_soc.h"
@@ -86,6 +87,8 @@ typedef struct {
 	/*	saved regsters:
 		FCSE
 		TPDIR
+		TPIDRPRW (NuttX per-CPU current task and interrupt context flag)
+		CNTKCTL (generic timer event stream control)
 		VBAR
 		TTBR0(low 32bit)
 		MAIR0

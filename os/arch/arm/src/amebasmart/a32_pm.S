@@ -40,8 +40,15 @@
  ****************************************************************************/
 
 #include "arm.h"
-#include "cp15.h"
+#include <arch/armv7-a/cp15.h>
 #include "sctlr.h"
+
+/* The suspend and resume paths are written in A32.  The kernel may be built
+ * for Thumb (CONFIG_ARM_THUMB), so select the instruction set explicitly.
+ */
+
+	.syntax	unified
+	.arm
 
 	.macro mov_imm _reg, _val
 		.if ((\_val) & 0xffff0000) == 0
@@ -92,7 +99,9 @@ cpu_do_suspend:
 	cps #PSR_MODE_SVC
 	mrc	CP15_FCSEIDR(r4)					@ save FCSE
 	mrc	CP15_TPIDRURO(r5)					@ save TPIDR
-	stmia	r0!, {r4 - r5}
+	mrc	CP15_TPIDRPRW(r6)					@ save the per-CPU current task (this_task())
+	mrc	CP15_CNTKCTL(r7)					@ save the generic timer event stream control
+	stmia	r0!, {r4 - r7}
 	mrc	CP15_VBAR(r4)						@ save VBAR
 	mrc	CP15_PPRRR(r6)						@ save PRRR. LPAE(Large Physical Address Extension) is not used, So save PRRR
 	mrc CP15_DACR(r5)						@ save DACR
@@ -129,9 +138,11 @@ cpu_resume:
 	ldr	r1, = ctx							@ get ctx addr directly because mmu is 1:1 mapping
 	add	r0, r1, #0x4
 
-	ldmia	r0!, {r4 - r5}
+	ldmia	r0!, {r4 - r7}
 	mcr	CP15_FCSEIDR(r4)					@ restore FCSE
 	mcr	CP15_TPIDRURO(r5)					@ restore TPIDR
+	mcr	CP15_TPIDRPRW(r6)					@ restore the per-CPU current task (this_task())
+	mcr	CP15_CNTKCTL(r7)					@ restore the generic timer event stream control
 	ldmia	r0!, {r4 - r11}
 
 	mcr	CP15_VBAR(r4)						@ restore VBAR
