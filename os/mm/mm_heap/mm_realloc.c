@@ -380,11 +380,12 @@ FAR void *mm_realloc(FAR struct mm_heap_s *heap, FAR void *oldmem,
 
 		oldmem = kasan_set_tag(oldmem, kasan_get_tag(newmem));
 		if (newmem != oldmem) {
-			/* Now we have to move the user contents 'down' in memory.  memcpy
-			 * should be safe for this.
+			/* Now we have to move the user contents 'down' in memory.  The
+			 * old and the new user areas overlap when less than the old size
+			 * is taken from the previous chunk, so use memmove.
 			 */
 
-			memcpy(newmem, oldmem, oldsize - MM_ALLOCNODE_OVERHEAD);
+			memmove(newmem, oldmem, oldsize - MM_ALLOCNODE_OVERHEAD);
 		}
 
 		return newmem;
