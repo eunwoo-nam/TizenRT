@@ -88,6 +88,9 @@ extern const struct procfs_operations g_memdump_operations;
 extern const struct procfs_operations g_mempool_operations;
 extern const struct procfs_operations g_module_operations;
 extern const struct procfs_operations g_pm_operations;
+#if defined(CONFIG_PM) && !defined(CONFIG_FS_PROCFS_EXCLUDE_POWER)
+extern const struct procfs_operations power_procfsoperations;
+#endif
 extern const struct procfs_operations g_proc_operations;
 extern const struct procfs_operations g_tcbinfo_operations;
 extern const struct procfs_operations g_thermal_operations;
@@ -204,6 +207,11 @@ static const struct procfs_entry_s g_procfs_entries[] =
 #if defined(CONFIG_PM) && defined(CONFIG_PM_PROCFS)
   { "pm",           &g_pm_operations,       PROCFS_DIR_TYPE },
   { "pm/**",        &g_pm_operations,       PROCFS_UNKOWN_TYPE },
+#endif
+
+#if defined(CONFIG_PM) && !defined(CONFIG_FS_PROCFS_EXCLUDE_POWER)
+  { "power",        &power_procfsoperations, PROCFS_DIR_TYPE },
+  { "power/**",     &power_procfsoperations, PROCFS_UNKOWN_TYPE },
 #endif
 
 #ifdef CONFIG_FS_PROCFS_INCLUDE_PRESSURE

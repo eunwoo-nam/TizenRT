@@ -123,6 +123,14 @@ config FS_PROCFS_EXCLUDE_PARTITIONS
 	depends on MTD_PARTITION
 	default DEFAULT_SMALL
 
+config FS_PROCFS_EXCLUDE_POWER
+	bool "Exclude power"
+	depends on PM
+	default n
+	---help---
+		Causes the power management information (/proc/power) to be
+		excluded from the procfs system.
+
 config FS_PROCFS_EXCLUDE_ROUTE
 	bool "Exclude routing table"
 	depends on !FS_PROCFS_EXCLUDE_NET && NET_ROUTE

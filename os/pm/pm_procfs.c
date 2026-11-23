@@ -62,10 +62,12 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <fcntl.h>
+#include <dirent.h>
 #include <assert.h>
 #include <errno.h>
 #include <debug.h>
@@ -73,8 +75,8 @@
 #include <tinyara/kmalloc.h>
 #include <tinyara/fs/fs.h>
 #include <tinyara/fs/procfs.h>
-#include <tinyara/fs/dirent.h>
 #include <tinyara/clock.h>
+#include <tinyara/irq.h>
 
 #include <tinyara/pm/pm.h>
 
@@ -94,13 +96,14 @@
 // Forward declaration
 struct power_path_template_s;
 struct power_file_s;
+struct power_dir_s;
 
 /* Template structure for a node in the procfs path */
 struct power_path_template_s {
 	const char *name;
 	uint8_t dtype;
 	void (*read)(FAR struct power_file_s *priv, void (*readprint)(const char *, ...));
-	int (*readdir)(struct fs_dirent_s *dir);
+	int (*readdir)(FAR struct power_dir_s *powerdir, FAR struct dirent *entry);
 	const struct power_path_template_s *children;
 };
 
@@ -114,7 +117,7 @@ struct power_path_priv_s {
 };
 
 struct power_dir_s {
-	struct procfs_dir_priv_s base;
+	struct procfs_dir_priv_s base;                  /* Must be first: holds struct fs_dirent_s */
 	struct power_path_priv_s path_priv;
 	FAR dq_entry_t *domain_position;                /* For efficient domain dir reading */
 };
@@ -138,16 +141,16 @@ static ssize_t power_write(FAR struct file *filep, FAR const char *buffer, size_
 
 static int power_dup(FAR const struct file *oldp, FAR struct file *newp);
 
-static int power_opendir(const char *relpath, FAR struct fs_dirent_s *dir);
+static int power_opendir(FAR const char *relpath, FAR struct fs_dirent_s **dir);
 static int power_closedir(FAR struct fs_dirent_s *dir);
-static int power_readdir(FAR struct fs_dirent_s *dir);
+static int power_readdir(FAR struct fs_dirent_s *dir, FAR struct dirent *entry);
 static int power_rewinddir(FAR struct fs_dirent_s *dir);
 
 static int power_stat(const char *relpath, FAR struct stat *buf);
 
 /* Directory-specific readdir implementations */
-static int power_readdir_common(struct fs_dirent_s *dir);
-static int power_readdir_domains(struct fs_dirent_s *dir);
+static int power_readdir_common(FAR struct power_dir_s *powerdir, FAR struct dirent *entry);
+static int power_readdir_domains(FAR struct power_dir_s *powerdir, FAR struct dirent *entry);
 
 /* File-specific read implementations */
 static void power_read_domains_info(FAR struct power_file_s *priv, void (*readprint)(const char *, ...));
@@ -232,6 +235,7 @@ const struct procfs_operations power_procfsoperations = {
 	power_close,     /* close */
 	power_read,	     /* read */
 	power_write,     /* write */
+	NULL,            /* poll */
 
 	power_dup,       /* dup */
 
@@ -630,13 +634,13 @@ static int power_dup(FAR const struct file *oldp, FAR struct file *newp)
  *
  ****************************************************************************/
 
-static int power_opendir(FAR const char *relpath, FAR struct fs_dirent_s *dir)
+static int power_opendir(FAR const char *relpath, FAR struct fs_dirent_s **dir)
 {
 	FAR struct power_dir_s *powerdir;
 	int ret;
 
 	fvdbg("relpath: \"%s\"\n", relpath ? relpath : "NULL");
-	DEBUGASSERT(relpath && dir && !dir->u.procfs);
+	DEBUGASSERT(relpath && dir);
 
 	/* The path refers to the 1st level subdirectory.  Allocate the powerdir
 	 * dirent structure.
@@ -652,7 +656,7 @@ static int power_opendir(FAR const char *relpath, FAR struct fs_dirent_s *dir)
 	ret = power_find_dirref(relpath, &powerdir->path_priv, &powerdir->base);
 	if (ret == OK) {
 		if (powerdir->path_priv.template->dtype == DTYPE_DIRECTORY) {
-			dir->u.procfs = (FAR void *)powerdir;
+			*dir = (FAR struct fs_dirent_s *)powerdir;
 		} else {
 			/* Not a directory */
 			kmm_free(powerdir);
@@ -674,16 +678,9 @@ static int power_opendir(FAR const char *relpath, FAR struct fs_dirent_s *dir)
 
 static int power_closedir(FAR struct fs_dirent_s *dir)
 {
-	FAR struct power_dir_s *priv;
+	DEBUGASSERT(dir);
 
-	DEBUGASSERT(dir && dir->u.procfs);
-	priv = dir->u.procfs;
-
-	if (priv) {
-		kmm_free(priv);
-	}
-
-	dir->u.procfs = NULL;
+	kmm_free(dir);
 
 	return OK;
 }
@@ -691,9 +688,8 @@ static int power_closedir(FAR struct fs_dirent_s *dir)
 /****************************************************************************
  * Name: power_readdir_common
  ****************************************************************************/
-static int power_readdir_common(struct fs_dirent_s *dir)
+static int power_readdir_common(FAR struct power_dir_s *powerdir, FAR struct dirent *entry)
 {
-	FAR struct power_dir_s *powerdir = dir->u.procfs;
 	const struct power_path_template_s *child;
 	
 	if (powerdir && powerdir->path_priv.template) {
@@ -704,8 +700,8 @@ static int power_readdir_common(struct fs_dirent_s *dir)
 			const char *name_start = strrchr(child->name, '/');
 			name_start = (name_start) ? name_start + 1 : child->name;
 			
-			dir->fd_dir.d_type = child->dtype;
-			snprintf(dir->fd_dir.d_name, sizeof(dir->fd_dir.d_name), "%s", name_start);
+			entry->d_type = child->dtype;
+			snprintf(entry->d_name, sizeof(entry->d_name), "%s", name_start);
 
 			powerdir->base.index++;
 			return OK;
@@ -718,15 +714,14 @@ static int power_readdir_common(struct fs_dirent_s *dir)
 /****************************************************************************
  * Name: power_readdir_domains
  ****************************************************************************/
-static int power_readdir_domains(struct fs_dirent_s *dir)
+static int power_readdir_domains(FAR struct power_dir_s *powerdir, FAR struct dirent *entry)
 {
-	FAR struct power_dir_s *powerdir = dir->u.procfs;
 	irqstate_t flags;
 
 	/* First, list static entries from the template. */
 	if (powerdir->base.index == 0) {
-		dir->fd_dir.d_type = DTYPE_FILE;
-		snprintf(dir->fd_dir.d_name, sizeof(dir->fd_dir.d_name), "info");
+		entry->d_type = DTYPE_FILE;
+		snprintf(entry->d_name, sizeof(entry->d_name), "info");
 		powerdir->base.index++;
 		return OK;
 	}
@@ -741,8 +736,8 @@ static int power_readdir_domains(struct fs_dirent_s *dir)
 	/* Read through dynamic domain entries */
 	if (powerdir->domain_position) {
 		FAR struct pm_domain_s *domain = (FAR struct pm_domain_s *)powerdir->domain_position;
-		dir->fd_dir.d_type = DTYPE_DIRECTORY;
-		snprintf(dir->fd_dir.d_name, sizeof(dir->fd_dir.d_name), "%s", domain->name);
+		entry->d_type = DTYPE_DIRECTORY;
+		snprintf(entry->d_name, sizeof(entry->d_name), "%s", domain->name);
 		
 		powerdir->domain_position = dq_next(powerdir->domain_position);
 		powerdir->base.index++;
@@ -758,15 +753,15 @@ static int power_readdir_domains(struct fs_dirent_s *dir)
 /****************************************************************************
  * Name: power_readdir
  ****************************************************************************/
-static int power_readdir(struct fs_dirent_s *dir)
+static int power_readdir(FAR struct fs_dirent_s *dir, FAR struct dirent *entry)
 {
 	FAR struct power_dir_s *powerdir;
 
-	DEBUGASSERT(dir && dir->u.procfs);
-	powerdir = dir->u.procfs;
+	DEBUGASSERT(dir && entry);
+	powerdir = (FAR struct power_dir_s *)dir;
 
-	if (powerdir && powerdir->path_priv.template && powerdir->path_priv.template->readdir) {
-		return powerdir->path_priv.template->readdir(dir);
+	if (powerdir->path_priv.template && powerdir->path_priv.template->readdir) {
+		return powerdir->path_priv.template->readdir(powerdir, entry);
 	}
 
 	return -ENOSYS; /* Should not happen, indicates a template misconfiguration */
@@ -779,12 +774,12 @@ static int power_readdir(struct fs_dirent_s *dir)
  *
  ****************************************************************************/
 
-static int power_rewinddir(struct fs_dirent_s *dir)
+static int power_rewinddir(FAR struct fs_dirent_s *dir)
 {
 	FAR struct power_dir_s *priv;
 
-	DEBUGASSERT(dir && dir->u.procfs);
-	priv = dir->u.procfs;
+	DEBUGASSERT(dir);
+	priv = (FAR struct power_dir_s *)dir;
 
 	priv->base.index = 0;
 	priv->path_priv.domain_name[0] = '\0';
