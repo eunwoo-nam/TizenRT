@@ -16,70 +16,67 @@
  *
  ****************************************************************************/
 
-/********************************************************************************
+/****************************************************************************
  * Included Files
- ********************************************************************************/
+ ****************************************************************************/
 
 #include <tinyara/config.h>
 
+#include <tinyara/clock.h>
+#include <tinyara/irq.h>
+#include <tinyara/list.h>
 #include <tinyara/wdog.h>
 
 #include "wdog/wdog.h"
 
-/********************************************************************************
- * Definitions
- ********************************************************************************/
-
-/********************************************************************************
- * Private Types
- ********************************************************************************/
-
-/********************************************************************************
- * Global Variables
- ********************************************************************************/
-
-/********************************************************************************
- * Private Variables
- ********************************************************************************/
-
-/********************************************************************************
- * Private Functions
- ********************************************************************************/
-
-/********************************************************************************
+/****************************************************************************
  * Public Functions
- ********************************************************************************/
+ ****************************************************************************/
 
-/********************************************************************************
+/****************************************************************************
  * Name: wd_getwakeupdelay
  *
  * Description:
- *  The function returns the delay of the wdog that is registered as a CPU wakeup
- *  source and will expire soonest.
+ *   Return the delay until the earliest active watchdog that expires into
+ *   the given function.  The power management uses a dedicated expiry
+ *   function for its wake-up timers, so the active list identifies them
+ *   without any extra state: a watchdog which is cancelled, expires or is
+ *   restarted with another function is no longer a wake-up source.
  *
- * Parameters:
- *	None
+ * Input Parameters:
+ *   wakeup - The expiry function that marks a wake-up watchdog.
  *
- * Return Value:
- *  delay of the wdog that is registered as a CPU wakeup source and will expire soonest.
+ * Returned Value:
+ *   The number of ticks until the wake-up watchdog expires; zero if no
+ *   such watchdog is active.  A watchdog which is already due but not yet
+ *   processed reports one tick, so that it is never mistaken for "no
+ *   wake-up timer".
  *
- ********************************************************************************/
+ ****************************************************************************/
 
-clock_t wd_getwakeupdelay(void)
+clock_t wd_getwakeupdelay(wdentry_t wakeup)
 {
-	clock_t delay = 0;
-	struct wdog_s *curr;
+	FAR struct wdog_s *curr;
 	irqstate_t flags;
+	sclock_t delay;
+	clock_t ret = 0;
+
+	if (wakeup == NULL) {
+		return 0;
+	}
 
 	flags = enter_critical_section();
-	for (curr = (FAR struct wdog_s *)g_wdactivelist.head; curr; curr = curr->next) {
-		delay += curr->lag;
-		if (WDOG_ISWAKEUP(curr)) {
-			leave_critical_section(flags);
-			return delay;
+
+	/* g_wdactivelist is sorted by expiry, so the first match is the earliest */
+
+	list_for_every_entry(&g_wdactivelist, curr, struct wdog_s, node) {
+		if (curr->func == wakeup) {
+			delay = (sclock_t)(curr->expired - clock_systime_ticks());
+			ret = delay > 0 ? (clock_t)delay : 1;
+			break;
 		}
 	}
 
 	leave_critical_section(flags);
-	return 0;
+	return ret;
 }

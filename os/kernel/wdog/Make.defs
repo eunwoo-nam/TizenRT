@@ -39,6 +39,10 @@
 
 CSRCS += wd_initialize.c wd_start.c wd_cancel.c wd_gettime.c
 
+ifeq ($(CONFIG_PM_TIMEDWAKEUP),y)
+CSRCS += wd_getwakeupdelay.c
+endif
+
 # Include wdog build support
 
 DEPPATH += --dep-path wdog

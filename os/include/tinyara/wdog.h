@@ -390,6 +390,27 @@ int wd_cancel(FAR struct wdog_s *wdog);
 
 sclock_t wd_gettime(FAR struct wdog_s *wdog);
 
+/****************************************************************************
+ * Name: wd_getwakeupdelay
+ *
+ * Description:
+ *   Return the delay until the earliest active watchdog whose expiry
+ *   function is 'wakeup'.  The power management identifies its wake-up
+ *   timers by their expiry function, so no per-watchdog flag is needed.
+ *
+ * Input Parameters:
+ *   wakeup - The expiry function that marks a wake-up watchdog.
+ *
+ * Returned Value:
+ *   The number of ticks until the wake-up watchdog expires (at least one),
+ *   or zero if no such watchdog is active.
+ *
+ ****************************************************************************/
+
+#ifdef CONFIG_PM_TIMEDWAKEUP
+clock_t wd_getwakeupdelay(wdentry_t wakeup);
+#endif
+
 #undef EXTERN
 #ifdef __cplusplus
 }
