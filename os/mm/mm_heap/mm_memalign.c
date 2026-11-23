@@ -53,6 +53,148 @@
 #include "mm_heap/mm.h"
 
 /****************************************************************************
+ * Private Functions
+ ****************************************************************************/
+
+/****************************************************************************
+ * Name: memalign_from_freelist
+ *
+ * Description:
+ *   Take an aligned chunk directly from the best fitting free node that can
+ *   hold it, without allocating 2 * alignment extra bytes first.
+ *
+ * Input Parameters:
+ *   heap      - The selected heap
+ *   alignment - The alignment, a power of two not less than MM_MIN_CHUNK
+ *   size      - The chunk size, including MM_ALLOCNODE_OVERHEAD
+ *
+ * Returned Value:
+ *   The aligned memory, or NULL if no free node can hold the chunk.
+ *
+ ****************************************************************************/
+
+static FAR void *memalign_from_freelist(FAR struct mm_heap_s *heap,
+                                        size_t alignment, size_t size)
+{
+	FAR struct mm_freenode_s *node;
+	FAR struct mm_allocnode_s *newnode;
+	FAR struct mm_allocnode_s *next;
+	uintptr_t alignedchunk;
+	size_t precedingsize;
+	size_t nodesize;
+	size_t mask = alignment - 1;
+	FAR void *ret;
+	int ndx;
+
+	mm_free_delaylist(heap);
+
+	DEBUGVERIFY(mm_lock(heap));
+
+	/* Each bin is sorted in descending order.  Start at the smallest node
+	 * of the bin that is large enough, and go back to the larger ones until
+	 * a node can hold the chunk at an aligned address.
+	 */
+
+	for (ndx = mm_size2ndx(size); ndx < MM_NNODES; ndx++) {
+		node = heap->mm_nodelist[ndx].flink;
+		if (node == NULL || MM_SIZEOF_NODE(node) < size) {
+			continue;
+		}
+
+		while (node->flink && MM_SIZEOF_NODE(node->flink) >= size) {
+			node = node->flink;
+		}
+
+		for (; node != &heap->mm_nodelist[ndx]; node = node->blink) {
+			alignedchunk  = ((uintptr_t)node + MM_SIZEOF_ALLOCNODE + mask) &
+			                ~mask;
+			precedingsize = alignedchunk - MM_SIZEOF_ALLOCNODE -
+			                (uintptr_t)node;
+
+			/* The space before the chunk must be empty or large enough to
+			 * become a free node; if not, use the next alignment point.
+			 */
+
+			if (precedingsize > 0 && precedingsize < MM_MIN_CHUNK) {
+				alignedchunk  += alignment;
+				precedingsize += alignment;
+			}
+
+			if (precedingsize + size <= MM_SIZEOF_NODE(node)) {
+				goto found;
+			}
+		}
+	}
+
+	mm_unlock(heap);
+	return NULL;
+
+found:
+
+	/* Remove the node.  There must be a predecessor, but there may not be a
+	 * successor node.
+	 */
+
+	DEBUGASSERT(node->blink->flink == node);
+	node->blink->flink = node->flink;
+	if (node->flink) {
+		node->flink->blink = node->blink;
+	}
+
+	nodesize = MM_SIZEOF_NODE(node);
+	next = (FAR struct mm_allocnode_s *)((FAR char *)node + nodesize);
+	DEBUGASSERT(MM_NODE_IS_ALLOC(next) && MM_PREVNODE_IS_FREE(next) &&
+	            next->preceding == nodesize);
+
+	if (precedingsize > 0) {
+		/* Return the space before the chunk to the free list */
+
+		newnode = (FAR struct mm_allocnode_s *)
+		  ((FAR char *)node + precedingsize);
+		node->size = precedingsize | (node->size & MM_MASK_BIT);
+		newnode->size = (nodesize - precedingsize) | MM_ALLOC_BIT |
+		                MM_PREVFREE_BIT;
+		newnode->preceding = precedingsize;
+		mm_addfreechunk(heap, node);
+	} else {
+		newnode = (FAR struct mm_allocnode_s *)node;
+		newnode->size |= MM_ALLOC_BIT;
+	}
+
+	next->size &= ~MM_PREVFREE_BIT;
+
+	/* Return the space after the chunk to the free list */
+
+	if (MM_SIZEOF_NODE(newnode) > size) {
+		mm_shrinkchunk(heap, newnode, size);
+	}
+
+	/* Update heap statistics */
+
+	nodesize = MM_SIZEOF_NODE(newnode);
+	heap->mm_curused += nodesize;
+	if (heap->mm_curused > heap->mm_maxused) {
+		heap->mm_maxused = heap->mm_curused;
+	}
+
+	sched_note_heap(NOTE_HEAP_ALLOC, heap, (FAR void *)alignedchunk,
+	                nodesize, heap->mm_curused);
+
+	mm_unlock(heap);
+
+	MM_ADD_BACKTRACE(heap, newnode);
+
+	ret = kasan_unpoison((FAR void *)alignedchunk,
+	                     nodesize - MM_ALLOCNODE_OVERHEAD);
+#ifdef CONFIG_MM_FILL_ALLOCATIONS
+	memset(ret, MM_ALLOC_MAGIC, size - MM_ALLOCNODE_OVERHEAD);
+#endif
+
+	DEBUGASSERT(((uintptr_t)ret & mask) == 0);
+	return ret;
+}
+
+/****************************************************************************
  * Public Functions
  ****************************************************************************/
 
@@ -60,9 +202,10 @@
  * Name: mm_memalign
  *
  * Description:
- *   memalign requests more than enough space from malloc, finds a region
- *   within that chunk that meets the alignment request and then frees any
- *   leading or trailing space.
+ *   memalign first looks for a free node that can hold the aligned chunk.
+ *   If there is none, it requests more than enough space from malloc, finds
+ *   a region within that chunk that meets the alignment request and then
+ *   frees any leading or trailing space.
  *
  *   The alignment argument must be a power of two. 16-byte alignment is
  *   guaranteed by normal malloc calls.
@@ -78,6 +221,8 @@ FAR void *mm_memalign(FAR struct mm_heap_s *heap, size_t alignment,
 	size_t mask;
 	size_t allocsize;
 	size_t newsize;
+	size_t chunksize;
+	FAR void *ret;
 
 	/* Make sure that alignment is less than half max size_t */
 
@@ -139,7 +284,19 @@ FAR void *mm_memalign(FAR struct mm_heap_s *heap, size_t alignment,
 		return NULL;
 	}
 
-	/* Then malloc that size */
+	/* First try to take the aligned chunk directly from a free node.  The
+	 * chunk size includes MM_ALLOCNODE_OVERHEAD.
+	 */
+
+	chunksize = MM_ALIGN_UP(size + MM_ALLOCNODE_OVERHEAD);
+	if (chunksize > size) {
+		ret = memalign_from_freelist(heap, alignment, chunksize);
+		if (ret != NULL) {
+			return ret;
+		}
+	}
+
+	/* Otherwise malloc more than enough space */
 
 	rawchunk = (uintptr_t)mm_malloc(heap, allocsize);
 	if (rawchunk == 0) {
