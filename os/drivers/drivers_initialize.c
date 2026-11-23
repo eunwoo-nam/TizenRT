@@ -72,7 +72,7 @@
 #include <tinyara/note/note_driver.h>
 #include <tinyara/pci/pci.h>
 #if defined(CONFIG_PM)
-#  include <tinyara/power/pm.h>
+#  include <tinyara/pm/pm.h>
 #endif
 #if defined(CONFIG_REGULATOR_RPMSG)
 #  include <tinyara/power/regulator.h>
@@ -196,6 +196,10 @@ void drivers_initialize(void)
 
 #if defined(CONFIG_DRIVERS_NOTE)
 	note_initialize();    /* Non-standard /dev/note */
+#endif
+
+#if defined(CONFIG_PM)
+	pm_driver_register(); /* Non-standard /dev/pm */
 #endif
 
 #ifdef CONFIG_COMPRESSION

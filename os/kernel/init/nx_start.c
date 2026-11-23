@@ -65,6 +65,9 @@
 #include <tinyara/drivers/drivers.h>
 #include <tinyara/init.h>
 #include <tinyara/lib/math32.h>
+#ifdef CONFIG_PM
+#  include <tinyara/pm/pm.h>
+#endif
 
 #include "task/task.h"
 #include "sched/sched.h"
@@ -769,6 +772,14 @@ void nx_start(void)
 	sinfo("CPU0: Beginning Idle Loop\n");
 #ifndef CONFIG_DISABLE_IDLE_LOOP
 	for (;;) {
+#ifdef CONFIG_PM
+		/* Perform PM idle operation to save power.  The board sleep is
+		 * decided on CPU0 only; it turns the secondary CPUs off and on.
+		 */
+
+		pm_idle();
+#endif
+
 		/* Perform any processor-specific idle state operations */
 
 		up_idle();

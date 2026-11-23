@@ -91,7 +91,7 @@ uint32_t pmu_set_sysactive_time(uint32_t timeout)
 #ifndef CONFIG_PLATFORM_TIZENRT_OS
 	TimeOut = xTaskGetTickCount() + timeout;
 #else
-	TimeOut = TICK2MSEC(clock_systimer()) + timeout;
+	TimeOut = TICK2MSEC(clock_systime_ticks()) + timeout;
 #endif
 
 	if (tizenrt_systick_check(TimeOut, sleepwakelock_timeout)) {
@@ -161,7 +161,7 @@ int tizenrt_ready_to_sleep(void)
 #ifndef CONFIG_PLATFORM_TIZENRT_OS
 	u32 current_tick = xTaskGetTickCount();
 #else
-	u32 current_tick = TICK2MSEC(clock_systimer());
+	u32 current_tick = TICK2MSEC(clock_systime_ticks());
 #endif
 
 	/* timeout */

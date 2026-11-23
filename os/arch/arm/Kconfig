@@ -186,6 +186,7 @@ config ARCH_CHIP_AMEBASMART
 	select ARCH_HAVE_TICKSUPPRESS
 	select ARM_HAVE_WFE_SEV
 	select CPU_HOTPLUG if (SMP && PM)
+	select ARCH_IDLE_CUSTOM if PM
 	---help---
 		Realtek AMEBASMART architectures (ARM Cortex-A32).
 

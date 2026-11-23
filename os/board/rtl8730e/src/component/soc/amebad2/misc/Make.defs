@@ -49,8 +49,14 @@
 #
 ############################################################################
 
-CSRCS += ameba_wlan_init.c \
-		 ameba_tizenrt_pmu.c \
+ifeq ($(CONFIG_AMEBASMART_WIFI),y)
+CSRCS += ameba_wlan_init.c
+endif
+
+# The PMU glue is needed by the TizenRT PM with or without WiFi
+ifeq ($(CONFIG_PM),y)
+CSRCS += ameba_tizenrt_pmu.c
+endif
 
 
 

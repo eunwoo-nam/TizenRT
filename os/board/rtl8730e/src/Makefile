@@ -91,8 +91,9 @@ include component/wifi/inic/Make.defs
 include component/wifi/common/Make.defs
 include component/wifi/api/Make.defs
 include component/wifi/wpa_supplicant/wpa_supplicant/Make.defs
-include component/soc/amebad2/misc/Make.defs
 endif
+
+include component/soc/amebad2/misc/Make.defs
 
 ifeq ($(CONFIG_AMEBASMART_BLE),y)
 include component/bluetooth/api/Make.defs
