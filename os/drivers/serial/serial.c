@@ -71,6 +71,9 @@
 #include <tinyara/cancelpt.h>
 #include <tinyara/serial/serial.h>
 #include <tinyara/fs/ioctl.h>
+#ifdef CONFIG_PM
+#include <tinyara/pm/pm.h>
+#endif
 #include <tinyara/wqueue.h>
 #include <tinyara/kthread.h>
 
@@ -97,6 +100,12 @@
 /* Timing */
 
 #define POLL_DELAY_USEC 1000
+
+#ifdef CONFIG_PM
+/* PM domain that keeps the board awake while a writer fills the TX buffer */
+
+#define PM_UART_DOMAIN "UART"
+#endif
 
 /****************************************************************************
  * Private Types
@@ -175,6 +184,10 @@ static const struct file_operations g_serialops =
 
 #ifdef CONFIG_TTY_LAUNCH
 static struct work_s g_serial_work;
+#endif
+
+#ifdef CONFIG_PM
+static FAR struct pm_domain_s *g_pm_uart_domain;
 #endif
 
 /****************************************************************************
@@ -683,6 +696,17 @@ static int uart_open(FAR struct file *filep)
 	FAR uart_dev_t   *dev   = inode->i_private;
 	uint8_t           tmp;
 	int               ret;
+
+#ifdef CONFIG_PM
+	/* Register the UART PM domain so that writes can keep the board awake */
+
+	if (g_pm_uart_domain == NULL) {
+		g_pm_uart_domain = pm_domain_register(PM_UART_DOMAIN);
+		if (g_pm_uart_domain == NULL) {
+			return -ENOMEM;
+		}
+	}
+#endif
 
 	/* If the port is the middle of closing, wait until the close is finished.
 	 * If a signal is received while we are waiting, then return EINTR.
@@ -1384,6 +1408,12 @@ static ssize_t uart_writev(FAR struct file *filep, FAR struct uio *uio)
 
 	oktoblock = ((filep->f_oflags & O_NONBLOCK) == 0);
 
+#ifdef CONFIG_PM
+	/* Keep the board awake while the TX buffer is filled */
+
+	(void)pm_suspend(g_pm_uart_domain);
+#endif
+
 	/* Loop while we still have data to copy to the transmit buffer.
 	 * we add data to the head of the buffer; uart_xmitchars takes the
 	 * data from the end of the buffer.
@@ -1464,6 +1494,14 @@ static ssize_t uart_writev(FAR struct file *filep, FAR struct uio *uio)
 #endif
 		uart_enabletxint(dev);
 	}
+
+#ifdef CONFIG_PM
+	/* Let the board sleep again; the lower half holds the domain while TX
+	 * interrupts drain the buffer.
+	 */
+
+	(void)pm_resume(g_pm_uart_domain);
+#endif
 
 	nxmutex_unlock(&dev->xmit.lock);
 	return nwritten;
